@@ -27,6 +27,8 @@ const (
 var (
 	useCaseHeadingPattern = regexp.MustCompile(`(?m)^### Use Case ([0-9]+[A-Z]?):`)
 	storyFilenamePattern  = regexp.MustCompile(`^us-(\d{3})-.*\.md$`)
+	storySourcesPattern   = regexp.MustCompile(`(?m)^- \*\*Source use cases:\*\* (.+)$`)
+	useCaseReference      = regexp.MustCompile(`UC-[0-9]+[A-Z]?`)
 	incrementHeading      = regexp.MustCompile(`(?m)^## (INC-\d{2})\b`)
 	traceLinePattern      = regexp.MustCompile(`(?m)^\s*//\s*Trace:\s*(.+?)\s*$`)
 	traceReferencePattern = regexp.MustCompile(`^(UC-[0-9]+[A-Z]?|US-\d{3})@r([1-9][0-9]*)$`)
@@ -147,6 +149,16 @@ func Validate(root string, manifest Manifest) []string {
 			add("%s exists in the manifest but not docs/user-stories", id)
 		} else if filepath.ToSlash(story.Path) != filepath.ToSlash(path) {
 			add("%s path is %q, want %q", id, story.Path, path)
+		} else if current, found := currentStoryRevision(story); found {
+			documentSources, sourceErr := storySources(filepath.Join(root, path))
+			if sourceErr != nil {
+				add("%s", sourceErr)
+			} else {
+				manifestSources := sourceUseCaseIDs(current.SourceUseCases)
+				if !slices.Equal(documentSources, manifestSources) {
+					add("%s source use cases in its document are %v, want %v", id, documentSources, manifestSources)
+				}
+			}
 		}
 		if _, ok := manifest.Increments[story.Increment]; !ok {
 			add("%s references unknown increment %s", id, story.Increment)
@@ -321,6 +333,45 @@ func incrementsInDocument(path string) (map[string]bool, error) {
 		result[match[1]] = true
 	}
 	return result, nil
+}
+
+func storySources(path string) ([]string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read story source use cases: %w", err)
+	}
+	match := storySourcesPattern.FindStringSubmatch(string(data))
+	if match == nil {
+		return nil, fmt.Errorf("%s has no Source use cases metadata", filepath.ToSlash(path))
+	}
+	sources := uniqueSorted(useCaseReference.FindAllString(match[1], -1))
+	if len(sources) == 0 {
+		return nil, fmt.Errorf("%s has empty Source use cases metadata", filepath.ToSlash(path))
+	}
+	return sources, nil
+}
+
+func sourceUseCaseIDs(references []string) []string {
+	result := make([]string, 0, len(references))
+	for _, reference := range references {
+		if at := strings.IndexByte(reference, '@'); at >= 0 {
+			result = append(result, reference[:at])
+		}
+	}
+	return uniqueSorted(result)
+}
+
+func uniqueSorted(values []string) []string {
+	seen := make(map[string]bool)
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		if !seen[value] {
+			seen[value] = true
+			result = append(result, value)
+		}
+	}
+	sort.Strings(result)
+	return result
 }
 
 func acceptanceTraces(root string, manifest Manifest) (map[string]bool, []string) {
