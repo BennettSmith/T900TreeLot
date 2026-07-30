@@ -174,6 +174,11 @@ func Validate(root string, manifest Manifest) []string {
 
 	traces, traceProblems := acceptanceTraces(filepath.Join(root, "acceptance/cases"), manifest)
 	problems = append(problems, traceProblems...)
+	for _, id := range sortedKeys(manifest.Increments) {
+		if manifest.Increments[id].DeliveryStatus == deliveryVerified && !traces[id] {
+			add("%s is verified but has no matching acceptance trace", id)
+		}
+	}
 	for _, id := range sortedKeys(manifest.Stories) {
 		story := manifest.Stories[id]
 		current, ok := currentStoryRevision(story)

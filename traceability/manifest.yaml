@@ -1,0 +1,991 @@
+schema_version: 1
+baseline:
+  requirements_commit: c66a77ce6013a02037427552c489da0c4ce68345
+  use_case_document_version: "3.13"
+  requirements_description: Initial per-artifact traceability baseline
+use_cases:
+  UC-0:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-1:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-2:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-2A:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-2B:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-3:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-4:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-4A:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-5:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-6:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-7:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-8:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-9:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-10:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-11:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-12:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-13:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-14:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-15:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-16:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-17:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-18:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-19:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-20:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-21:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-22:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-23:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-24:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-25:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-26:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-27:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-28:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-29:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-30:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-31:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-32:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-33:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-34:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-35:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-36:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-37:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-38:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-39:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-40:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-41:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-42:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-43:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-44:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-45:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-46:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-47:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-48:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-49:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-50:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-51:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-53:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-54:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-55:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-56:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-57:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-58:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+  UC-59:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Baseline adopted from use-case document version 3.13
+stories:
+  US-052:
+    path: docs/user-stories/administration-profiles-privacy-season-lifecycle/us-052-deactivate-a-household.md
+    increment: INC-06
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-5@r1]
+        change: Initial user-story traceability baseline
+  US-053:
+    path: docs/user-stories/administration-profiles-privacy-season-lifecycle/us-053-update-profile-photo.md
+    increment: INC-03
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-45@r1]
+        change: Initial user-story traceability baseline
+  US-054:
+    path: docs/user-stories/administration-profiles-privacy-season-lifecycle/us-054-edit-display-name.md
+    increment: INC-03
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-46@r1]
+        change: Initial user-story traceability baseline
+  US-055:
+    path: docs/user-stories/administration-profiles-privacy-season-lifecycle/us-055-remove-own-login-access.md
+    increment: INC-10
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-47@r1]
+        change: Initial user-story traceability baseline
+  US-056:
+    path: docs/user-stories/administration-profiles-privacy-season-lifecycle/us-056-fulfill-personal-data-export.md
+    increment: INC-10
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-48@r1]
+        change: Initial user-story traceability baseline
+  US-057:
+    path: docs/user-stories/administration-profiles-privacy-season-lifecycle/us-057-fulfill-permanent-data-removal.md
+    increment: INC-10
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-49@r1]
+        change: Initial user-story traceability baseline
+  US-058:
+    path: docs/user-stories/administration-profiles-privacy-season-lifecycle/us-058-create-encrypted-completed-season-archive.md
+    increment: INC-10
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-56@r1]
+        change: Initial user-story traceability baseline
+  US-059:
+    path: docs/user-stories/administration-profiles-privacy-season-lifecycle/us-059-delete-an-archived-completed-season.md
+    increment: INC-10
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-56@r1]
+        change: Initial user-story traceability baseline
+  US-034:
+    path: docs/user-stories/attendance-on-site-roster/us-034-check-self-in.md
+    increment: INC-08
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-27@r1, UC-53@r1, UC-58@r1]
+        change: Initial user-story traceability baseline
+  US-035:
+    path: docs/user-stories/attendance-on-site-roster/us-035-checked-in-adult-checks-another-volunteer-in-out.md
+    increment: INC-08
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-28@r1, UC-30@r1, UC-58@r1]
+        change: Initial user-story traceability baseline
+  US-036:
+    path: docs/user-stories/attendance-on-site-roster/us-036-committee-checks-in-arriving-volunteer.md
+    increment: INC-08
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-29@r1, UC-53@r1, UC-58@r1]
+        change: Initial user-story traceability baseline
+  US-037:
+    path: docs/user-stories/attendance-on-site-roster/us-037-review-and-correct-attendance-no-shows.md
+    increment: INC-08
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-31@r1]
+        change: Initial user-story traceability baseline
+  US-038:
+    path: docs/user-stories/attendance-on-site-roster/us-038-view-household-attendance-history.md
+    increment: INC-08
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-32@r1]
+        change: Initial user-story traceability baseline
+  US-042:
+    path: docs/user-stories/communications-reminders/us-042-publish-and-deliver-troop-announcement.md
+    increment: INC-07
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-4@r1]
+        change: Initial user-story traceability baseline
+  US-043:
+    path: docs/user-stories/communications-reminders/us-043-view-and-mark-announcements-read.md
+    increment: INC-07
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-4A@r1]
+        change: Initial user-story traceability baseline
+  US-044:
+    path: docs/user-stories/communications-reminders/us-044-send-automated-shift-reminders.md
+    increment: INC-07
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-6@r1]
+        change: Initial user-story traceability baseline
+  US-045:
+    path: docs/user-stories/hours-leaderboards-scout-bucks/us-045-view-scout-hours-and-stats.md
+    increment: INC-09
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-36@r1]
+        change: Initial user-story traceability baseline
+  US-046:
+    path: docs/user-stories/hours-leaderboards-scout-bucks/us-046-view-individual-leaderboard.md
+    increment: INC-09
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-37@r1]
+        change: Initial user-story traceability baseline
+  US-047:
+    path: docs/user-stories/hours-leaderboards-scout-bucks/us-047-view-family-leaderboard.md
+    increment: INC-09
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-38@r1]
+        change: Initial user-story traceability baseline
+  US-048:
+    path: docs/user-stories/hours-leaderboards-scout-bucks/us-048-view-committee-season-statistics.md
+    increment: INC-09
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-39@r1]
+        change: Initial user-story traceability baseline
+  US-049:
+    path: docs/user-stories/hours-leaderboards-scout-bucks/us-049-review-scout-bucks-inputs-and-preview-awards.md
+    increment: INC-09
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-40@r1]
+        change: Initial user-story traceability baseline
+  US-050:
+    path: docs/user-stories/hours-leaderboards-scout-bucks/us-050-finalize-and-export-scout-bucks-settlement.md
+    increment: INC-09
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-40@r1]
+        change: Initial user-story traceability baseline
+  US-051:
+    path: docs/user-stories/hours-leaderboards-scout-bucks/us-051-issue-corrected-scout-bucks-revision.md
+    increment: INC-09
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-40@r1]
+        change: Initial user-story traceability baseline
+  US-005:
+    path: docs/user-stories/household-onboarding-family-graph/us-005-invite-a-new-household.md
+    increment: INC-03
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-1@r1]
+        change: Initial user-story traceability baseline
+  US-006:
+    path: docs/user-stories/household-onboarding-family-graph/us-006-redeem-household-invitation-and-create-household.md
+    increment: INC-03
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-1@r1]
+        change: Initial user-story traceability baseline
+  US-007:
+    path: docs/user-stories/household-onboarding-family-graph/us-007-establish-household-members-and-explicit-adult-scout-relationships.md
+    increment: INC-03
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-1@r1]
+        change: Initial user-story traceability baseline
+  US-008:
+    path: docs/user-stories/household-onboarding-family-graph/us-008-add-a-co-manager.md
+    increment: INC-03
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-7@r1]
+        change: Initial user-story traceability baseline
+  US-009:
+    path: docs/user-stories/household-onboarding-family-graph/us-009-link-a-scout-across-households.md
+    increment: INC-03
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-26@r1]
+        change: Initial user-story traceability baseline
+  US-001:
+    path: docs/user-stories/platform-bootstrap-identity/us-001-bootstrap-first-administrator.md
+    increment: INC-02
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-0@r1]
+        change: Initial user-story traceability baseline
+  US-002:
+    path: docs/user-stories/platform-bootstrap-identity/us-002-secure-authenticated-sign-in.md
+    increment: INC-02
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-2@r1]
+        change: Initial user-story traceability baseline
+  US-003:
+    path: docs/user-stories/platform-bootstrap-identity/us-003-change-own-phone-number.md
+    increment: INC-02
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-2B@r1]
+        change: Initial user-story traceability baseline
+  US-004:
+    path: docs/user-stories/platform-bootstrap-identity/us-004-recover-another-persons-phone-access.md
+    increment: INC-03
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-2B@r1]
+        change: Initial user-story traceability baseline
+  US-016:
+    path: docs/user-stories/schedule-authoring-publication/us-016-create-shift-templates.md
+    increment: INC-05
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-20@r1]
+        change: Initial user-story traceability baseline
+  US-017:
+    path: docs/user-stories/schedule-authoring-publication/us-017-generate-draft-season-schedule.md
+    increment: INC-05
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-21@r1]
+        change: Initial user-story traceability baseline
+  US-018:
+    path: docs/user-stories/schedule-authoring-publication/us-018-review-and-adjust-draft-schedule.md
+    increment: INC-05
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-22@r1]
+        change: Initial user-story traceability baseline
+  US-019:
+    path: docs/user-stories/schedule-authoring-publication/us-019-publish-season-schedule.md
+    increment: INC-05
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-23@r1]
+        change: Initial user-story traceability baseline
+  US-020:
+    path: docs/user-stories/schedule-authoring-publication/us-020-add-an-individual-published-shift.md
+    increment: INC-05
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-3@r1, UC-24@r1]
+        change: Initial user-story traceability baseline
+  US-021:
+    path: docs/user-stories/schedule-authoring-publication/us-021-navigate-seasons-and-weeks.md
+    increment: INC-05
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-44@r1]
+        change: Initial user-story traceability baseline
+  US-011:
+    path: docs/user-stories/seasonal-conduct-agreement/us-011-configure-seasonal-agreement-link.md
+    increment: INC-04
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-50@r1]
+        change: Initial user-story traceability baseline
+  US-012:
+    path: docs/user-stories/seasonal-conduct-agreement/us-012-open-current-agreement-from-profile.md
+    increment: INC-04
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-55@r1]
+        change: Initial user-story traceability baseline
+  US-013:
+    path: docs/user-stories/seasonal-conduct-agreement/us-013-confirm-agreement-for-a-participant.md
+    increment: INC-04
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-51@r1]
+        change: Initial user-story traceability baseline
+  US-014:
+    path: docs/user-stories/seasonal-conduct-agreement/us-014-review-confirmation-status.md
+    increment: INC-04
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-54@r1]
+        change: Initial user-story traceability baseline
+  US-015:
+    path: docs/user-stories/seasonal-conduct-agreement/us-015-enforce-participation-eligibility.md
+    increment: INC-04
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-53@r1]
+        change: Initial user-story traceability baseline
+  US-029:
+    path: docs/user-stories/staffing-intelligence-shift-operations/us-029-view-weekly-staffing-levels.md
+    increment: INC-07
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-41@r1]
+        change: Initial user-story traceability baseline
+  US-030:
+    path: docs/user-stories/staffing-intelligence-shift-operations/us-030-review-staffing-alerts-dashboard.md
+    increment: INC-07
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-42@r1]
+        change: Initial user-story traceability baseline
+  US-031:
+    path: docs/user-stories/staffing-intelligence-shift-operations/us-031-enforce-actual-local-two-deep-coverage.md
+    increment: INC-08
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-58@r1]
+        change: Initial user-story traceability baseline
+  US-032:
+    path: docs/user-stories/staffing-intelligence-shift-operations/us-032-send-critical-coverage-alert.md
+    increment: INC-07
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-57@r1]
+        change: Initial user-story traceability baseline
+  US-033:
+    path: docs/user-stories/staffing-intelligence-shift-operations/us-033-close-or-reopen-unsafe-shift.md
+    increment: INC-08
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-59@r1]
+        change: Initial user-story traceability baseline
+  US-022:
+    path: docs/user-stories/volunteer-scheduling/us-022-view-household-schedule.md
+    increment: INC-06
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-8@r1]
+        change: Initial user-story traceability baseline
+  US-023:
+    path: docs/user-stories/volunteer-scheduling/us-023-manager-signs-up-household-members.md
+    increment: INC-06
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-9@r1, UC-10@r1, UC-11@r1, UC-17@r1, UC-18@r1, UC-19@r1, UC-53@r1]
+        change: Initial user-story traceability baseline
+  US-024:
+    path: docs/user-stories/volunteer-scheduling/us-024-young-adult-scout-self-schedules.md
+    increment: INC-06
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-12@r1, UC-16@r1, UC-18@r1, UC-19@r1, UC-53@r1]
+        change: Initial user-story traceability baseline
+  US-025:
+    path: docs/user-stories/volunteer-scheduling/us-025-cancel-a-household-owned-adult-scout-assignment.md
+    increment: INC-06
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-13@r1, UC-14@r1, UC-15@r1]
+        change: Initial user-story traceability baseline
+  US-026:
+    path: docs/user-stories/volunteer-scheduling/us-026-coordinate-a-shared-scout-assignment.md
+    increment: INC-06
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-26@r1]
+        change: Initial user-story traceability baseline
+  US-027:
+    path: docs/user-stories/volunteer-scheduling/us-027-discover-available-shifts-in-week-view.md
+    increment: INC-07
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-43@r1]
+        change: Initial user-story traceability baseline
+  US-028:
+    path: docs/user-stories/volunteer-scheduling/us-028-sign-up-for-a-special-event.md
+    increment: INC-06
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-25@r1]
+        change: Initial user-story traceability baseline
+  US-039:
+    path: docs/user-stories/walk-in-coverage/us-039-committee-records-walk-in-covering-no-show.md
+    increment: INC-08
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-33@r1, UC-53@r1, UC-58@r1]
+        change: Initial user-story traceability baseline
+  US-040:
+    path: docs/user-stories/walk-in-coverage/us-040-checked-in-adult-adds-walk-in-scout.md
+    increment: INC-08
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-34@r1, UC-53@r1, UC-58@r1]
+        change: Initial user-story traceability baseline
+  US-041:
+    path: docs/user-stories/walk-in-coverage/us-041-prior-shift-scout-extends-as-walk-in.md
+    increment: INC-08
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-35@r1, UC-53@r1, UC-58@r1]
+        change: Initial user-story traceability baseline
+  US-010:
+    path: docs/user-stories/young-adult-scout-access/us-010-grant-young-adult-scout-access-to-an-existing-scout-profile.md
+    increment: INC-03
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-2A@r1]
+        change: Initial user-story traceability baseline
+increments:
+  INC-01:
+    delivery_status: verified
+    implementation_pr: 4
+  INC-02:
+    delivery_status: planned
+  INC-03:
+    delivery_status: planned
+  INC-04:
+    delivery_status: planned
+  INC-05:
+    delivery_status: planned
+  INC-06:
+    delivery_status: planned
+  INC-07:
+    delivery_status: planned
+  INC-08:
+    delivery_status: planned
+  INC-09:
+    delivery_status: planned
+  INC-10:
+    delivery_status: planned
