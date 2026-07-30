@@ -12,8 +12,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// OpenMigrated returns an exclusive migrated test database connection.
-func OpenMigrated(t *testing.T) *postgres.DB {
+// OpenEmpty returns an exclusive empty test database with foundation tables removed.
+func OpenEmpty(t *testing.T) *postgres.DB {
 	t.Helper()
 	unlock := flock(t)
 	t.Cleanup(unlock)
@@ -28,8 +28,7 @@ func OpenMigrated(t *testing.T) *postgres.DB {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
-	ctx := context.Background()
-	_, err = db.Exec(ctx, `
+	_, err = db.Exec(context.Background(), `
 		DROP TABLE IF EXISTS sessions CASCADE;
 		DROP TABLE IF EXISTS background_jobs CASCADE;
 		DROP TABLE IF EXISTS outbox_messages CASCADE;
@@ -39,12 +38,19 @@ func OpenMigrated(t *testing.T) *postgres.DB {
 	if err != nil {
 		t.Fatalf("reset test database: %v", err)
 	}
+	return db
+}
+
+// OpenMigrated returns an exclusive migrated test database connection.
+func OpenMigrated(t *testing.T) *postgres.DB {
+	t.Helper()
+	db := OpenEmpty(t)
 
 	migrationsDir := filepath.Join("..", "..", "..", "migrations")
 	if _, err := os.Stat(migrationsDir); err != nil {
 		migrationsDir = filepath.Join("..", "..", "migrations")
 	}
-	if _, err := migrate.Up(ctx, db, migrationsDir); err != nil {
+	if _, err := migrate.Up(context.Background(), db, migrationsDir); err != nil {
 		t.Fatalf("migrate test database: %v", err)
 	}
 	return db

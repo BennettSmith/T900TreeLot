@@ -3,6 +3,7 @@ package migrate
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/troop900/treelot/internal/platform/postgres"
 )
 
@@ -62,12 +64,14 @@ func Up(ctx context.Context, db *postgres.DB, directory string) (int, error) {
 }
 
 // CurrentVersion returns the highest applied migration version, or 0.
+// It is read-only and never creates schema_migrations; only Up may mutate schema.
 func CurrentVersion(ctx context.Context, db *postgres.DB) (int, error) {
-	if err := ensureBookkeeping(ctx, db); err != nil {
-		return 0, err
-	}
 	var version *int
-	if err := db.QueryRow(ctx, `SELECT MAX(version) FROM schema_migrations`).Scan(&version); err != nil {
+	err := db.QueryRow(ctx, `SELECT MAX(version) FROM schema_migrations`).Scan(&version)
+	if err != nil {
+		if isUndefinedTable(err) {
+			return 0, nil
+		}
 		return 0, fmt.Errorf("read schema version: %w", err)
 	}
 	if version == nil {
@@ -77,6 +81,7 @@ func CurrentVersion(ctx context.Context, db *postgres.DB) (int, error) {
 }
 
 // EnsureCompatible fails when the database schema version does not match expected.
+// It never mutates schema; an unmigrated database is reported as incompatible.
 func EnsureCompatible(ctx context.Context, db *postgres.DB, expected int) error {
 	version, err := CurrentVersion(ctx, db)
 	if err != nil {
@@ -99,6 +104,11 @@ func ensureBookkeeping(ctx context.Context, db *postgres.DB) error {
 		return fmt.Errorf("ensure schema_migrations: %w", err)
 	}
 	return nil
+}
+
+func isUndefinedTable(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "42P01"
 }
 
 func loadMigrations(directory string) ([]migrationFile, error) {
