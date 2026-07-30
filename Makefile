@@ -3,11 +3,21 @@
 override COVERAGE_MIN := 85
 GO_FILES = $(shell git ls-files --cached --others --exclude-standard '*.go')
 NODE_MODULES_STAMP = node_modules/.package-lock.json
+DOCKER ?= $(shell if docker info >/dev/null 2>&1; then echo docker; else echo sudo docker; fi)
+COMPOSE = $(DOCKER) compose
+IMAGE ?= treelot:local
 
-.PHONY: help assets assets-watch assets-check showcase format format-check lint test coverage ci
+.PHONY: help doctor acceptance-preflight assets assets-watch assets-check showcase format format-check \
+	lint test-db test coverage ci image up down migrate logs ps acceptance
 
 help: ## List available targets and explain when to use them.
 	@awk 'BEGIN {FS = ":.*## "; printf "Usage: make <target>\n\nTargets:\n"} /^[[:alnum:]_.-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+doctor: ## Diagnose local tools, Docker, networking guidance, and required ports.
+	@bash ./scripts/preflight.sh doctor
+
+acceptance-preflight: ## Check acceptance prerequisites and required ports without cleanup.
+	@bash ./scripts/preflight.sh acceptance
 
 $(NODE_MODULES_STAMP): package.json package-lock.json
 	@npm ci
@@ -65,13 +75,22 @@ format-check: ## Check Go formatting without changing files; use in CI.
 lint: ## Run Go static analysis; use before submitting changes.
 	@go vet ./...
 
-test: ## Run all Go tests; use during development.
-	@go test ./...
+test-db: ## Resolve disposable treelot_test Postgres (host :5432 or Compose :5433).
+	@chmod +x ./scripts/ensure-test-db.sh
+	@./scripts/ensure-test-db.sh >/dev/null
+
+test: ## Run all Go unit/component tests; use during development.
+	@chmod +x ./scripts/ensure-test-db.sh
+	@TEST_DATABASE_URL="$$(./scripts/ensure-test-db.sh)" go test ./...
 
 coverage: ## Run tests and require at least 85% statement coverage.
+	@chmod +x ./scripts/ensure-test-db.sh
 	@profile="$$(mktemp)"; \
 	trap 'rm -f "$$profile"' EXIT; \
-	go test ./... -covermode=atomic -coverprofile="$$profile"; \
+	packages="$$(go list ./internal/... ./web/... | grep -Ev '/testdb$$')"; \
+	coverpkg="$$(echo "$$packages" | paste -sd, -)"; \
+	TEST_DATABASE_URL="$$(./scripts/ensure-test-db.sh)" \
+		go test ./... -count=1 -covermode=atomic -coverpkg="$$coverpkg" -coverprofile="$$profile"; \
 	total="$$(go tool cover -func="$$profile" | awk '/^total:/ {gsub(/%/, "", $$3); print $$3}')"; \
 	test -n "$$total" || { echo "Unable to determine total coverage." >&2; exit 1; }; \
 	awk -v total="$$total" -v minimum="$(COVERAGE_MIN)" 'BEGIN { \
@@ -82,4 +101,29 @@ coverage: ## Run tests and require at least 85% statement coverage.
 		printf "Coverage %.1f%% meets the required %.1f%%.\n", total, minimum; \
 	}'
 
-ci: assets-check format-check lint coverage ## Run all required checks when evaluating whether work is done.
+ci: assets-check format-check lint coverage ## Run fast required checks (no Docker acceptance).
+
+image: ## Build the immutable production image used by Compose and acceptance.
+	@$(DOCKER) build -t "$(IMAGE)" .
+
+up: image ## Start the local Docker Compose development stack.
+	@$(COMPOSE) --profile dev up --build -d postgres
+	@$(COMPOSE) run --rm migrate
+	@$(COMPOSE) --profile dev up -d web worker
+
+down: ## Stop the local Docker Compose stack. Set DOWN_FLAGS=-v to remove volumes.
+	@$(COMPOSE) --profile dev --profile acceptance down $(DOWN_FLAGS)
+
+migrate: ## Apply database migrations through the migrate entry point.
+	@$(COMPOSE) up -d postgres
+	@$(COMPOSE) run --rm migrate
+
+logs: ## Tail logs for postgres, web, and worker.
+	@$(COMPOSE) --profile dev logs -f postgres web worker
+
+ps: ## Show Docker Compose service status.
+	@$(COMPOSE) --profile dev --profile acceptance ps
+
+acceptance: ## Build the production image and run foundation acceptance specs.
+	@chmod +x ./scripts/acceptance.sh
+	@./scripts/acceptance.sh

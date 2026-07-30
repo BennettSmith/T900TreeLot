@@ -197,6 +197,17 @@ type ScoutBucksSummary struct {
 	Revision       string
 }
 
+type Home struct {
+	PageTitle    string
+	Brand        string
+	Headline     string
+	Supporting   string
+	Navigation   []Link
+	CSRFToken    string
+	SmokeMessage string
+	SmokeInput   string
+}
+
 type Gallery struct {
 	PageTitle      string
 	Season         string

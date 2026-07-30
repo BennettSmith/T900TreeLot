@@ -1,0 +1,144 @@
+x-app-env: &app-env
+  DATABASE_URL: postgres://treelot:treelot@postgres:5432/treelot?sslmode=disable
+  TREE_LOT_TIME_ZONE: ${TREE_LOT_TIME_ZONE:-America/Los_Angeles}
+  PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
+  SESSION_KEY: ${SESSION_KEY:-0123456789abcdef0123456789abcdef}
+  GROUPS_IO_ENABLED: "false"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: treelot
+      POSTGRES_USER: treelot
+      POSTGRES_PASSWORD: treelot
+    ports:
+      - "5433:5432"
+    volumes:
+      - treelot_pg:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U treelot -d treelot"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  migrate:
+    image: treelot:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["/app/migrate"]
+    command: ["up"]
+    environment:
+      <<: *app-env
+      APP_ENV: ${APP_ENV:-development}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    image: treelot:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["/app/web"]
+    environment:
+      <<: *app-env
+      APP_ENV: ${APP_ENV:-development}
+      PORT: "8080"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["dev"]
+
+  worker:
+    image: treelot:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["/app/worker"]
+    environment:
+      <<: *app-env
+      APP_ENV: ${APP_ENV:-development}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["dev"]
+
+  provider-stubs:
+    image: treelot:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["/app/provider-stubs"]
+    environment:
+      PORT: "8090"
+    profiles: ["acceptance"]
+
+  acceptance-web:
+    image: treelot:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["/app/web"]
+    environment:
+      APP_ENV: acceptance
+      PORT: "8080"
+      DATABASE_URL: postgres://treelot:treelot@postgres:5432/treelot?sslmode=disable
+      TREE_LOT_TIME_ZONE: America/Los_Angeles
+      PUBLIC_BASE_URL: https://treelot.test
+      SESSION_KEY: 0123456789abcdef0123456789abcdef
+      GROUPS_IO_ENABLED: "false"
+      TEST_CONTROL_KEY: acceptance-test-control-key
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["acceptance"]
+
+  acceptance-worker:
+    image: treelot:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["/app/worker"]
+    environment:
+      APP_ENV: acceptance
+      DATABASE_URL: postgres://treelot:treelot@postgres:5432/treelot?sslmode=disable
+      TREE_LOT_TIME_ZONE: America/Los_Angeles
+      PUBLIC_BASE_URL: https://treelot.test
+      SESSION_KEY: 0123456789abcdef0123456789abcdef
+      GROUPS_IO_ENABLED: "false"
+      TEST_CONTROL_KEY: acceptance-test-control-key
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["acceptance"]
+
+  acceptance:
+    image: golang:1.26.4-bookworm
+    working_dir: /src
+    volumes:
+      - ./:/src
+      - go_mod_cache:/go/pkg/mod
+    environment:
+      ACCEPTANCE_BASE_URL: http://acceptance-web:8080
+      ACCEPTANCE_TEST_CONTROL_KEY: acceptance-test-control-key
+      ACCEPTANCE_DATABASE_URL: postgres://treelot:treelot@postgres:5432/treelot?sslmode=disable
+    command: ["go", "test", "-tags=acceptance", "./acceptance/...", "-count=1", "-v"]
+    depends_on:
+      acceptance-web:
+        condition: service_started
+      acceptance-worker:
+        condition: service_started
+      provider-stubs:
+        condition: service_started
+    profiles: ["acceptance"]
+
+volumes:
+  treelot_pg:
+  go_mod_cache:
