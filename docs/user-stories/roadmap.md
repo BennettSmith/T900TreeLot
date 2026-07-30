@@ -35,11 +35,17 @@ flowchart TB
 
 ## Current baseline
 
-The repository currently provides the Signal design-system web shell plus liveness and static-asset delivery. It has no user-story product behavior: no PostgreSQL-backed domain data, authentication, authorization, worker/outbox processing, or executable whole-system use-case flow is implemented.
+Increment 1 is verified. The repository provides production-shaped web, worker,
+migration, and restore entry points; PostgreSQL migration, audit, outbox, job,
+session, and CSRF foundations; and a deployed whole-system acceptance harness.
+No numbered user-story product behavior, passkey authentication, or
+relationship-aware authorization is implemented yet. The generated
+[traceability report](../traceability.md) records the current requirement
+revisions and delivery evidence.
 
 Each increment below is intended to be independently deployable. “Exit” means its business-facing executable examples pass against the deployed production image through public browser/HTTP or provider boundaries; focused tests also cover the stated authorization, concurrency, timing, audit, and idempotency risks.
 
-## 1. Deployable application foundation and acceptance harness
+## INC-01 — Deployable application foundation and acceptance harness
 
 **User-visible outcome:** Operators can deploy a production-shaped web and worker application, observe readiness without exposing secrets, and run a minimal browser smoke journey. There is deliberately no numbered user-story behavior in this technical-enabler increment.
 
@@ -60,7 +66,7 @@ Each increment below is intended to be independently deployable. “Exit” mean
 - Liveness, readiness, static assets, server-rendered navigation, ordinary non-HTMX requests, and the acceptance test-control boundary behave correctly in allowed environments.
 - A failing executable specification blocks the candidate build, and asynchronous test assertions poll observable outcomes without fixed sleeps.
 
-## 2. Bootstrap and sign-in
+## INC-02 — Bootstrap and sign-in
 
 **User-visible outcome:** The designated first Admin can bootstrap exactly once with a passkey, authenticated people can sign in with passkeys, and a signed-in person can manage passkeys and claimed account email without losing identity or history.
 
@@ -79,7 +85,7 @@ Each increment below is intended to be independently deployable. “Exit” mean
 - UC-0, UC-2, and the self-service path of UC-2B pass for success, failed/cancelled WebAuthn ceremonies, identity-enumeration resistance, rate limiting, secure session revocation, bootstrap closure, passkey management, and atomic email replacement.
 - The same identity, profile reference, roles, and history survive credential and email changes.
 
-## 3. Household onboarding and Young Adult Scout access
+## INC-03 — Household onboarding and Young Adult Scout access
 
 **User-visible outcome:** Admin can invite a household by link or QR code; its first manager can establish people and explicit relationships, add a co-manager, link one scout across households, grant limited Young Adult Scout access, perform authorized assisted passkey recovery, and let authenticated people maintain basic profile details.
 
@@ -100,7 +106,7 @@ Each increment below is intended to be independently deployable. “Exit” mean
 - Tests prove no open registration, global claimed-email uniqueness, no duplicate scout profile, no scout search, independent household authority, one cross-household schedule identity, self-only Young Adult Scout permissions, and audited recovery.
 - Relationship and invitation authorization is identical for full-page and HTMX-enhanced requests.
 
-## 4. Seasonal agreement
+## INC-04 — Seasonal agreement
 
 **User-visible outcome:** Admin configures the current public agreement; participants can open and explicitly confirm it; leaders can review readiness; and one person-level policy gates all later participation.
 
@@ -120,7 +126,7 @@ Each increment below is intended to be independently deployable. “Exit” mean
 - Confirmation is demonstrably scoped to person, season, and current link; opening a link alone never confirms.
 - A shared policy query is executable by downstream acceptance fixtures without duplicating agreement rules.
 
-## 5. Author, publish, and discover a schedule
+## INC-05 — Author, publish, and discover a schedule
 
 **User-visible outcome:** Committee can create templates, generate and refine a private season draft, publish it once ready, add an unplanned published shift, and navigate the relevant season and week.
 
@@ -141,7 +147,7 @@ Each increment below is intended to be independently deployable. “Exit” mean
 - Minimum headcount below two is rejected, and no template or shift can configure away local two-deep policy.
 - Groups.io failure cannot roll back web publication or inbox notice records; draft operations send no messages.
 
-## 6. Sign up and cancel
+## INC-06 — Sign up and cancel
 
 **User-visible outcome:** Managers and Young Adult Scouts can discover suitable published shifts, create valid assignments for the correct person, coordinate a shared scout, and cancel only within origin-aware authority; Admin can deactivate a household that should no longer participate.
 
@@ -162,7 +168,7 @@ Each increment below is intended to be independently deployable. “Exit” mean
 - Concurrent final-slot requests never overbook; duplicate and wrong-role assignments are rejected server-side.
 - Visibility spans linked households while cancellation follows origin, including the Young Adult Scout-created exception and idempotent cancellation.
 
-## 7. Projected staffing and communications
+## INC-07 — Projected staffing and communications
 
 **User-visible outcome:** Managers can discover shifts by need; Committee can see projected staffing risks and send reliable troop announcements and critical coverage alerts; users can manage a private in-app inbox with read state; and the system places correctly routed shift reminders in recipients' inboxes.
 
@@ -183,7 +189,7 @@ Each increment below is intended to be independently deployable. “Exit” mean
 - Every state change commits inbox records and any outbox work atomically, provider calls occur afterward, and retries duplicate neither messages nor successful channel outcomes.
 - Projected status is explicitly not represented as actual on-site safety.
 
-## 8. Attendance, actual coverage, closure, and walk-ins
+## INC-08 — Attendance, actual coverage, closure, and walk-ins
 
 **User-visible outcome:** Volunteers and authorized on-site adults can record real-time attendance, actual local two-deep safety is enforced, Committee can close unsafe shifts and correct completed attendance, and eligible walk-ins receive distinct credit.
 
@@ -203,7 +209,7 @@ Each increment below is intended to be independently deployable. “Exit” mean
 - Scout entry is denied until two adults are checked in; adult checkout is never blocked but triggers stop-work/closure-required behavior when safety falls.
 - Raw events cannot be edited or backdated; reasoned adjustments govern corrected hours; closure is explicit, audited, communicated, and only pre-start safe closure may reopen.
 
-## 9. Reporting and Scout Bucks
+## INC-09 — Reporting and Scout Bucks
 
 **User-visible outcome:** Authorized users can review corrected hours and deduplicated rankings, Committee can inspect season outcomes, and Treasurer can preview, finalize, export, and revise exact Scout Bucks awards.
 
@@ -223,7 +229,7 @@ Each increment below is intended to be independently deployable. “Exit” mean
 - Deterministic largest-remainder allocation makes every revision sum exactly to the entered pool; repeated finalization cannot create an accidental duplicate.
 - Prior revisions remain immutable and auditable, and the scheduler creates no Scout Bucks balance or spending ledger.
 
-## 10. Access removal, privacy, and season archive
+## INC-10 — Access removal, privacy, and season archive
 
 **User-visible outcome:** People can remove login access without erasing history; Admin can fulfill separately verified privacy requests and deliberately archive then delete a completed season.
 

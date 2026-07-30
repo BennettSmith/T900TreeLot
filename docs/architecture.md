@@ -674,7 +674,28 @@ The acceptance environment uses the real deployable image, PostgreSQL schema, mi
 
 ### 15.4 Coverage and traceability
 
-Every functional use case and externally visible business rule in `docs/use-cases.md` must be represented by one or more executable examples. Test metadata includes the stable use-case identifier, such as `UC-10` or `UC-53`, so CI can produce a use-case-to-test coverage report.
+Every functional use case and externally visible business rule in
+`docs/use-cases.md` must be represented by one or more executable examples.
+Acceptance-test metadata names exact requirement revisions:
+
+```go
+// Trace: UC-10@r1 US-023@r1
+func TestManagerSignsUpAgreementConfirmedScout(t *testing.T) {
+    // ...
+}
+```
+
+The revision is significant: evidence for `UC-10@r1` does not verify
+`UC-10@r2`. Tests for the technical foundation use `// Trace: INC-01` because
+that increment intentionally has no numbered product story. See
+[`docs/traceability-process.md`](traceability-process.md) for revision and
+status governance.
+
+`traceability/manifest.yaml` connects accepted revisions, stories, increments,
+delivery status, and implementation pull requests. CI validates those links
+and the test metadata. The generated `docs/traceability.md` report maps each
+current requirement revision to its story, increment, delivery state,
+implementation PR, and squash-merge SHA.
 
 Coverage should include:
 
