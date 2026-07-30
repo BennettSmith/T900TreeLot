@@ -1,0 +1,9 @@
+.git
+.github
+node_modules
+design
+**/*_test.go
+acceptance
+.env
+*.md
+coverage.out

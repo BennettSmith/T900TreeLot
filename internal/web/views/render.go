@@ -60,6 +60,16 @@ func NewRenderer() (*Renderer, error) {
 	return &Renderer{templates: templates}, nil
 }
 
+func (r *Renderer) Home(ctx context.Context, output io.Writer, data Home) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := r.templates.ExecuteTemplate(output, "home", data); err != nil {
+		return fmt.Errorf("render home: %w", err)
+	}
+	return nil
+}
+
 func (r *Renderer) ComponentGallery(ctx context.Context, output io.Writer, data Gallery) error {
 	if err := ctx.Err(); err != nil {
 		return err

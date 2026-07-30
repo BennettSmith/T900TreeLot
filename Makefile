@@ -3,8 +3,11 @@
 override COVERAGE_MIN := 85
 GO_FILES = $(shell git ls-files --cached --others --exclude-standard '*.go')
 NODE_MODULES_STAMP = node_modules/.package-lock.json
+COMPOSE = docker compose
+IMAGE ?= treelot:local
 
-.PHONY: help assets assets-watch assets-check showcase format format-check lint test coverage ci
+.PHONY: help assets assets-watch assets-check showcase format format-check lint test coverage ci \
+	image up down migrate logs ps acceptance
 
 help: ## List available targets and explain when to use them.
 	@awk 'BEGIN {FS = ":.*## "; printf "Usage: make <target>\n\nTargets:\n"} /^[[:alnum:]_.-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -65,7 +68,7 @@ format-check: ## Check Go formatting without changing files; use in CI.
 lint: ## Run Go static analysis; use before submitting changes.
 	@go vet ./...
 
-test: ## Run all Go tests; use during development.
+test: ## Run all Go unit/component tests; use during development.
 	@go test ./...
 
 coverage: ## Run tests and require at least 85% statement coverage.
@@ -82,4 +85,33 @@ coverage: ## Run tests and require at least 85% statement coverage.
 		printf "Coverage %.1f%% meets the required %.1f%%.\n", total, minimum; \
 	}'
 
-ci: assets-check format-check lint coverage ## Run all required checks when evaluating whether work is done.
+ci: assets-check format-check lint coverage ## Run fast required checks (no Docker acceptance).
+
+image: ## Build the immutable production image used by Compose and acceptance.
+	@docker build -t "$(IMAGE)" .
+
+up: image ## Start the local Docker Compose development stack.
+	@$(COMPOSE) --profile dev up --build -d postgres
+	@$(COMPOSE) run --rm migrate
+	@$(COMPOSE) --profile dev up -d web worker
+
+down: ## Stop the local Docker Compose stack. Set DOWN_FLAGS=-v to remove volumes.
+	@$(COMPOSE) --profile dev --profile acceptance down $(DOWN_FLAGS)
+
+migrate: ## Apply database migrations through the migrate entry point.
+	@$(COMPOSE) up -d postgres
+	@$(COMPOSE) run --rm migrate
+
+logs: ## Tail logs for postgres, web, and worker.
+	@$(COMPOSE) --profile dev logs -f postgres web worker
+
+ps: ## Show Docker Compose service status.
+	@$(COMPOSE) --profile dev --profile acceptance ps
+
+acceptance: image ## Build the production image and run foundation acceptance specs.
+	@$(COMPOSE) --profile acceptance down $(DOWN_FLAGS)
+	@$(COMPOSE) --profile acceptance up -d postgres
+	@$(COMPOSE) run --rm migrate
+	@$(COMPOSE) --profile acceptance up -d acceptance-web acceptance-worker provider-stubs
+	@$(COMPOSE) --profile acceptance run --rm acceptance
+	@if test -z "$$ACCEPTANCE_KEEP"; then $(COMPOSE) --profile acceptance down; fi
