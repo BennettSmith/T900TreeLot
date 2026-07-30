@@ -9,8 +9,14 @@ and [`docs/user-stories/roadmap.md`](docs/user-stories/roadmap.md).
 - Go (see `go.mod`)
 - Node.js 22+ (Tailwind asset build only)
 - Docker and Docker Compose (local stack and acceptance)
+- A disposable Postgres database named with a `_test` suffix for `make ci` /
+  `go test` (default `treelot_test`)
 
 Copy [`.env.example`](.env.example) to `.env` for local overrides.
+
+`TEST_DATABASE_URL` is used by helpers that drop foundation tables. The database
+name must end with `_test`; pointing it at the development `treelot` database is
+rejected.
 
 ## Common commands
 

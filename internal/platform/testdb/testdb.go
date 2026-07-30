@@ -12,17 +12,23 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+const defaultTestDatabaseURL = "postgres://treelot:treelot@localhost:5432/treelot_test?sslmode=disable"
+
 // OpenEmpty returns an exclusive empty test database with foundation tables removed.
 func OpenEmpty(t *testing.T) *postgres.DB {
 	t.Helper()
 	unlock := flock(t)
 	t.Cleanup(unlock)
 
-	url := os.Getenv("TEST_DATABASE_URL")
-	if url == "" {
-		url = "postgres://treelot:treelot@localhost:5432/treelot_test?sslmode=disable"
+	databaseURL := os.Getenv("TEST_DATABASE_URL")
+	if databaseURL == "" {
+		databaseURL = defaultTestDatabaseURL
 	}
-	db, err := postgres.Open(context.Background(), url)
+	if err := ValidateTestDatabaseURL(databaseURL); err != nil {
+		t.Fatalf("unsafe TEST_DATABASE_URL: %v", err)
+	}
+
+	db, err := postgres.Open(context.Background(), databaseURL)
 	if err != nil {
 		t.Fatalf("open test database: %v", err)
 	}
