@@ -30,15 +30,20 @@ $DOCKER rm -f treelot-acceptance-web treelot-acceptance-worker treelot-acceptanc
 $DOCKER build -t "$IMAGE" .
 $COMPOSE up -d postgres
 
-echo "Waiting for PostgreSQL..."
-deadline=$((SECONDS + 60))
-until $COMPOSE exec -T postgres pg_isready -U treelot -d treelot >/dev/null 2>&1; do
+echo "Waiting for PostgreSQL on host port 5433..."
+deadline=$((SECONDS + 90))
+until $COMPOSE exec -T postgres pg_isready -U treelot -d treelot >/dev/null 2>&1 \
+  && $DOCKER run --rm --network host postgres:16-alpine \
+    pg_isready -h 127.0.0.1 -p 5433 -U treelot -d treelot >/dev/null 2>&1; do
   if (( SECONDS >= deadline )); then
     echo "PostgreSQL was not ready in time." >&2
+    $COMPOSE logs postgres || true
     exit 1
   fi
   sleep 1
 done
+# Brief settle after TCP accept to avoid reset-during-startup races.
+sleep 2
 
 common_env=(
   -e APP_ENV=acceptance
