@@ -22,7 +22,7 @@ Handle CLOSURE REQUIRED, recorded closure, closure effects, troop-wide notices, 
 1. **Given** an unresolved deadline or unsafe actual coverage, **when** the shift is evaluated, **then** it becomes CLOSURE REQUIRED and shows the unresolved minimum-headcount or local two-deep rule.
 2. **Given** a CLOSURE REQUIRED shift, **when** the actor records a reason and confirms closure, **then** the shift becomes CLOSED and the closure action is audited.
 3. **Given** a shift becomes CLOSED, **when** participation is attempted, **then** new signups, check-ins, and walk-in additions are disabled while checkout remains available for existing open attendance.
-4. **Given** closure is recorded, **when** closure effects are committed, **then** assignments remain in audit history, are marked cancelled by closure, and one canonical in-app notice plus troop-wide SMS delivery is queued; Groups.io is also queued when enabled.
+4. **Given** closure is recorded, **when** closure effects are committed, **then** assignments remain in audit history, are marked cancelled by closure, and one canonical troop-wide in-app notice is queued for every active Family Manager and Young Adult Scout; Groups.io is also queued when enabled.
 5. **Given** a shift was closed before its start and now satisfies projected minimum headcount and local two-deep coverage, **when** Committee/Admin records an audited reopening, **then** the shift reopens and an update is sent to the same recipient set.
 6. **Given** operations had begun before closure, **when** reopening is attempted, **then** the system rejects retroactive reopening.
 7. **Given** a shift is only CLOSURE REQUIRED, **when** no actor has recorded closure, **then** the system does not represent the physical lot as already closed.

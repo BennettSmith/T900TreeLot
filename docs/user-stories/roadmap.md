@@ -51,7 +51,7 @@ Each increment below is intended to be independently deployable. “Exit” mean
 
 - Add the Go web, worker, migration, and offline season-restore entry-point structure around the modular monolith.
 - Provision PostgreSQL, versioned migrations, validated configuration, `TREE_LOT_TIME_ZONE`, `PUBLIC_BASE_URL`, structured logging, readiness, CSRF/session foundations, and production security headers.
-- Build one immutable production image and a production-like acceptance environment with PostgreSQL, an injected test clock, and protocol-faithful Twilio/optional Groups.io stubs.
+- Build one immutable production image and a production-like acceptance environment with PostgreSQL, an injected test clock, and protocol-faithful optional Groups.io stubs.
 - Establish transactional audit/outbox/job primitives, even though no provider message is sent yet.
 
 **Acceptance-based exit:**
@@ -126,19 +126,20 @@ Each increment below is intended to be independently deployable. “Exit” mean
 
 **Included stories:** US-016, US-017, US-018, US-019, US-020, US-021.
 
-**Prerequisites:** US-002 and the deployable outbox/worker foundation; participant recipient data from increment 3 for publication SMS.
+**Prerequisites:** US-002 and the deployable outbox/worker foundation; participant recipient identities from increment 3 for publication inbox notices.
 
 **Operational and migration needs:**
 
 - Add seasons, reusable templates, generated shifts, local date/time plus zone conversion, draft/publication state, special-event metadata, target slots, and minimum operating headcount.
-- Add publication and individual-shift notification outbox messages with stable idempotency keys.
+- Persist publication and individual-shift inbox notice records for eligible recipients, plus optional Groups.io outbox messages with stable idempotency keys for troop-wide summaries when that channel is selected.
+- Treat the personal Inbox UI, unread counts, and announcement/reminder workflows as increment 7; this increment only needs durable notice records and optional Groups.io fan-out so publication does not depend on SMS.
 - Seed no production schedule automatically; Committee authors the first season through normal workflows.
 
 **Acceptance-based exit:**
 
-- UC-3, UC-20 through UC-24, and UC-44 pass for template independence, closed-day exceptions, draft privacy, atomic publication, one optional summary SMS per recipient, immediate individual publication, and off-season/draft navigation.
+- UC-3, UC-20 through UC-24, and UC-44 pass for template independence, closed-day exceptions, draft privacy, atomic publication, one optional summary inbox notice per recipient, immediate individual publication, and off-season/draft navigation.
 - Minimum headcount below two is rejected, and no template or shift can configure away local two-deep policy.
-- Provider failure cannot roll back web publication; draft operations send no messages.
+- Groups.io failure cannot roll back web publication or inbox notice records; draft operations send no messages.
 
 ## 6. Sign up and cancel
 
@@ -163,7 +164,7 @@ Each increment below is intended to be independently deployable. “Exit” mean
 
 ## 7. Projected staffing and communications
 
-**User-visible outcome:** Managers can discover shifts by need; Committee can see projected staffing risks and send reliable troop announcements and critical coverage alerts; users can manage private announcement read state; and the system sends correctly routed shift reminders.
+**User-visible outcome:** Managers can discover shifts by need; Committee can see projected staffing risks and send reliable troop announcements and critical coverage alerts; users can manage a private in-app inbox with read state; and the system places correctly routed shift reminders in recipients' inboxes.
 
 **Included stories:** US-027, US-029, US-030, US-032, US-042, US-043, US-044.
 
@@ -171,14 +172,15 @@ Each increment below is intended to be independently deployable. “Exit” mean
 
 **Operational and migration needs:**
 
-- Add projected staffing read models, canonical announcements, private per-identity read state, recipient snapshots, delivery attempts, callbacks, retries, reminder preferences, and hourly enqueue jobs.
-- Configure Twilio Programmable Messaging separately from Verify and validate signed, idempotent delivery callbacks.
+- Add projected staffing read models, canonical announcements, the personal Inbox UI over per-user inbox messages (including any notices already recorded in increment 5), private per-identity read state, recipient snapshots, optional Groups.io delivery attempts, retries, reminder preferences, and hourly enqueue jobs.
 - Keep `GROUPS_IO_ENABLED=false` by default. Add its adapter/configuration tests independently; unavailable Groups.io must not block this increment.
+- Limit Groups.io to troop-wide messages; keep direct and family-scoped reminders in-app only. Do not introduce SMS or phone-number notification delivery.
+- Leave verified-email notification delivery out of this increment; mailbox verification and opt-in email remain a later follow-on.
 
 **Acceptance-based exit:**
 
-- UC-4, UC-4A, UC-6, UC-41, UC-42, UC-43, and UC-57 pass for need-oriented discovery, projected FULL/OK/LOW/CRITICAL classification, prioritized shortfalls, canonical web publication, private unread counts, origin-aware reminders, critical alerts, deduplicated resolution updates, and partial channel failure.
-- Every state change commits its outbox work atomically, provider calls occur afterward, and retries duplicate neither messages nor successful channel outcomes.
+- UC-4, UC-4A, UC-6, UC-41, UC-42, UC-43, and UC-57 pass for need-oriented discovery, projected FULL/OK/LOW/CRITICAL classification, prioritized shortfalls, in-app inbox publication, private unread counts, origin-aware reminders, critical alerts, deduplicated resolution updates, and partial external-channel failure.
+- Every state change commits inbox records and any outbox work atomically, provider calls occur afterward, and retries duplicate neither messages nor successful channel outcomes.
 - Projected status is explicitly not represented as actual on-site safety.
 
 ## 8. Attendance, actual coverage, closure, and walk-ins
@@ -191,7 +193,7 @@ Each increment below is intended to be independently deployable. “Exit” mean
 
 **Operational and migration needs:**
 
-- Add immutable attendance events, open-record constraints, no-shows, separate adjustments, walk-in origin, actual-coverage transitions, closure/reopening state, reasons, and urgent operational outbox messages.
+- Add immutable attendance events, open-record constraints, no-shows, separate adjustments, walk-in origin, actual-coverage transitions, closure/reopening state, reasons, and urgent operational inbox notices with optional Groups.io outbox posts for troop-wide closure/reopening updates.
 - Store instants in UTC and evaluate check-in/out windows in `TREE_LOT_TIME_ZONE` using an injected clock.
 - Document that local adult classification does not verify Scouting America registration, age, training, or leader eligibility; Committee retains that operational responsibility.
 

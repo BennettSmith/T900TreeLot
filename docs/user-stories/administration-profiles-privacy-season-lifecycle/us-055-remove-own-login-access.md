@@ -20,7 +20,7 @@ Continuity checks, consequence review, passkey step-up re-authentication, identi
 
 1. **Given** removal would leave an active household managerless or remove the last active Admin, **when** requested, **then** it is blocked with the required continuity options.
 2. **Given** continuity is satisfied, **when** the actor reviews all affected roles and re-authenticates with a passkey step-up, **then** explicit confirmation removes their authenticated access.
-3. **Given** removal commits, **when** effects are inspected, **then** all sessions are revoked, passkeys and claimed email authentication plus notification destination are removed, authenticated roles are revoked as confirmed, and an audit record is appended.
+3. **Given** removal commits, **when** effects are inspected, **then** all sessions are revoked, passkeys and claimed email authentication are removed, the person is removed from future in-app inbox delivery and any future verified-email notification preference, authenticated roles are revoked as confirmed, and an audit record is appended.
 4. **Given** a Young Adult Scout removes access, **when** removal succeeds, **then** the existing scout profile returns to manager-controlled status and its schedule remains manageable by Family Managers.
 5. **Given** any actor removes access, **when** retained data is inspected, **then** profile, display name, photo, assignments, attendance, user ID, and history remain preserved.
 

@@ -22,8 +22,8 @@ Preview, confirm, publish, deliver, audit, and resolve a critical alert for one 
 
 1. **Given** a CRITICAL shift, **when** the sender starts an alert, **then** the preview shows date, time, location, adult, scout, and total counts, the unresolved rule, closure warning, and direct signup link.
 2. **Given** the preview, **when** the sender enters a response deadline, **then** the system accepts only a deadline before the shift starts.
-3. **Given** a valid preview, **when** the sender confirms, **then** one canonical high-priority in-app announcement is published and SMS is queued for every active Family Manager and Young Adult Scout.
-4. **Given** Groups.io is enabled, **when** the alert is confirmed, **then** the same alert is queued for that channel without making web or SMS success depend on it.
+3. **Given** a valid preview, **when** the sender confirms, **then** one canonical high-priority announcement is placed in every active Family Manager and Young Adult Scout in-app inbox.
+4. **Given** Groups.io is enabled, **when** the alert is confirmed, **then** the same alert is queued for that channel without making inbox success depend on it.
 5. **Given** the same unresolved condition was already alerted, **when** another send is requested, **then** explicit duplicate confirmation is required and the send is audited.
 6. **Given** later signups satisfy every projected operating rule, **when** coverage is reevaluated, **then** the status updates immediately and one deduplicated coverage-secured update is sent to the original recipient set.
 

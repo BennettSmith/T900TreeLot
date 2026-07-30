@@ -24,7 +24,7 @@ conflict instead of silently choosing new product behavior.
 - Build a Go modular monolith with separate web, worker, migration, and offline
   season-restore entry points backed by one PostgreSQL database.
 - Use hexagonal architecture. Domain code contains business behavior and has no
-  dependency on HTTP, SQL, templates, Twilio, Groups.io, or hosting.
+  dependency on HTTP, SQL, templates, Groups.io, or hosting.
 - Application services orchestrate use cases, authorization, transactions, and
   outbound ports. The consuming module declares each port.
 - Inbound adapters decode requests, resolve the actor, invoke one application
@@ -89,21 +89,23 @@ conflict instead of silently choosing new product behavior.
   invariants, persist domain changes, append audit facts, and enqueue outbox
   records.
 - Authenticate with passkeys (WebAuthn). Use a claimed email as the unique
-  account identifier; defer mailbox verification until notifications or
-  email-based recovery require it. Enrollment and recovery use authorized
-  invitation links or QR codes, not SMS authentication codes.
+  account identifier; defer mailbox verification until opted-in email
+  notifications or email-based recovery require it. Enrollment and recovery use
+  authorized invitation links or QR codes, not SMS authentication codes.
 - Enforce normalized active login-email uniqueness system-wide. Store only
   public passkey credential material; private keys never leave the
-  authenticator. While interim operational SMS remains enabled, store any SMS
-  destinations separately from authentication credentials.
+  authenticator. Do not store phone numbers for authentication or operational
+  notification delivery.
 - Store only hashes of session and single-use tokens. Use secure, HTTP-only,
   same-site cookies and CSRF protection for every state-changing browser request.
-- Avoid identity enumeration. Redact emails, SMS destinations, tokens, message
-  bodies, and provider secrets from logs and audit records.
-- Do not use Twilio Verify or SMS OTPs for authentication. Twilio Programmable
-  Messaging may still send interim operational SMS until notifications migrate
-  to email and Groups.io. Groups.io is optional and disabled by default; one
-  channel's failure must not roll back another channel or web publication.
+- Avoid identity enumeration. Redact emails, tokens, message bodies, and
+  provider secrets from logs and audit records.
+- Do not use SMS OTPs for authentication or SMS for operational notifications.
+  Record every recipient-facing notice in the per-user in-app inbox. Groups.io
+  is optional, disabled by default, and limited to troop-wide posts; direct and
+  family-scoped messages remain in-app only. One channel's failure must not roll
+  back another channel or in-app publication. A later verified-email channel may
+  supplement the inbox after mailbox verification and user opt-in.
 - `GET` is side-effect free. Use Post/Redirect/Get for ordinary forms where
   appropriate, and ensure full-page and HTMX paths enforce identical behavior.
 
