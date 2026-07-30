@@ -1,7 +1,7 @@
 # Troop 900 Tree Lot Shift Scheduler
 ## Use Cases Document
 
-**Version:** 3.8  
+**Version:** 3.11  
 **Date:** July 2026  
 **Purpose:** This document describes what the Troop 900 Tree Lot Shift Scheduler does from a user's perspective. It covers all functional use cases organized by category.
 
@@ -42,6 +42,7 @@ The Troop 900 Tree Lot Shift Scheduler is a responsive web application designed 
 - Role-based access for Admins, Committee Members, Family Managers, and Young Adult Scouts
 - Season-specific confirmation that every participating adult and scout has read and agrees to the linked rules of conduct
 - Shift template management for efficient schedule creation
+- Critical staffing alerts, shift closure workflows, and enforcement of the troop's approved local two-deep coverage rule
 - Real-time shift scheduling with permission boundaries
 - Web-based attendance tracking replacing paper sign-in sheets
 - Walk-in coverage for handling no-shows
@@ -111,7 +112,7 @@ Approximately 40-50 family members (scouts and parents) from 15-20 families/hous
 2. The parent opens the invitation in a browser
 3. The parent verifies the phone number using the SMS one-time code or magic link
 4. The parent creates the family account and becomes its first family manager
-5. The parent completes their profile and adds family members, including other parents/guardians and scouts
+5. The parent completes their profile, adds family members, and records each adult's parent, step-parent, or guardian relationships to scouts
 6. Scouts are created as managed family-member profiles and do not need phone numbers or login credentials; an eligible older scout can later be granted Young Adult Scout access
 7. The family manager enters restricted agreement-first onboarding and facilitates current-season confirmation for each family member
 8. Scheduling unlocks individually as each person's agreement status becomes Confirmed
@@ -366,6 +367,7 @@ Approximately 40-50 family members (scouts and parents) from 15-20 families/hous
    - Which days of the week the template applies to
    - Shift times for the day
    - Number of scouts and parents required per shift
+   - Minimum total people required to operate the lot during the shift, which cannot be fewer than two
 4. Templates can be deactivated but remain available for historical reference
 
 **Template Types:**
@@ -415,6 +417,7 @@ Approximately 40-50 family members (scouts and parents) from 15-20 families/hous
 1. Committee member browses the draft schedule by date
 2. Reviews shifts for accuracy:
    - Check volunteer requirements
+   - Verify minimum operating headcount
    - Verify timing
    - Review special event configurations
 3. Makes adjustments as needed:
@@ -501,6 +504,7 @@ Approximately 40-50 family members (scouts and parents) from 15-20 families/hous
 2. Creates a new shift with:
    - Date and time
    - Required number of scouts and parents
+   - Minimum operating headcount, which cannot be fewer than two
    - Location
    - Notes or special instructions
 3. Chooses whether to publish immediately or save as draft
@@ -990,6 +994,7 @@ Approximately 40-50 family members (scouts and parents) from 15-20 families/hous
    - Who checked out and when
    - Who checked them in (if done by another person)
    - Hours worked
+   - Any local two-deep coverage transitions or closure event during the shift
 4. For volunteers who forgot to check out:
    - Creates an attendance adjustment with the approved hours or departure time
    - Adds a required note and supporting reason
@@ -1183,6 +1188,7 @@ Approximately 40-50 family members (scouts and parents) from 15-20 families/hous
 3. Sees shift coverage stats:
    - Percentage of scheduled vs. walk-in assignments
    - No-show rate
+   - Critical coverage alerts, prevented openings, and closed shifts
 4. Sees top contributors in each category
 5. Can drill down into detailed reports
 
@@ -1320,17 +1326,20 @@ Approximately 40-50 family members (scouts and parents) from 15-20 families/hous
 3. Scrolls through each day seeing:
    - Each shift with time and location
    - Visual progress bars showing scout and parent fill rates
-   - Status indicators: FULL, OK, LOW, CRITICAL
+   - Status indicators: FULL, OK, LOW, CRITICAL, CLOSURE REQUIRED, CLOSED
+   - Separate adult count, total-person minimum, and scheduled local two-deep compliance
    - Special event shifts marked with star icon
    - List of who's signed up
 4. Can tap any shift for full details
 5. Can navigate to other weeks using arrows or picker
 
 **Staffing Levels:**
-- **FULL** - 100% of required volunteers signed up
-- **OK** - Above threshold (e.g., 80%+)
-- **LOW** - Below threshold but not critical
-- **CRITICAL** - Significantly understaffed, needs immediate attention
+- **FULL** - All target slots are filled and scheduled coverage meets local two-deep and minimum-operating rules
+- **OK** - The shift can operate safely but is not completely full
+- **LOW** - The shift can operate safely but remains meaningfully below its target staffing
+- **CRITICAL** - Scheduled coverage fails either the minimum operating headcount or local two-deep rule and the lot must close unless coverage changes
+- **CLOSURE REQUIRED** - The response deadline has passed or actual attendance is unsafe and Committee/Admin must resolve coverage or record closure
+- **CLOSED** - Committee or Admin has closed the shift and participation actions are disabled
 
 **Outcome:** Committee has at-a-glance visibility into where coverage is needed.
 
@@ -1348,14 +1357,95 @@ Approximately 40-50 family members (scouts and parents) from 15-20 families/hous
 3. Sees prioritized list:
    - Grouped by severity (Critical, Low)
    - Ordered by date (soonest first)
-   - Shows exact volunteer shortfall
+   - Shows the exact volunteer shortfall
+   - Identifies whether the problem is total headcount, local two-deep coverage, or both
 4. For each understaffed shift:
-   - Can send targeted reminder message
+   - Can send a targeted staffing reminder
+   - Can send a troop-wide critical coverage alert when closure is possible
    - Can view full shift details
    - Can share signup link directly
 5. As families sign up, alerts update automatically
 
 **Outcome:** Committee can quickly identify and address staffing issues before they become problems.
+
+---
+
+### Use Case 57: Committee Sends a Critical Coverage Alert
+
+**Actors:** Committee Member, Admin
+
+**Description:** A shift is projected to close because it does not meet its minimum operating headcount or scheduled local two-deep coverage, so Committee asks the entire troop for urgent help.
+
+**What Happens:**
+1. The Staffing Alerts dashboard identifies a CRITICAL shift
+2. Committee or Admin selects "Send Critical Coverage Alert"
+3. The system previews:
+   - Shift date, time, and location
+   - Current adult, scout, and total-person counts
+   - The specific unresolved coverage rule
+   - The response deadline entered by the sender, which must be before the shift starts
+   - A warning that the lot will close for that shift if coverage remains unresolved
+   - A direct link to the shift signup page
+4. The sender confirms the alert
+5. The system publishes one canonical high-priority in-app announcement and sends SMS to every active Family Manager and Young Adult Scout
+6. If the optional Groups.io integration is enabled, the same alert is posted there
+7. Duplicate sends for the same unresolved condition require explicit confirmation and are recorded in the audit trail
+8. If signup changes make the shift safe to operate, its status updates immediately and the system sends a concise "coverage secured" update to the alert recipients
+
+**Outcome:** Every active Family Manager and Young Adult Scout is informed that urgent signups are needed to prevent a specific shift closure; Committee and Admin can review the alert and delivery status in the web app.
+
+---
+
+### Use Case 58: System Enforces the Local Two-Deep Coverage Rule During a Shift
+
+**Actors:** Assigned Adults, Scouts, Committee Member, Admin, System
+
+**Description:** Scheduled coverage is a forecast; when people arrive, the system uses checked-in adults and scouts to ensure the lot never operates with a prohibited adult-to-scout combination.
+
+**National Policy Boundary:**
+- [Scouting America's national Youth Protection and Adult Leadership policy](https://www.scouting.org/health-and-safety/gss/gss01/) currently requires two registered adult leaders age 21 or older at all Scouting activities
+- The scheduler's local adult classification does not prove Scouting America registration, age, training, or eligibility to serve as one of those leaders
+- Committee remains responsible for confirming that the adults present satisfy the current national policy and any additional chartered-organization requirements
+
+**What Happens:**
+1. The first assigned adult checks in during the normal check-in window
+2. The system evaluates the people currently checked in:
+   - Two or more adults satisfy the local two-deep requirement regardless of their relationship to any scouts
+   - Fewer than two adults means the lot cannot operate and no scout may work
+3. Every scout check-in is rejected until at least two adults are checked in
+4. Young Adult Scout access does not make a scout count as an adult; adult coverage is based on the person's recorded adult classification
+5. If an adult checks out or departs and fewer than two checked-in adults remain:
+   - Checkout is still recorded
+   - The roster immediately displays a local two-deep coverage violation
+   - Tree-lot operations stop and remaining volunteers check out unless another adult checks in immediately
+   - Committee/Admin receives an urgent operational alert
+6. The system records the compliance transition and actors without changing historical attendance events
+
+**Outcome:** Actual attendance—not merely scheduled signups—ensures that the tree lot operates only while at least two adults are present.
+
+---
+
+### Use Case 59: Committee Closes a Shift for Insufficient Coverage
+
+**Actors:** Committee Member, Admin
+
+**Description:** A critical shift remains below its minimum operating or local two-deep requirement, so the tree lot closes for that shift.
+
+**What Happens:**
+1. Before the shift, Committee/Admin sees that the critical-alert deadline passed without safe coverage; or, at shift time, actual checked-in coverage is noncompliant
+2. The system marks the shift "CLOSURE REQUIRED" and explains the unresolved rule
+3. Committee/Admin selects "Close Shift" and records a reason
+4. The shift status becomes CLOSED and the system:
+   - Disables new signups, check-ins, and walk-in additions
+   - Preserves assignments in the audit history and marks them cancelled by shift closure
+   - Allows checkout for any existing open attendance records
+   - Publishes an in-app closure notice
+   - Sends SMS to all active Family Managers and Young Adult Scouts, with assigned volunteers clearly identified as affected
+   - Posts the notice to Groups.io when that optional integration is enabled
+5. A closure made before the shift starts may be reversed by Committee/Admin only after coverage satisfies every rule; reopening is audited and sends an update to the same recipients
+6. A shift closed after operations have begun cannot be reopened retroactively
+
+**Outcome:** The closure is explicit, communicated troop-wide, and preserved in schedule and audit history rather than appearing as an unexplained empty shift.
 
 ---
 
@@ -1370,7 +1460,8 @@ Approximately 40-50 family members (scouts and parents) from 15-20 families/hous
 2. Sees staffing indicators for each shift:
    - Green checkmarks on fully-staffed shifts
    - Yellow indicators on shifts needing help
-   - Red indicators on critical shifts
+   - Red indicators on critical or closure-required shifts
+   - Closed indicators for shifts that are no longer operating
 3. Quickly identifies shifts with the most need
 4. Taps a critical shift to see details and "We need your help!" messaging
 5. Signs up family members for high-need shifts
@@ -1559,6 +1650,8 @@ The following use cases support privacy regulation compliance (such as GDPR and 
 | Generate household link codes | ✓ | | ✓ | | |
 | Create/manage shifts | ✓ | ✓ | | | |
 | Send troop announcements | ✓ | ✓ | | | |
+| Send troop-wide critical coverage alerts | ✓ | ✓ | | | |
+| Close/reopen shifts for insufficient coverage | ✓ | ✓ | | | |
 | Invite/remove family managers | ✓ | | ✓ | | |
 | Grant/revoke Young Adult Scout access | ✓ | | ✓ | | |
 | Add/edit family-member profiles | ✓ | | ✓ | | |
@@ -1616,6 +1709,13 @@ This section consolidates the key business rules that govern system behavior acr
 - Scouts can be members of multiple households simultaneously (e.g., Mom's household AND Dad's household)
 - Each household manager can sign up scouts in their household for shifts
 - Adult profiles belong to the household(s) in which they participate; linking a scout to another household does not automatically link the adults
+
+**Adult-to-Scout Relationships:**
+- Parent, step-parent, and guardian relationships are explicit links between person profiles rather than assumptions derived from household membership
+- Family Managers record relationships for profiles they manage; Admin may correct disputed or duplicate relationships
+- A relationship continues across linked households because it belongs to the people, not to one assignment or household
+- Relationship creation, correction, and removal are audited and recalculate provisional Scout Bucks attribution
+- Relationship details are not exposed to unrelated volunteers on shift rosters
 
 **Invitations and Link Codes:**
 - **New Household Invitation:** Created by Admin and sent to the first Family Manager's phone number to establish a household account
@@ -1754,13 +1854,15 @@ This section consolidates the key business rules that govern system behavior acr
    - A Young Adult Scout may select only their own linked scout profile
    - Committee or Admin may select any eligible active person as an audited override
 4. Selected person must be Confirmed for the shift's season and current agreement link
-5. Shift must be published, accepting signups, not cancelled, and not in the past
+5. Shift must be published, accepting signups, not cancelled or closed, and not in the past
 6. Selected person must not already be assigned to the shift
 7. Shift must have an available slot matching the selected person's role (scout or parent/adult)
 8. Capacity and duplicate checks must be enforced atomically on the server to prevent concurrent overbooking
 9. The assignment records the selected volunteer, acting user, originating household when applicable, and whether override authority was used
 - A person may hold at most one assignment on a shift and cannot simultaneously occupy both scout and parent/adult slots
 - Assignments target person profiles; the selected volunteer does not need authenticated access
+- A signup may be accepted while projected coverage is CRITICAL so additional volunteers can continue filling the shift
+- Every signup atomically recalculates total headcount and scheduled local two-deep coverage
 
 **Cancellation Validation:**
 - Committee and Admin can cancel any assignment (override capability)
@@ -1768,6 +1870,49 @@ This section consolidates the key business rules that govern system behavior acr
 - An assignment created directly by a Young Adult Scout can be cancelled by that scout or a Family Manager in any linked household
 - In multi-household situations, household ownership applies except to assignments created by the Young Adult Scout
 - Every cancellation records the acting user and frees capacity only once; repeated requests are idempotent
+- A cancellation that makes coverage CRITICAL remains allowed, but the user sees a prominent warning and Committee/Admin receives a staffing alert
+
+---
+
+### Local Two-Deep & Minimum Coverage Rules
+
+**Policy Authority:**
+- This section implements the troop's separately approved local tree-lot operating rule requiring at least two adults throughout every operating shift
+- Troop leadership and the chartered organization must document approval of this local rule before it is enabled
+- [Scouting America's national Youth Protection and Adult Leadership policy](https://www.scouting.org/health-and-safety/gss/gss01/) currently requires two registered adult leaders age 21 or older at all Scouting activities
+- The application does not represent its adult classification alone as proof of national-policy compliance because it does not verify leader registration, age, training, or eligibility
+- Committee must verify national-policy compliance independently and review the current national policy before each tree-lot season
+- If another governing policy imposes stricter supervision, the stricter policy controls and these use cases must be revised before deployment
+
+**Two Separate Operating Requirements:**
+- Each shift defines a minimum operating headcount of at least two people; this is distinct from the larger target staffing used to determine whether a shift is full
+- Local two-deep coverage always requires at least two checked-in adults while the lot is operating
+- Both minimum headcount and local two-deep coverage must be satisfied for the lot to operate
+
+**Relationship Independence:**
+- The two adults do not have to be related to each other or to any scouts on the shift
+- Parent, step-parent, guardian, household, and family-unit relationships do not create an exception to the two-adult minimum
+- One adult cannot operate the lot alone, whether accompanied by their own children, unrelated scouts, other family members, or no scouts
+
+**Who Counts as an Adult:**
+- Adult coverage is determined by the person's recorded adult classification, not by authentication role or household
+- Young Adult Scout access does not by itself make a person count toward adult coverage
+- Committee/Admin counts toward actual coverage only while physically present and checked in to the shift
+- Adult walk-ins count after their real-time check-in is recorded
+
+**Projected and Actual Coverage:**
+- Projected coverage uses active assignments and drives FULL, OK, LOW, or CRITICAL schedule status
+- Actual coverage uses open check-in records and controls whether the lot may operate
+- Signups remain open while projected coverage is CRITICAL because a later adult signup can resolve the deficiency
+- At shift time, no scout can check in and the lot cannot operate until two adults are checked in
+- If actual adult coverage drops below two after opening, operations stop and remaining volunteers check out unless another adult checks in immediately
+- Adult checkout is never blocked, but a checkout that creates noncompliance triggers an urgent alert and closure-required state
+
+**Closure State:**
+- A shift becomes CLOSURE REQUIRED when its critical-alert deadline passes without projected safe coverage, its scheduled start arrives without safe coverage, or actual attendance becomes noncompliant during operation
+- CLOSURE REQUIRED is an operational warning, not an automatic claim that the physical lot has closed
+- Committee/Admin records the closure decision and reason; the resulting CLOSED state disables signup, check-in, and walk-in creation while preserving checkout and audit history
+- Reopening is allowed only before the shift begins, after both projected requirements are satisfied, and through an audited Committee/Admin action
 
 ---
 
@@ -1791,6 +1936,7 @@ This section consolidates the key business rules that govern system behavior acr
 - Young Adult Scouts assigned to a shift can check themselves in/out
 - Young Adult Scouts can check in/out only themselves
 - Managed scouts are checked in/out by an authorized checked-in adult or Committee/Admin
+- Adult check-in is allowed when it improves coverage; scout check-in must also pass the actual local two-deep rule
 - Checkout requires an open check-in for the same shift; repeated check-in and checkout requests are idempotent
 
 **Working Adult Checking In Others:**
@@ -1800,6 +1946,7 @@ This section consolidates the key business rules that govern system behavior acr
 4. Target may be an adult, managed scout, or Young Adult Scout from any family
 5. Target must be assigned to the target shift and not already checked in
 6. Current server time must be inside the target shift's check-in window
+7. If the target is a scout, the resulting checked-in group must satisfy the local two-deep rule
 
 **Working Adult Checking Out Others:**
 1. Actor must be an authenticated adult checked in to the same shift as the target
@@ -1831,6 +1978,8 @@ This section consolidates the key business rules that govern system behavior acr
 
 **Walk-In Processing:**
 - Target person must be Confirmed for the shift's season and current agreement link
+- A scout walk-in is rejected unless the resulting checked-in group satisfies the local two-deep rule
+- An adult walk-in may be added to resolve a coverage deficiency
 - Walk-in assignments are automatically checked in at time of creation
 - The assignment and check-in use the current server time; neither may be backdated or future-dated
 - The assignment is recorded as a walk-in rather than a scheduled assignment
@@ -1895,6 +2044,15 @@ This section consolidates the key business rules that govern system behavior acr
 - Committee may send a staffing reminder to active Family Managers and Young Adult Scouts eligible for a specific understaffed shift
 - The reminder identifies the shift and links directly to its signup page
 - A targeted staffing reminder is stored and tracked as an operational message; the optional Groups.io integration applies only when Committee separately sends a troop announcement
+
+**Critical Coverage Alerts and Closures:**
+- A critical coverage alert is a troop-wide high-priority announcement, not a targeted staffing reminder
+- SMS and the in-app announcement are sent to every active Family Manager and Young Adult Scout and are not suppressed by optional shift-reminder preferences
+- The alert identifies the shift, unresolved minimum-headcount or local two-deep rule, response deadline, closure warning, and direct signup link
+- When the condition is resolved, one deduplicated coverage-secured update is sent to the same recipients
+- A recorded shift closure generates a troop-wide in-app and SMS notice
+- The optional Groups.io channel receives the same alert, resolution, and closure messages only when enabled
+- Delivery attempts and per-channel results are audited and idempotent
 
 ---
 
@@ -1977,6 +2135,13 @@ Scout Bucks credits are based on each scout's own hours plus equal allocations o
 - Changes to templates do NOT affect previously generated schedules
 - Each season's shifts are independent once created
 - Historical data remains accurate even if templates are updated
+- Generated shifts snapshot their target adult/scout counts and minimum operating headcount
+
+**Operating Coverage Configuration:**
+- Templates and individually created shifts define target adult slots, target scout slots, and a minimum operating headcount
+- Minimum operating headcount cannot be configured below two
+- Committee may adjust a generated shift's minimum headcount with an audit record, but cannot configure away the approved local two-deep rule
+- CLOSED and CLOSURE REQUIRED are shift operational states and are retained in schedule history
 
 **Special Event Handling:**
 - Special event shifts (Lot Setup, Tree Delivery) are created with higher volunteer requirements
@@ -2123,6 +2288,9 @@ The manager must take one of these actions:
 | 3.6 | Jul 2026 | Added passphrase-based age encryption around season ZIP archives; the application never stores the passphrase, and restoration requires it |
 | 3.7 | Jul 2026 | Made Groups.io announcement delivery an optional deployment integration that is disabled by default; in-app and SMS announcement delivery remain required |
 | 3.8 | Jul 2026 | Separated provisional Scout Bucks credited hours from finalized dollar awards; added Treasurer-entered distributable profit, exact proportional cent allocation, immutable settlement revisions, and CSV export without an ongoing balance ledger |
+| 3.9 | Jul 2026 | Added minimum operating headcount, the separately approved local two-deep coverage rule with its sole-adult family exception, troop-wide critical coverage alerts, actual-attendance enforcement, and audited shift closure/reopening workflows |
+| 3.10 | Jul 2026 | Removed the sole-adult family exception so every operating shift requires at least two adults regardless of family relationships or whether scouts are present |
+| 3.11 | Jul 2026 | Explicitly documented Scouting America's national two-deep policy and clarified that local adult counts do not verify registered-leader, age, training, or eligibility requirements |
 
 ---
 

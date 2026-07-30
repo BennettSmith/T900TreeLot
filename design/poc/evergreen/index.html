@@ -1,0 +1,1250 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <title>Canopy — Troop 900 Tree Lot</title>
+  <style>
+    :root {
+      --canvas: #fafaf7;
+      --surface: #ffffff;
+      --surface-raised: #ffffff;
+      --surface-muted: #f4f5f1;
+      --text: #272a27;
+      --text-secondary: #696e69;
+      --text-disabled: #969b96;
+      --border: #e5e7e1;
+      --border-strong: #cbd0c9;
+      --action: #24734b;
+      --action-hover: #1d5f3d;
+      --focus: #6f56a0;
+      --info: #456b7d;
+      --success: #29714d;
+      --warning: #81631f;
+      --critical: #994641;
+      --special: #6c5891;
+      --amber: #d5ae51;
+      --cream: #faf9f3;
+      --radius-control: .5rem;
+      --radius-card: .65rem;
+      --radius-dialog: .8rem;
+      --shadow-raised: none;
+      --shadow-overlay: 0 16px 40px rgba(25, 30, 27, .16);
+      --content: 80rem;
+      --measure: 45rem;
+      --touch: 2.75rem;
+      --space-1: .25rem;
+      --space-2: .5rem;
+      --space-3: .75rem;
+      --space-4: 1rem;
+      --space-5: 1.5rem;
+      --space-6: 2rem;
+      --space-7: 3rem;
+      --fast: 100ms;
+      --standard: 180ms;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--canvas);
+      line-height: 1.5;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 5.5rem; }
+    body { margin: 0; min-width: 20rem; background: var(--canvas); }
+    button, input, select, textarea { font: inherit; }
+    button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+    a { color: var(--action); text-underline-offset: .18em; text-decoration-thickness: .1em; }
+    a:hover { color: var(--action-hover); }
+    :focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+    [hidden] { display: none !important; }
+    .skip-link { position: fixed; z-index: 100; top: .5rem; left: .5rem; padding: .7rem 1rem; background: var(--text); color: white; border-radius: .5rem; transform: translateY(-150%); }
+    .skip-link:focus { transform: none; }
+    .site-header { position: sticky; top: 0; z-index: 20; color: var(--text); background: rgba(255,255,255,.96); border-bottom: 1px solid var(--border); }
+    .header-inner { max-width: var(--content); min-height: 4rem; margin: auto; padding: .5rem clamp(1rem,4vw,2rem); display: flex; align-items: center; gap: 1.4rem; }
+    .brand { display: flex; align-items: center; gap: .55rem; min-width: max-content; color: var(--text); text-decoration: none; }
+    .brand-mark { width: 1rem; height: 1rem; display: grid; place-items: center; color: var(--action); background: transparent; border: 0; border-radius: 0; font-size: .78rem; }
+    .brand strong, .brand small { display: block; }
+    .brand small { color: var(--text-secondary); font-size: .68rem; letter-spacing: .055em; text-transform: uppercase; }
+    .top-nav { margin-left: auto; display: flex; gap: .2rem; align-items: center; }
+    .top-nav a { color: var(--text-secondary); text-decoration: none; padding: .5rem .65rem; border-radius: .3rem; font-size: .84rem; font-weight: 620; }
+    .top-nav a:hover, .top-nav a[aria-current="page"] { color: var(--text); background: var(--surface-muted); }
+    .top-nav a[aria-current="page"] { box-shadow: inset 0 -2px var(--action); }
+    .header-context { padding-left: 1rem; border-left: 1px solid var(--border); color: var(--text-secondary); font-size: .78rem; }
+    .header-context strong { display: block; color: var(--text); }
+    main { max-width: var(--content); margin: 0 auto; padding: 0 clamp(1rem,4vw,2rem) 7rem; }
+    .hero { padding: clamp(3rem,7vw,5.5rem) 0 2.75rem; display: grid; grid-template-columns: minmax(0,1.2fr) minmax(18rem,.8fr); gap: clamp(2.5rem,7vw,6rem); align-items: center; }
+    .eyebrow { margin: 0 0 .65rem; color: var(--action); font-size: .73rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+    h1 { max-width: 17ch; margin: 0; font-family: inherit; font-size: clamp(2.2rem,4vw,3.25rem); font-weight: 680; line-height: 1.05; letter-spacing: -.04em; color: var(--text); }
+    h2 { margin: 0; font-family: inherit; font-size: clamp(1.65rem,2.6vw,2.05rem); line-height: 1.12; letter-spacing: -.03em; color: var(--text); }
+    h3 { margin: 0; font-size: 1.08rem; line-height: 1.3; }
+    h4 { margin: 0; font-size: .98rem; }
+    p { margin: .45rem 0 0; }
+    .lede { max-width: 58ch; margin-top: 1.2rem; color: var(--text-secondary); font-size: 1.12rem; }
+    .hero-card { padding: 1.25rem; color: var(--text); background: white; border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: none; transform: none; }
+    .hero-card .big-date { font-family: inherit; font-size: 1.5rem; font-weight: 650; line-height: 1.2; }
+    .hero-card hr { border: 0; border-top: 1px solid var(--border); margin: 1rem 0; }
+    .hero-card .meter-bar { background: var(--surface-muted); }
+    .hero-card .meter-fill { background: var(--action); }
+    .quick-nav { padding: .5rem 0; background: transparent; border: 0; border-block: 1px solid var(--border); border-radius: 0; display: flex; flex-wrap: wrap; gap: .1rem .25rem; }
+    .quick-nav a { min-height: 2.4rem; padding: .45rem .6rem; display: inline-flex; align-items: center; color: var(--text-secondary); background: transparent; border: 0; border-radius: .3rem; text-decoration: none; font-size: .79rem; font-weight: 600; }
+    .quick-nav a:hover { background: var(--surface-muted); color: var(--action); }
+    .section { padding: clamp(3.5rem,7vw,6.5rem) 0 0; }
+    .section-head { max-width: 48rem; margin-bottom: 1.75rem; }
+    .section-head p { color: var(--text-secondary); font-size: 1.04rem; }
+    .subsection { margin-top: 2rem; }
+    .subsection-title { margin-bottom: .85rem; display: flex; align-items: center; gap: .75rem; }
+    .subsection-title::after { content: ""; height: 1px; flex: 1; background: var(--border); }
+    .grid { display: grid; gap: 1rem; }
+    .grid-2 { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    .grid-3 { grid-template-columns: repeat(3,minmax(0,1fr)); }
+    .grid-4 { grid-template-columns: repeat(4,minmax(0,1fr)); }
+    .card { min-width: 0; padding: 1.1rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: none; }
+    .card.raised { background: var(--surface-raised); box-shadow: var(--shadow-raised); }
+    .card > :first-child { margin-top: 0; }
+    .muted { color: var(--text-secondary); }
+    .caption { color: var(--text-secondary); font-size: .79rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; overflow-wrap: anywhere; }
+    .stat { font-family: inherit; font-size: 2.15rem; line-height: 1; font-variant-numeric: tabular-nums; }
+    .token-swatch { min-height: 6.5rem; padding: .8rem; display: flex; flex-direction: column; justify-content: flex-end; border: 1px solid var(--border); border-radius: .85rem; }
+    .token-swatch strong, .token-swatch span { display: block; padding: .08rem .25rem; width: fit-content; background: rgba(255,255,255,.9); color: var(--text); border-radius: .2rem; }
+    .token-swatch span { font: .72rem ui-monospace, monospace; }
+    .token-list { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: .55rem 1rem; }
+    .token-list dt { font-weight: 800; }
+    .token-list dd { margin: 0; color: var(--text-secondary); }
+    .type-sample { padding-block: .75rem; border-bottom: 1px solid var(--border); }
+    .type-sample:last-child { border-bottom: 0; }
+    .type-label { margin-bottom: .25rem; color: var(--text-secondary); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; }
+    .controls { display: flex; flex-wrap: wrap; gap: .65rem; align-items: center; }
+    .btn { min-height: var(--touch); padding: .62rem .9rem; display: inline-flex; justify-content: center; align-items: center; gap: .5rem; border: 1px solid transparent; border-radius: var(--radius-control); cursor: pointer; text-decoration: none; font-weight: 650; transition: background var(--standard), border-color var(--standard), color var(--standard); }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { color: white; background: var(--action); }
+    .btn-primary:hover { color: white; background: var(--action-hover); }
+    .btn-secondary { color: var(--text); background: white; border-color: var(--border-strong); }
+    .btn-secondary:hover { color: var(--action-hover); background: #f6f8f5; border-color: #a9b7ad; }
+    .btn-quiet { color: var(--action); background: transparent; }
+    .btn-quiet:hover { background: var(--surface-muted); }
+    .btn-danger { color: white; background: var(--critical); }
+    .btn-danger:hover { color: white; background: #84261f; }
+    .btn-icon { width: var(--touch); padding: 0; border-radius: var(--radius-control); }
+    .btn[disabled], .btn.is-disabled { color: var(--text-disabled); background: #e5e4dc; border-color: #cecec7; cursor: not-allowed; transform: none; }
+    .btn.loading::before { content: ""; width: 1em; height: 1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+    .link-standalone { display: inline-flex; gap: .35rem; align-items: center; font-weight: 800; }
+    .danger-link { color: var(--critical); }
+    .field { display: grid; gap: .35rem; min-width: 0; }
+    .field label, .field .label { font-size: .88rem; font-weight: 800; }
+    .field input, .field select, .field textarea, .search {
+      width: 100%; min-height: var(--touch); padding: .68rem .8rem; color: var(--text); background: white;
+      border: 1.5px solid var(--border-strong); border-radius: var(--radius-control);
+    }
+    .field textarea { min-height: 7rem; resize: vertical; }
+    .field input:disabled { color: var(--text-disabled); background: var(--surface-muted); }
+    .field input[aria-invalid="true"] { border: 2px solid var(--critical); }
+    .hint, .error, .success-text { font-size: .8rem; }
+    .hint { color: var(--text-secondary); }
+    .error { color: var(--critical); font-weight: 750; }
+    .success-text { color: var(--success); font-weight: 750; }
+    fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+    legend { margin-bottom: .5rem; font-weight: 800; }
+    .choice { min-height: var(--touch); display: flex; align-items: flex-start; gap: .7rem; padding: .55rem; border-radius: .7rem; }
+    .choice:hover { background: var(--surface-muted); }
+    .choice input { width: 1.2rem; height: 1.2rem; margin-top: .15rem; accent-color: var(--action); flex: none; }
+    .choice strong, .choice small { display: block; }
+    .choice small { color: var(--text-secondary); }
+    .switch { position: relative; width: 3rem; height: 1.75rem; flex: none; }
+    .switch input { position: absolute; opacity: 0; }
+    .switch span { position: absolute; inset: 0; background: #9ca49e; border-radius: 999px; transition: background var(--standard); }
+    .switch span::after { content: ""; position: absolute; width: 1.25rem; height: 1.25rem; top: .25rem; left: .25rem; background: white; border-radius: 50%; box-shadow: 0 1px 3px #0004; transition: transform var(--standard); }
+    .switch input:checked + span { background: var(--action); }
+    .switch input:checked + span::after { transform: translateX(1.25rem); }
+    .badge { width: fit-content; padding: .23rem .45rem; display: inline-flex; align-items: center; gap: .3rem; border: 0; border-radius: .3rem; font-size: .68rem; font-weight: 700; line-height: 1.25; letter-spacing: .015em; text-transform: uppercase; }
+    .badge-neutral { color: #606560; background: #f3f4f1; }
+    .badge-info { color: #3d6273; background: #f1f6f8; }
+    .badge-success { color: #286847; background: #f0f8f3; }
+    .badge-warning { color: #73591d; background: #fdf9eb; }
+    .badge-critical { color: #8d403b; background: #fdf3f2; }
+    .badge-special { color: #655286; background: #f6f3fa; }
+    .badge-provisional { color: #705c25; background: #fcf8eb; }
+    .alert { padding: .9rem; display: grid; grid-template-columns: auto 1fr; gap: .7rem; border: 1px solid; border-radius: .55rem; background: var(--surface); }
+    .alert-icon { width: 1.55rem; height: 1.55rem; display: grid; place-items: center; border: 1.5px solid currentColor; border-radius: 50%; font-weight: 900; }
+    .alert-info { color: #365d70; background: #f5f9fa; border-color: #dce9ee; }
+    .alert-success { color: #246542; background: #f4faf6; border-color: #d9ebdf; }
+    .alert-warning { color: #70551b; background: #fefaf0; border-color: #eee3c1; }
+    .alert-critical, .alert-blocking { color: #873d38; background: #fdf6f5; border-color: #efd8d5; }
+    .alert-blocking { border-style: solid; border-width: 1px; }
+    .list { margin: 0; padding: 0; list-style: none; }
+    .list-row { min-height: 4.4rem; padding: .8rem 0; display: flex; align-items: center; gap: .8rem; border-bottom: 1px solid var(--border); }
+    .list-row:last-child { border-bottom: 0; }
+    .list-main { min-width: 0; flex: 1; }
+    .list-main strong, .list-main span { display: block; }
+    .avatar { width: 2.65rem; height: 2.65rem; flex: none; display: grid; place-items: center; color: #505650; background: #eceeeb; border: 0; box-shadow: none; border-radius: 50%; font-weight: 700; }
+    .avatar.scout { color: #62517f; background: #f0edf5; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: .85rem; background: var(--surface); }
+    table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+    caption { padding: .8rem; text-align: left; font-weight: 850; }
+    th, td { padding: .72rem .8rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+    th { color: var(--text-secondary); background: var(--surface-muted); font-size: .72rem; letter-spacing: .05em; text-transform: uppercase; }
+    tbody tr:last-child td { border-bottom: 0; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .current-row { background: #f4f8f5; box-shadow: inset 2px 0 var(--action); }
+    .tabs { width: fit-content; padding: .25rem; display: flex; gap: .2rem; background: var(--surface-muted); border-radius: .8rem; }
+    .tab { min-height: var(--touch); padding: .55rem .85rem; color: var(--text-secondary); background: transparent; border: 0; border-radius: .6rem; cursor: pointer; font-weight: 800; }
+    .tab[aria-selected="true"] { color: var(--text); background: white; box-shadow: 0 1px 4px #25382d18; }
+    .progress { height: .65rem; overflow: hidden; background: #dfe1d9; border-radius: 999px; }
+    .progress > span { height: 100%; display: block; background: var(--action); border-radius: inherit; }
+    .progress.indeterminate > span { width: 38%; animation: load 1.2s ease-in-out infinite; }
+    .steps { display: flex; gap: .3rem; align-items: center; }
+    .step { width: 1.8rem; height: 1.8rem; display: grid; place-items: center; background: var(--surface-muted); border: 1px solid var(--border); border-radius: 50%; font-size: .75rem; font-weight: 850; }
+    .step.done { color: white; background: var(--success); border-color: var(--success); }
+    .step.current { border: 3px solid var(--amber); }
+    .meter { display: grid; gap: .4rem; }
+    .meter-head { display: flex; justify-content: space-between; gap: .75rem; font-size: .84rem; font-weight: 750; }
+    .meter-bar { height: .62rem; overflow: hidden; background: #dedfd7; border-radius: 999px; }
+    .meter-fill { height: 100%; background: var(--action); border-radius: inherit; }
+    .meter-fill.low { background: var(--warning); }
+    .meter-fill.critical { background: var(--critical); }
+    .shift-card { position: relative; padding: 1rem; display: grid; gap: .8rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); }
+    .shift-card.critical { border: 1px solid #e5c2bf; box-shadow: inset 2px 0 var(--critical); }
+    .shift-card.special { background: #fbfafd; border: 1px solid #e0d9eb; }
+    .shift-top { display: flex; justify-content: space-between; gap: .7rem; align-items: start; }
+    .shift-time { color: var(--text-secondary); font-size: .84rem; }
+    .shift-actions { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+    .domain-toolbar, .screen-toolbar { margin-bottom: 1rem; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; align-items: center; }
+    .state-switcher { padding: .35rem; display: flex; flex-wrap: wrap; gap: .25rem; background: #e6e2d5; border: 1px solid var(--border); border-radius: .8rem; }
+    .state-switcher button { min-height: 2.5rem; padding: .45rem .7rem; color: var(--text-secondary); background: transparent; border: 0; border-radius: .55rem; cursor: pointer; font-weight: 780; font-size: .8rem; }
+    .state-switcher button[aria-pressed="true"] { color: white; background: var(--action); }
+    .screen { overflow: hidden; background: #fbfbf9; border: 1px solid var(--border); border-radius: .75rem; box-shadow: none; }
+    .screen-chrome { min-height: 3.1rem; padding: .65rem 1rem; display: flex; justify-content: space-between; align-items: center; color: var(--text); background: white; border-bottom: 1px solid var(--border); }
+    .screen-chrome strong { display: flex; align-items: center; gap: .5rem; }
+    .screen-body { padding: clamp(1rem,3vw,1.7rem); }
+    .screen-title { margin: 0; font-family: inherit; font-size: clamp(1.65rem,3vw,2.35rem); line-height: 1.1; color: #173e2a; }
+    .screen-subtitle { margin-top: .35rem; color: var(--text-secondary); }
+    .screen-nav { display: flex; gap: .35rem; align-items: center; }
+    .screen-nav a { color: var(--text-secondary); text-decoration: none; font-size: .82rem; font-weight: 620; }
+    .mobile-screen { max-width: 390px; margin-inline: auto; }
+    .mobile-screen .screen-body { padding-bottom: 5rem; }
+    .mobile-bottom-nav { min-height: 4.2rem; padding: .35rem .4rem; display: grid; grid-template-columns: repeat(4,1fr); gap: .2rem; align-items: center; background: #fffdf8; border-top: 1px solid var(--border); }
+    .mobile-bottom-nav a { min-height: 3.3rem; display: grid; place-items: center; align-content: center; color: var(--text-secondary); text-decoration: none; font-size: .68rem; font-weight: 750; border-radius: .6rem; }
+    .mobile-bottom-nav a span { display: block; font-size: 1.1rem; line-height: 1.2; }
+    .mobile-bottom-nav a[aria-current="page"] { color: var(--action); background: #edf4ed; }
+    .context-strip { padding: .65rem .8rem; display: flex; flex-wrap: wrap; gap: .6rem 1rem; color: #244534; background: #e8f0e7; border-bottom: 1px solid #c2d2c5; font-size: .78rem; font-weight: 750; }
+    .week-nav { margin-bottom: 1rem; padding: .75rem; display: grid; grid-template-columns: var(--touch) 1fr var(--touch); gap: .55rem; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 1rem; }
+    .week-nav-center { text-align: center; }
+    .week-nav-center strong, .week-nav-center small { display: block; }
+    .day-group { margin-top: 1rem; }
+    .day-heading { margin-bottom: .5rem; display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+    .day-heading h3 { font-family: inherit; font-size: 1.4rem; color: #173e2a; }
+    .day-shifts { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .75rem; }
+    .roster-row { padding: .8rem; display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: .7rem; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: .9rem; }
+    .roster-row + .roster-row { margin-top: .6rem; }
+    .roster-row .btn { min-width: 7.8rem; }
+    .split { display: grid; grid-template-columns: minmax(0,1.55fr) minmax(18rem,.75fr); gap: 1rem; align-items: start; }
+    .sticky-card { position: sticky; top: 6rem; }
+    .definition { margin: 0; display: grid; grid-template-columns: minmax(8rem,.6fr) 1fr; gap: .6rem 1rem; }
+    .definition dt { color: var(--text-secondary); font-size: .82rem; }
+    .definition dd { margin: 0; font-weight: 750; }
+    .person-option { padding: .75rem; display: grid; grid-template-columns: auto 1fr auto; gap: .65rem; align-items: center; border: 1px solid var(--border); border-radius: .85rem; }
+    .person-option + .person-option { margin-top: .5rem; }
+    .person-option:has(input:checked) { background: #edf5ed; border: 2px solid var(--action); }
+    .person-option input { width: 1.2rem; height: 1.2rem; accent-color: var(--action); }
+    .person-option.disabled { color: var(--text-disabled); background: var(--surface-muted); }
+    .operation-layout { display: grid; grid-template-columns: minmax(13rem,.42fr) minmax(0,1fr); gap: 1rem; }
+    .filter-card label { margin-top: .75rem; display: block; font-weight: 800; font-size: .82rem; }
+    .filter-card select { margin-top: .3rem; width: 100%; min-height: var(--touch); padding: .55rem; border: 1px solid var(--border-strong); border-radius: .65rem; background: white; }
+    .summary-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: .7rem; }
+    .summary-stat { padding: .9rem; background: var(--surface); border: 1px solid var(--border); border-radius: .85rem; }
+    .summary-stat strong { display: block; font: 700 1.8rem/1 inherit; }
+    .compose-layout { display: grid; grid-template-columns: minmax(0,1.25fr) minmax(18rem,.75fr); gap: 1rem; }
+    .delivery-row { padding: .75rem 0; display: flex; justify-content: space-between; gap: .75rem; align-items: center; border-bottom: 1px solid var(--border); }
+    .delivery-row:last-child { border: 0; }
+    .money-wrap { display: flex; align-items: stretch; }
+    .money-wrap span { padding: .68rem .8rem; display: grid; place-items: center; background: var(--surface-muted); border: 1.5px solid var(--border-strong); border-right: 0; border-radius: var(--radius-control) 0 0 var(--radius-control); font-weight: 850; }
+    .money-wrap input { border-radius: 0 var(--radius-control) var(--radius-control) 0; }
+    .reconcile { padding: 1rem; color: #174d31; background: #eaf6ed; border: 1px solid #8db99a; border-radius: .85rem; display: flex; justify-content: space-between; gap: 1rem; align-items: center; }
+    .reconcile strong { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+    .mobile-cards { display: none; }
+    .empty { padding: 2.5rem 1rem; text-align: center; border: 2px dashed var(--border); border-radius: 1rem; }
+    .empty-icon { width: 3.4rem; height: 3.4rem; margin: 0 auto .75rem; display: grid; place-items: center; color: var(--action); background: #e6f0e6; border-radius: 50%; font-size: 1.5rem; }
+    .dialog-backdrop { position: fixed; z-index: 80; inset: 0; padding: 1rem; display: grid; place-items: center; background: rgba(15,29,21,.65); }
+    .dialog { width: min(100%,31rem); padding: 1.3rem; background: var(--surface); border: 0; border-radius: var(--radius-dialog); box-shadow: var(--shadow-overlay); }
+    .dialog h3 { font-family: inherit; font-size: 1.6rem; }
+    .toast { position: fixed; z-index: 90; right: 1rem; bottom: 1rem; max-width: 24rem; padding: .85rem 1rem; color: white; background: #173e2a; border: 2px solid #a8caaf; border-radius: .8rem; box-shadow: var(--shadow-overlay); }
+    .pe-demo { border: 2px dashed var(--action); }
+    .pe-mode { padding: .65rem; display: flex; justify-content: space-between; gap: .75rem; align-items: center; background: #e7f0e7; border-radius: .7rem; }
+    .footer { margin-top: 5rem; padding: 2.5rem 0 1rem; border-top: 1px solid var(--border); color: var(--text-secondary); display: flex; justify-content: space-between; gap: 1rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes load { 0% { transform: translateX(-110%); } 100% { transform: translateX(270%); } }
+    @media (max-width: 960px) {
+      .top-nav a:nth-child(n+5), .header-context { display: none; }
+      .grid-4 { grid-template-columns: repeat(2,minmax(0,1fr)); }
+      .grid-3 { grid-template-columns: repeat(2,minmax(0,1fr)); }
+      .hero { grid-template-columns: 1fr; }
+      .hero-card { max-width: 36rem; transform: none; }
+      .split, .compose-layout { grid-template-columns: 1fr; }
+      .sticky-card { position: static; }
+      .operation-layout { grid-template-columns: 1fr; }
+      .filter-card { display: grid; grid-template-columns: repeat(3,1fr); gap: .75rem; }
+      .filter-card h3 { grid-column: 1/-1; }
+      .summary-stats { grid-template-columns: repeat(2,1fr); }
+      .day-shifts { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    }
+    @media (max-width: 680px) {
+      html { scroll-padding-top: 5rem; }
+      .site-header { position: static; }
+      .header-inner { min-height: 4rem; }
+      .brand-mark { width: 1rem; height: 1rem; }
+      .top-nav { display: none; }
+      main { padding-inline: .85rem; }
+      .hero { padding-top: 2.5rem; }
+      .quick-nav { overflow-x: auto; flex-wrap: nowrap; margin-inline: -.85rem; padding-inline: .85rem; border-left: 0; border-right: 0; border-radius: 0; }
+      .quick-nav a { white-space: nowrap; }
+      .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+      .screen { margin-inline: -.5rem; border-radius: 1rem; }
+      .screen-nav { display: none; }
+      .screen-body { padding: 1rem; }
+      .day-shifts { grid-template-columns: 1fr; }
+      .week-compact .day-shifts { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: .4rem; }
+      .week-compact .shift-card { min-width: 84%; scroll-snap-align: start; }
+      .roster-row { align-items: start; }
+      .roster-row .btn { grid-column: 1/-1; width: 100%; }
+      .definition { grid-template-columns: 1fr; gap: .1rem; }
+      .definition dd { margin-bottom: .55rem; }
+      .filter-card { display: block; }
+      .summary-stats { grid-template-columns: repeat(2,1fr); }
+      .desktop-table { display: none; }
+      .mobile-cards { display: grid; gap: .6rem; }
+      .treasurer-table .hide-phone { display: none; }
+      .treasurer-table th, .treasurer-table td { padding: .6rem .4rem; font-size: .78rem; }
+      .reconcile { align-items: flex-start; flex-direction: column; }
+      .footer { flex-direction: column; padding-bottom: 5rem; }
+      .state-switcher { width: 100%; overflow-x: auto; flex-wrap: nowrap; }
+      .state-switcher button { white-space: nowrap; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+    @media print {
+      .site-header, .quick-nav, .state-switcher, .mobile-bottom-nav, .btn { display: none !important; }
+      body { background: white; }
+      .screen, .card { box-shadow: none; break-inside: avoid; }
+    }
+
+    /* Canopy visual direction */
+    :root {
+      --canvas: #fafaf7;
+      --surface: #ffffff;
+      --surface-raised: #ffffff;
+      --surface-muted: #f4f5f1;
+      --text: #272a27;
+      --text-secondary: #696e69;
+      --text-disabled: #969b96;
+      --border: #e5e7e1;
+      --border-strong: #cbd0c9;
+      --action: #24734b;
+      --action-hover: #1d5f3d;
+      --focus: #6f56a0;
+      --info: #456b7d;
+      --success: #29714d;
+      --warning: #81631f;
+      --critical: #994641;
+      --special: #6c5891;
+      --amber: #d5ae51;
+      --cream: #faf9f3;
+      --radius-control: .5rem;
+      --radius-card: .65rem;
+      --radius-dialog: .8rem;
+      --shadow-raised: none;
+      --shadow-overlay: 0 16px 40px rgba(25, 30, 27, .16);
+      --content: 80rem;
+      --measure: 45rem;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--canvas);
+      line-height: 1.5;
+    }
+    html { scroll-padding-top: 6rem; }
+    body { color: var(--text); background: var(--canvas); }
+    a { color: var(--action); text-decoration-thickness: .075em; }
+    :focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    .skip-link { background: var(--text); border-radius: var(--radius-control); }
+    .site-header {
+      color: var(--text);
+      background: #ffffff;
+      border-bottom: 1px solid var(--border);
+    }
+    .header-inner { min-height: 4rem; padding-block: .5rem; gap: 1.4rem; }
+    .brand { color: var(--text); gap: .55rem; }
+    .brand-mark {
+      width: 1rem;
+      height: 1rem;
+      color: var(--action);
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      font-size: .78rem;
+      font-weight: 700;
+    }
+    .brand small { color: var(--text-secondary); font-size: .67rem; letter-spacing: .055em; }
+    .top-nav { gap: .1rem; }
+    .top-nav a {
+      color: var(--text-secondary);
+      padding: .55rem .7rem;
+      border-radius: .45rem;
+      font-size: .84rem;
+      font-weight: 650;
+    }
+    .top-nav a:hover, .top-nav a[aria-current="page"] { color: var(--text); background: var(--surface-muted); }
+    .top-nav a[aria-current="page"] { box-shadow: inset 0 -2px var(--action); }
+    .header-context { color: var(--text-secondary); border-left-color: var(--border); }
+    .header-context strong { color: var(--text); }
+    main { padding-bottom: 6rem; }
+    .hero {
+      padding: clamp(3rem,7vw,5.25rem) 0 2.5rem;
+      grid-template-columns: minmax(0,1.25fr) minmax(18rem,.75fr);
+      gap: clamp(2.5rem,7vw,6.5rem);
+    }
+    .eyebrow { color: var(--action); font-size: .73rem; font-weight: 700; letter-spacing: .1em; }
+    h1, h2, .screen-title, .day-heading h3, .dialog h3 {
+      font-family: inherit;
+      color: var(--text);
+      letter-spacing: -.035em;
+    }
+    h1 { max-width: 17ch; font-size: clamp(2.2rem,4vw,3.25rem); line-height: 1.05; font-weight: 680; }
+    h2 { font-size: clamp(1.65rem,2.6vw,2.05rem); line-height: 1.12; font-weight: 670; }
+    h3 { font-size: 1.08rem; }
+    .lede { max-width: 56ch; color: var(--text-secondary); font-size: 1.05rem; }
+    .hero-card {
+      padding: 1.35rem;
+      color: var(--text);
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      box-shadow: none;
+      transform: none;
+    }
+    .hero-card .caption { color: var(--text-secondary) !important; }
+    .hero-card .big-date { font: 650 1.55rem/1.2 inherit; letter-spacing: -.025em; }
+    .hero-card hr { border-top-color: var(--border); }
+    .hero-card .meter-bar { background: var(--surface-muted); }
+    .hero-card .meter-fill { background: var(--action); }
+    .quick-nav {
+      padding: .55rem 0;
+      background: transparent;
+      border: 0;
+      border-block: 1px solid var(--border);
+      border-radius: 0;
+      gap: .15rem .3rem;
+    }
+    .quick-nav a {
+      min-height: 2.4rem;
+      padding: .48rem .65rem;
+      color: var(--text-secondary);
+      background: transparent;
+      border-color: transparent;
+      border-radius: .45rem;
+      font-size: .79rem;
+      font-weight: 600;
+    }
+    .quick-nav a:hover { color: var(--action); background: #edf5f0; border-color: transparent; }
+    .section { padding-top: clamp(4rem,8vw,7rem); }
+    .section-head { margin-bottom: 2rem; }
+    .section-head p { font-size: 1rem; }
+    .subsection-title::after { background: var(--border); }
+    .grid { gap: .85rem; }
+    .card, .shift-card, .roster-row, .person-option, .summary-stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      box-shadow: none;
+    }
+    .card { padding: 1.1rem; }
+    .card.raised { box-shadow: var(--shadow-raised); border-color: var(--border-strong); }
+    .stat, .summary-stat strong { font-family: inherit; font-weight: 660; letter-spacing: -.035em; }
+    .token-swatch { min-height: 5.6rem; border-color: var(--border); border-radius: .65rem; }
+    .token-swatch strong, .token-swatch span { border-radius: .2rem; }
+    .btn {
+      padding: .62rem .9rem;
+      border-width: 1px;
+      border-radius: var(--radius-control);
+      font-weight: 650;
+      transition: background var(--standard), border-color var(--standard), color var(--standard);
+    }
+    .btn:active { transform: none; }
+    .btn-primary { background: var(--action); }
+    .btn-secondary { color: var(--text); background: white; border-color: var(--border-strong); }
+    .btn-secondary:hover { color: var(--action-hover); background: #f4f8f5; border-color: #9db7a7; }
+    .btn-quiet { color: var(--text-secondary); }
+    .btn-quiet:hover { color: var(--text); }
+    .btn-icon { border-radius: var(--radius-control); }
+    .field input, .field select, .field textarea, .search { border: 1px solid var(--border-strong); border-radius: var(--radius-control); }
+    .field input:hover, .field select:hover, .field textarea:hover { border-color: #9ea49c; }
+    .choice { border-radius: .5rem; }
+    .switch span { background: #b9bdb8; }
+    .switch span::after { box-shadow: 0 1px 2px #0003; }
+    .badge {
+      padding: .24rem .48rem;
+      border-color: transparent;
+      border-radius: .35rem;
+      font-size: .69rem;
+      font-weight: 700;
+      letter-spacing: .015em;
+    }
+    .badge-neutral { color: #606560; background: #f3f4f1; }
+    .badge-info { color: #3d6273; background: #f1f6f8; }
+    .badge-success { color: #286847; background: #f0f8f3; }
+    .badge-warning { color: #73591d; background: #fdf9eb; }
+    .badge-critical { color: #8d403b; background: #fdf3f2; }
+    .badge-special { color: #655286; background: #f6f3fa; }
+    .badge-provisional { color: #705c25; background: #fcf8eb; border: 0; }
+    .alert {
+      padding: .9rem;
+      border: 1px solid;
+      border-left-width: 1px;
+      border-radius: .6rem;
+    }
+    .alert-icon { width: 1.35rem; height: 1.35rem; border-width: 1px; font-size: .78rem; }
+    .alert-info { color: #365d70; background: #f5f9fa; border-color: #dce9ee; }
+    .alert-success { color: #246542; background: #f4faf6; border-color: #d9ebdf; }
+    .alert-warning { color: #70551b; background: #fefaf0; border-color: #eee3c1; }
+    .alert-critical, .alert-blocking { color: #873d38; background: #fdf6f5; border-color: #efd8d5; }
+    .alert-blocking { border-style: solid; border-width: 1px; }
+    .avatar { color: #505650; background: #eceeeb; border: 0; box-shadow: none; font-size: .78rem; }
+    .avatar.scout { color: #62517f; background: #f0edf5; }
+    .table-wrap { border-radius: .6rem; }
+    th { background: #f4f5f2; }
+    .current-row { background: #f3f7f4; box-shadow: inset 2px 0 var(--action); }
+    .tabs, .state-switcher { background: var(--surface-muted); border: 1px solid var(--border); border-radius: .6rem; }
+    .tab, .state-switcher button { border-radius: .4rem; font-weight: 650; }
+    .tab[aria-selected="true"] { box-shadow: none; }
+    .state-switcher button[aria-pressed="true"] { color: var(--text); background: white; box-shadow: 0 1px 1px rgba(0,0,0,.04); }
+    .progress, .meter-bar { height: .5rem; background: #e7e9e5; }
+    .step { border-radius: .45rem; }
+    .step.current { border: 2px solid var(--action); }
+    .shift-card { padding: 1rem; }
+    .shift-card.critical { border: 1px solid #e3bbb7; box-shadow: inset 2px 0 var(--critical); }
+    .shift-card.special { background: #faf8fd; border: 1px solid #ddd4ea; }
+    .screen {
+      background: #fafaf8;
+      border: 1px solid var(--border);
+      border-radius: .85rem;
+      box-shadow: none;
+    }
+    .screen-chrome {
+      min-height: 3.2rem;
+      color: var(--text);
+      background: white;
+      border-bottom: 1px solid var(--border);
+    }
+    .screen-chrome .btn-quiet { color: var(--text) !important; }
+    .screen-title { font-size: clamp(1.55rem,3vw,2.15rem); font-weight: 670; }
+    .screen-nav a { color: var(--text-secondary); font-weight: 600; }
+    .screen-nav a:hover { color: var(--action); }
+    .context-strip { color: #506059; background: #f1f5f2; border-bottom-color: #dde6df; font-weight: 600; }
+    .mobile-bottom-nav {
+      min-height: 4rem;
+      background: rgba(255,255,255,.98);
+      padding-bottom: max(.35rem, env(safe-area-inset-bottom));
+    }
+    .mobile-bottom-nav a { border-radius: .4rem; font-weight: 600; }
+    .mobile-bottom-nav a[aria-current="page"] { color: var(--action); background: transparent; }
+    .week-nav { border-radius: .65rem; }
+    .day-heading h3 { font-size: 1.25rem; font-weight: 650; }
+    .person-option:has(input:checked) { background: #eff7f2; border: 1px solid var(--action); box-shadow: inset 0 0 0 1px var(--action); }
+    .reconcile { color: #225f40; background: #eff7f2; border-color: #cfe4d7; border-radius: .6rem; }
+    .empty { border: 1px dashed var(--border-strong); border-radius: .65rem; }
+    .empty-icon { color: var(--action); background: #edf5f0; border-radius: .6rem; }
+    .dialog { border: 1px solid var(--border); }
+    .toast { color: white; background: #2e332f; border: 0; border-radius: .55rem; }
+    .pe-demo { border: 1px dashed var(--action); }
+    .pe-mode { background: #eff5f1; border-radius: .55rem; }
+    @media (max-width: 680px) {
+      .site-header { position: sticky; }
+      .hero { padding-top: 2.8rem; }
+      .quick-nav { margin-inline: -.85rem; padding-inline: .85rem; }
+      .screen { border-radius: .7rem; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="#overview" aria-label="Canopy overview">
+        <span class="brand-mark" aria-hidden="true">◆</span>
+        <span><strong>Canopy</strong><small>Troop 900 Tree Lot</small></span>
+      </a>
+      <nav class="top-nav" aria-label="Design system sections">
+        <a href="#overview" aria-current="page">Overview</a>
+        <a href="#foundations">Foundations</a>
+        <a href="#primitives">Primitives</a>
+        <a href="#domain">Domain</a>
+        <a href="#screens">Screens</a>
+      </nav>
+      <div class="header-context"><strong>2026 Tree Lot</strong>Nov 27–Dec 23 · 2 announcements</div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="overview" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">Canopy · Design system proof of concept</p>
+        <h1 id="page-title">Community work, clearly organized.</h1>
+        <p class="lede">Canopy gives families and volunteers one calm place to coordinate shifts, agreements, attendance, announcements, and end-of-season reporting.</p>
+        <div class="controls" style="margin-top:1.5rem">
+          <a class="btn btn-primary" href="#screens">Explore 8 screens <span aria-hidden="true">↓</span></a>
+          <a class="btn btn-secondary" href="#foundations">View foundations</a>
+        </div>
+      </div>
+      <aside class="hero-card" aria-label="Current season snapshot">
+        <span class="badge badge-special">◇ ALL HANDS NEEDED</span>
+        <p class="caption" style="color:#d6e5db;margin-top:1rem">Next community shift</p>
+        <div class="big-date">Saturday, Dec 5</div>
+        <p>9:00 AM–1:00 PM · Troop 900 Tree Lot</p>
+        <hr>
+        <div class="meter">
+          <div class="meter-head"><span>Adults</span><span>2 of 4 · CRITICAL</span></div>
+          <div class="meter-bar"><span class="meter-fill" style="width:50%"></span></div>
+        </div>
+        <div class="meter" style="margin-top:.8rem">
+          <div class="meter-head"><span>Scouts</span><span>5 of 6 · OK</span></div>
+          <div class="meter-bar"><span class="meter-fill" style="width:83%"></span></div>
+        </div>
+      </aside>
+    </section>
+
+    <nav class="quick-nav" aria-label="Jump to POC content">
+      <a href="#foundations">01 Foundations</a>
+      <a href="#primitives">02 Primitives</a>
+      <a href="#domain">03 Domain components</a>
+      <a href="#screen-dashboard">1 Family Dashboard</a>
+      <a href="#screen-agreement">2 Agreement Center</a>
+      <a href="#screen-week">3 Week View</a>
+      <a href="#screen-shift">4 Shift Detail</a>
+      <a href="#screen-roster">5 Live Roster</a>
+      <a href="#screen-staffing">6 Staffing View</a>
+      <a href="#screen-announcement">7 Announcements</a>
+      <a href="#screen-treasurer">8 Scout Bucks</a>
+    </nav>
+
+    <section class="section" id="foundations" aria-labelledby="foundations-title">
+      <div class="section-head">
+        <p class="eyebrow">01 · Foundations</p>
+        <h2 id="foundations-title">Quiet structure, clear purpose</h2>
+        <p>Airy surfaces, restrained color, and compact typography stay readable in outdoor daylight, hurried phone use, and denser Committee work.</p>
+      </div>
+      <div class="subsection">
+        <div class="subsection-title"><h3>Semantic color</h3></div>
+        <div class="grid grid-4">
+          <div class="token-swatch" style="background:#fafaf7"><strong>Canvas</strong><span>#FAFAF7</span></div>
+          <div class="token-swatch" style="background:#ffffff"><strong>Primary surface</strong><span>#FFFFFF</span></div>
+          <div class="token-swatch" style="background:#ffffff"><strong>Raised surface</strong><span>#FFFFFF</span></div>
+          <div class="token-swatch" style="background:#f4f5f1"><strong>Muted surface</strong><span>#F4F5F1</span></div>
+          <div class="token-swatch" style="background:#272a27"><strong>Primary text</strong><span>#272A27</span></div>
+          <div class="token-swatch" style="background:#696e69"><strong>Secondary text</strong><span>#696E69</span></div>
+          <div class="token-swatch" style="background:#e5e7e1"><strong>Border</strong><span>#E5E7E1</span></div>
+          <div class="token-swatch" style="background:#24734b"><strong>Primary action</strong><span>#24734B</span></div>
+          <div class="token-swatch" style="background:#6f56a0"><strong>Focus</strong><span>#6F56A0</span></div>
+          <div class="token-swatch" style="background:#456b7d"><strong>Informational</strong><span>#456B7D</span></div>
+          <div class="token-swatch" style="background:#29714d"><strong>Complete</strong><span>#29714D</span></div>
+          <div class="token-swatch" style="background:#81631f"><strong>Needs attention</strong><span>#81631F</span></div>
+          <div class="token-swatch" style="background:#994641"><strong>Critical</strong><span>#994641</span></div>
+          <div class="token-swatch" style="background:#6c5891"><strong>Special event</strong><span>#6C5891</span></div>
+          <div class="token-swatch" style="background:#d5ae51"><strong>Sun accent</strong><span>#D5AE51</span></div>
+          <div class="token-swatch" style="background:#969b96"><strong>Disabled text</strong><span>#969B96</span></div>
+        </div>
+      </div>
+      <div class="grid grid-2 subsection">
+        <article class="card">
+          <div class="subsection-title"><h3>Typography roles</h3></div>
+          <div class="type-sample"><div class="type-label">Page title · System sans 56/57</div><div style="font:680 2.7rem/1.06 system-ui;letter-spacing:-.04em">Neighbors pitch in.</div></div>
+          <div class="type-sample"><div class="type-label">Section heading · System sans 36/39</div><div style="font:670 2rem/1.08 system-ui;letter-spacing:-.03em">Saturday shifts</div></div>
+          <div class="type-sample"><div class="type-label">Subsection · System 19/24 bold</div><h3>Morning crew</h3></div>
+          <div class="type-sample"><div class="type-label">Body · System 16/24</div><div>Clear information for families and volunteers.</div></div>
+          <div class="type-sample"><div class="type-label">Control label · System 14/20 extra bold</div><strong style="font-size:.88rem">Select a person</strong></div>
+          <div class="type-sample"><div class="type-label">Metadata · System 13/18</div><span class="caption">Published Wednesday at 4:32 PM</span></div>
+          <div class="type-sample"><div class="type-label">Numeric statistic · System sans tabular</div><span class="stat">128.50</span></div>
+          <div class="type-sample"><div class="type-label">Checksum · Monospace 13/18</div><span class="mono">SHA-256 · 7e3f…a914</span></div>
+        </article>
+        <article class="card">
+          <div class="subsection-title"><h3>Space, shape & motion</h3></div>
+          <dl class="token-list">
+            <dt>Inline scale</dt><dd>4, 8, 12, 16, 24 px</dd>
+            <dt>Stack scale</dt><dd>8, 12, 16, 24, 32, 48 px</dd>
+            <dt>Section space</dt><dd>56 px phone · 104 px desktop</dd>
+            <dt>Page gutters</dt><dd>14 px phone · 32 px desktop</dd>
+            <dt>Controls</dt><dd>44 px minimum height and touch target</dd>
+            <dt>Icons</dt><dd>16, 20, 24, 44 px</dd>
+            <dt>Content width</dt><dd>1248 px shell · 752 px reading measure</dd>
+            <dt>Density</dt><dd>Comfortable default · compact privileged tables</dd>
+            <dt>Radii</dt><dd>9 px controls · 12 px cards · 14 px dialogs</dd>
+            <dt>Borders</dt><dd>1 px standard · inset cue when selected</dd>
+            <dt>Raised shadow</dt><dd class="mono">0 1px 2px rgba(26,32,28,.05)</dd>
+            <dt>Overlay shadow</dt><dd class="mono">0 18px 45px rgba(26,32,28,.18)</dd>
+            <dt>Motion</dt><dd>100 ms feedback · 180 ms standard · 240 ms swap</dd>
+          </dl>
+          <div style="margin-top:1rem">
+            <p class="caption">Responsive ranges</p>
+            <div class="progress" aria-label="Responsive range visualization"><span style="width:100%"></span></div>
+            <div style="display:flex;justify-content:space-between;font-size:.72rem;margin-top:.25rem"><span>390 narrow</span><span>480 large phone</span><span>768 tablet</span><span>1440 desktop</span></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="primitives" aria-labelledby="primitives-title">
+      <div class="section-head">
+        <p class="eyebrow">02 · Primitive gallery</p>
+        <h2 id="primitives-title">Small pieces, clear behavior</h2>
+        <p>Keyboard-visible focus, robust semantic HTML, 44-pixel targets, explicit labels, and text-plus-shape status cues are built into the language.</p>
+      </div>
+      <div class="domain-toolbar">
+        <h3>Interactive states</h3>
+        <div class="state-switcher" data-switcher="primitive" aria-label="Primitive example state">
+          <button type="button" aria-pressed="true" data-state="default">Default</button>
+          <button type="button" aria-pressed="false" data-state="loading">Loading</button>
+          <button type="button" aria-pressed="false" data-state="error">Error</button>
+          <button type="button" aria-pressed="false" data-state="success">Success</button>
+          <button type="button" aria-pressed="false" data-state="disabled">Disabled</button>
+        </div>
+      </div>
+      <div class="grid grid-2">
+        <article class="card">
+          <h3>Buttons & links</h3>
+          <div class="controls" style="margin-top:1rem">
+            <button class="btn btn-primary demo-button" type="button">Sign Up Alex</button>
+            <button class="btn btn-secondary" type="button">Open Agreement</button>
+            <button class="btn btn-quiet" type="button">Save draft</button>
+            <button class="btn btn-danger" type="button" data-dialog-open>Delete Archived Season</button>
+            <button class="btn btn-secondary btn-icon" type="button" aria-label="Copy household link" data-copy>⧉</button>
+            <button class="btn btn-primary loading" type="button">Saving<span class="sr-only"></span></button>
+            <button class="btn" type="button" disabled aria-describedby="full-reason">Sign up</button>
+          </div>
+          <p class="hint" id="full-reason">Disabled: Shift is full.</p>
+          <div class="controls" style="margin-top:1rem">
+            <a href="#primitives">Inline link</a>
+            <a class="link-standalone" href="#screens">View all screens →</a>
+            <a href="https://example.invalid" aria-label="Open agreement (external link)">Open agreement ↗</a>
+            <a class="danger-link" href="#primitives">Remove access</a>
+          </div>
+          <div id="primitive-status" class="alert alert-info" style="margin-top:1rem" aria-live="polite">
+            <span class="alert-icon" aria-hidden="true">i</span><div><strong>Default state</strong><p>Controls are ready for input.</p></div>
+          </div>
+        </article>
+        <article class="card">
+          <h3>Form controls</h3>
+          <div class="grid grid-2" style="margin-top:1rem">
+            <div class="field"><label for="display-name">Display name <span aria-hidden="true">*</span></label><input id="display-name" value="Alex Rivera" autocomplete="name" required><span class="hint">Shown to your household and shift crew.</span></div>
+            <div class="field"><label for="phone">Mobile phone <span aria-hidden="true">*</span></label><input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(555) 555-0123"><span class="hint">Formatting does not determine identity.</span></div>
+            <div class="field"><label for="otp">6-digit code</label><input id="otp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" value="3842" aria-invalid="true" aria-describedby="otp-error"><span class="error" id="otp-error">Enter all 6 digits. Codes expire after 10 minutes.</span></div>
+            <div class="field"><label for="week-picker">Week</label><select id="week-picker"><option>Nov 30–Dec 6 · 8 shifts</option><option>Dec 7–13 · 11 shifts</option></select></div>
+            <div class="field"><label for="search">Find a participant</label><input id="search" type="search" placeholder="Name or household"></div>
+            <div class="field"><label for="disabled-input">Household code</label><input id="disabled-input" value="PINE-900" disabled><span class="hint">Managed by an Admin.</span></div>
+          </div>
+          <div class="field" style="margin-top:.8rem"><label for="announcement-body">Announcement body</label><textarea id="announcement-body" maxlength="500">Cold weather is expected Saturday. Please bring gloves and dress in layers.</textarea><span class="hint">78 of 500 characters</span></div>
+        </article>
+        <article class="card">
+          <h3>Choices & preferences</h3>
+          <fieldset style="margin-top:.8rem">
+            <legend>Publication timing</legend>
+            <label class="choice"><input type="radio" name="publish" checked><span><strong>Publish immediately</strong><small>Notify all selected recipients now.</small></span></label>
+            <label class="choice"><input type="radio" name="publish"><span><strong>Save as draft</strong><small>Only Committee members can see it.</small></span></label>
+          </fieldset>
+          <label class="choice"><input type="checkbox"><span><strong>I have read and agree to the tree-lot rules of conduct.</strong><small>Required to participate this season.</small></span></label>
+          <div class="choice">
+            <label class="switch"><input type="checkbox" checked aria-label="SMS shift reminders"><span aria-hidden="true"></span></label>
+            <span><strong>SMS shift reminders</strong><small>Receive a reminder the day before an assignment.</small></span>
+          </div>
+        </article>
+        <article class="card">
+          <h3>Badges, alerts & progress</h3>
+          <div class="controls" style="margin-top:.8rem">
+            <span class="badge badge-neutral">○ Draft</span><span class="badge badge-info">i Published</span><span class="badge badge-success">✓ Confirmed</span><span class="badge badge-warning">! LOW</span><span class="badge badge-critical">× CRITICAL</span><span class="badge badge-special">◇ Special Event</span><span class="badge badge-provisional">◇ Provisional</span>
+          </div>
+          <div class="grid" style="margin-top:1rem">
+            <div class="alert alert-info"><span class="alert-icon" aria-hidden="true">i</span><div><strong>Schedule updated</strong><p>Two new shifts were published.</p></div></div>
+            <div class="alert alert-success"><span class="alert-icon" aria-hidden="true">✓</span><div><strong>Alex is signed up</strong><p>Saturday, Dec 5 at 9:00 AM.</p></div></div>
+            <div class="alert alert-warning"><span class="alert-icon" aria-hidden="true">!</span><div><strong>Agreement needed</strong><p>Jordan cannot sign up until confirmed.</p></div></div>
+            <div class="alert alert-critical"><span class="alert-icon" aria-hidden="true">×</span><div><strong>Delivery failed</strong><p>SMS can be retried without republishing web.</p></div></div>
+          </div>
+          <p class="caption" style="margin-top:1rem">Season setup · Step 3 of 5</p>
+          <div class="steps" aria-label="Step 3 of 5"><span class="step done">✓</span><span class="step done">✓</span><span class="step current" aria-current="step">3</span><span class="step">4</span><span class="step">5</span></div>
+          <p class="caption">Archive generation · 68%</p>
+          <div class="progress" role="progressbar" aria-label="Archive generation" aria-valuenow="68" aria-valuemin="0" aria-valuemax="100"><span style="width:68%"></span></div>
+        </article>
+        <article class="card">
+          <h3>Lists, avatars & empty state</h3>
+          <ul class="list">
+            <li class="list-row"><span class="avatar">AR</span><span class="list-main"><strong>Alex Rivera</strong><span class="caption">Adult · Family Manager · Confirmed</span></span><span class="badge badge-success">✓ Confirmed</span></li>
+            <li class="list-row"><span class="avatar scout">JR</span><span class="list-main"><strong>Jordan Rivera</strong><span class="caption">Scout · Managed person · Not Confirmed</span></span><button class="btn btn-quiet" type="button">Confirm</button></li>
+            <li class="list-row" aria-current="true"><span class="avatar">MC</span><span class="list-main"><strong>Morgan Chen</strong><span class="caption">Adult · Signed Up · Oak Household</span></span><span class="badge badge-info">Current</span></li>
+          </ul>
+          <div class="empty" style="margin-top:1rem"><div class="empty-icon" aria-hidden="true">♧</div><h4>No assignments this week</h4><p class="muted">This can be a quiet week—or you can lend a hand.</p><a class="btn btn-secondary" href="#screen-week" style="margin-top:.8rem">Find a shift</a></div>
+        </article>
+        <article class="card">
+          <h3>Data table & mobile alternative</h3>
+          <div class="table-wrap desktop-table" style="margin-top:.8rem">
+            <table>
+              <caption>Family attendance history</caption>
+              <thead><tr><th scope="col">Person</th><th scope="col">Shift</th><th scope="col">Status</th><th scope="col" class="num">Hours</th></tr></thead>
+              <tbody>
+                <tr><td>Alex Rivera</td><td>Sat, Nov 28 · Morning</td><td><span class="badge badge-success">✓ Checked Out</span></td><td class="num">4.00</td></tr>
+                <tr><td>Jordan Rivera</td><td>Sun, Nov 29 · Afternoon</td><td><span class="badge badge-warning">! Adjusted</span></td><td class="num">3.50</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="mobile-cards" style="margin-top:.8rem">
+            <div class="card"><strong>Alex Rivera · 4.00 hours</strong><p class="caption">Sat, Nov 28 · Morning</p><span class="badge badge-success">✓ Checked Out</span></div>
+            <div class="card"><strong>Jordan Rivera · 3.50 hours</strong><p class="caption">Sun, Nov 29 · Afternoon</p><span class="badge badge-warning">! Adjusted</span></div>
+          </div>
+          <nav aria-label="Attendance pages" class="controls" style="margin-top:1rem"><button class="btn btn-quiet" disabled>← Previous</button><span class="caption">Page 1 of 4 · 38 results</span><button class="btn btn-secondary">Next →</button></nav>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="domain" aria-labelledby="domain-title">
+      <div class="section-head">
+        <p class="eyebrow">03 · Domain gallery</p>
+        <h2 id="domain-title">Designed around real work</h2>
+        <p>Reusable pieces preserve the same vocabulary from a family phone to Committee operations.</p>
+      </div>
+      <div class="grid grid-3">
+        <article class="shift-card">
+          <div class="shift-top"><div><span class="badge badge-info">Available</span><h3 style="margin-top:.5rem">Friday Evening</h3><p class="shift-time">Fri, Dec 4 · 5:00–9:00 PM</p></div><span aria-hidden="true">→</span></div>
+          <p>Troop 900 Tree Lot</p>
+          <div class="meter"><div class="meter-head"><span>Adults</span><span>3/4 · OK</span></div><div class="meter-bar"><span class="meter-fill" style="width:75%"></span></div></div>
+          <div class="meter"><div class="meter-head"><span>Scouts</span><span>4/6 · LOW</span></div><div class="meter-bar"><span class="meter-fill low" style="width:67%"></span></div></div>
+          <button class="btn btn-primary" type="button">View and sign up</button>
+        </article>
+        <article class="shift-card critical">
+          <div class="shift-top"><div><span class="badge badge-critical">× CRITICAL</span><h3 style="margin-top:.5rem">Saturday Morning</h3><p class="shift-time">Sat, Dec 5 · 9:00 AM–1:00 PM</p></div><span aria-hidden="true">!</span></div>
+          <p>Needs two adults before opening.</p>
+          <div class="meter"><div class="meter-head"><span>Adults</span><span>2/4 · CRITICAL</span></div><div class="meter-bar"><span class="meter-fill critical" style="width:50%"></span></div></div>
+          <div class="meter"><div class="meter-head"><span>Scouts</span><span>5/6 · OK</span></div><div class="meter-bar"><span class="meter-fill" style="width:83%"></span></div></div>
+          <button class="btn btn-primary" type="button">Help this shift</button>
+        </article>
+        <article class="shift-card special">
+          <div class="shift-top"><div><span class="badge badge-special">◇ ALL HANDS NEEDED</span><h3 style="margin-top:.5rem">Delivery Day</h3><p class="shift-time">Sun, Dec 13 · 8:00 AM–2:00 PM</p></div><span aria-hidden="true">◇</span></div>
+          <p>Special Event · Loading and neighborhood deliveries</p>
+          <div class="meter"><div class="meter-head"><span>Adults</span><span>8/12 · LOW</span></div><div class="meter-bar"><span class="meter-fill low" style="width:67%"></span></div></div>
+          <div class="meter"><div class="meter-head"><span>Scouts</span><span>14/18 · OK</span></div><div class="meter-bar"><span class="meter-fill" style="width:78%"></span></div></div>
+          <button class="btn btn-primary" type="button">Join Delivery Day</button>
+        </article>
+      </div>
+      <div class="grid grid-2 subsection">
+        <article class="card">
+          <h3>Check-in action panel</h3>
+          <p class="muted">Acting as Alex Rivera · for Jordan Rivera</p>
+          <div class="alert alert-info" style="margin-top:.8rem"><span class="alert-icon" aria-hidden="true">▶</span><div><strong>Check-in is open</strong><p>Scheduled start 9:00 AM · Current time 8:52 AM</p><button class="btn btn-primary" style="margin-top:.7rem">Check In Jordan</button></div></div>
+          <p class="caption">Timer: 00:00 · Authoritative times appear in attendance history.</p>
+        </article>
+        <article class="card">
+          <h3>Agreement status panel</h3>
+          <ul class="list">
+            <li class="list-row"><span class="avatar">AR</span><span class="list-main"><strong>Alex Rivera</strong><span class="caption">Confirmed Nov 12, 2026</span></span><span class="badge badge-success">✓ Confirmed</span></li>
+            <li class="list-row"><span class="avatar scout">JR</span><span class="list-main"><strong>Jordan Rivera</strong><span class="caption">Managed Scout · participation blocked</span></span><span class="badge badge-warning">! Not Confirmed</span></li>
+          </ul>
+          <p class="hint">The scheduler links to—but does not store or verify—the public agreement document.</p>
+        </article>
+        <article class="card">
+          <h3>Assignment & attendance rows</h3>
+          <div class="roster-row" style="margin-top:.8rem"><span class="avatar scout">JR</span><span><strong>Jordan Rivera · Scout</strong><span class="caption">Scheduled · Pine Household · Checked in by Alex Rivera at 8:56 AM</span></span><span class="badge badge-success">✓ Checked In</span></div>
+          <div class="roster-row"><span class="avatar">SP</span><span><strong>Sam Patel · Adult</strong><span class="caption">Walk-In · Checked out 1:07 PM · 4h 03m</span></span><span class="badge badge-info">✓ Walk-In</span></div>
+          <div class="roster-row"><span class="avatar scout">LC</span><span><strong>Lee Chen · Scout</strong><span class="caption">Original event: 9:14 AM · Approved adjustment: 9:00 AM by Morgan Chen · “Arrival line delay”</span></span><span class="badge badge-warning">! Adjusted</span></div>
+        </article>
+        <article class="card">
+          <h3>Statistics & credited hours</h3>
+          <div class="summary-stats" style="margin-top:.8rem">
+            <div class="summary-stat"><strong>28.5</strong><span class="caption">Total hours</span></div>
+            <div class="summary-stat"><strong>8</strong><span class="caption">Shifts</span></div>
+            <div class="summary-stat"><strong>#6</strong><span class="caption">Rank</span></div>
+            <div class="summary-stat"><strong>42.0</strong><span class="caption">Family total</span></div>
+          </div>
+          <div class="list-row"><span class="list-main"><strong>Jordan Rivera</strong><span class="caption">Own 22.50 + allocated adult 8.00</span></span><strong class="num">30.50 h</strong><span class="badge badge-provisional">◇ Provisional</span></div>
+          <p class="hint">Provisional credited hours are shown during the season. Dollar awards appear only after Treasurer finalization.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="screens" aria-labelledby="screens-title">
+      <div class="section-head">
+        <p class="eyebrow">04 · Representative screens</p>
+        <h2 id="screens-title">Eight complete workflows</h2>
+        <p>Use the local controls to inspect responsive treatments and alternate outcomes. Every example uses canonical actors, actions, and status labels.</p>
+      </div>
+
+      <article class="subsection" id="screen-dashboard" aria-labelledby="dashboard-title">
+        <div class="screen-toolbar"><div><p class="eyebrow">Screen 1 · 390 px phone</p><h3 id="dashboard-title">Mobile Family Dashboard</h3></div><span class="badge badge-info">Family Manager</span></div>
+        <div class="screen mobile-screen">
+          <div class="screen-chrome"><strong><span aria-hidden="true">C</span> Canopy</strong><button class="btn btn-quiet btn-icon" aria-label="Open account menu">AR</button></div>
+          <div class="context-strip"><span>2026 Tree Lot</span><span>Rivera Household</span><span>● 2 unread</span></div>
+          <div class="screen-body">
+            <p class="eyebrow">Wednesday, December 2</p>
+            <h3 class="screen-title">Good afternoon, Alex.</h3>
+            <p class="screen-subtitle">Your family has two shifts coming up.</p>
+            <div class="alert alert-blocking" style="margin-top:1rem"><span class="alert-icon" aria-hidden="true">!</span><div><strong>Jordan’s agreement is needed</strong><p>Jordan cannot sign up or check in until confirmed.</p><a class="btn btn-secondary" href="#screen-agreement" style="margin-top:.7rem">Review Seasonal Agreement</a></div></div>
+            <div class="subsection-title" style="margin-top:1.5rem"><h4>Coming up for your family</h4></div>
+            <div class="shift-card"><div class="shift-top"><div><span class="badge badge-success">✓ Signed Up</span><h4 style="margin-top:.45rem">Friday Evening</h4><p class="shift-time">Fri, Dec 4 · 5:00–9:00 PM</p></div><span class="avatar">AR</span></div><p>Alex · Adult · Troop 900 Tree Lot</p><button class="btn btn-secondary">View assignment</button></div>
+            <div class="shift-card" style="margin-top:.65rem"><div class="shift-top"><div><span class="badge badge-success">✓ Signed Up</span><h4 style="margin-top:.45rem">Sunday Afternoon</h4><p class="shift-time">Sun, Dec 6 · 1:00–5:00 PM</p></div><span class="avatar scout">JR</span></div><p>Jordan · Scout · Troop 900 Tree Lot</p><button class="btn btn-secondary">View assignment</button></div>
+            <div class="subsection-title" style="margin-top:1.5rem"><h4>Your neighbors need help</h4></div>
+            <div class="shift-card critical"><span class="badge badge-critical">× CRITICAL</span><h4>Saturday Morning</h4><p class="shift-time">Sat, Dec 5 · 9:00 AM–1:00 PM · 2 adult spots open</p><button class="btn btn-primary">Help this shift</button></div>
+            <div class="grid grid-2" style="margin-top:1rem"><div class="card"><span class="stat">42.0</span><p class="caption">Family hours</p></div><div class="card"><span class="stat">2</span><p class="caption">Unread announcements</p></div></div>
+          </div>
+          <nav class="mobile-bottom-nav" aria-label="Family navigation"><a href="#screen-dashboard" aria-current="page"><span>⌂</span>Home</a><a href="#screen-week"><span>▦</span>Shifts</a><a href="#screen-dashboard"><span>☰</span>Family</a><a href="#screen-dashboard"><span>●</span>Updates</a></nav>
+        </div>
+      </article>
+
+      <article class="subsection section" id="screen-agreement" aria-labelledby="agreement-title">
+        <div class="screen-toolbar"><div><p class="eyebrow">Screen 2 · 390 px phone</p><h3 id="agreement-title">Mobile Agreement Center</h3></div><span class="badge badge-warning">1 action needed</span></div>
+        <div class="screen mobile-screen">
+          <div class="screen-chrome"><strong><span aria-hidden="true">←</span> Seasonal Agreement</strong><span>2026</span></div>
+          <div class="screen-body">
+            <h3 class="screen-title">Tree-lot rules of conduct</h3>
+            <p class="screen-subtitle">Everyone must confirm before participating. The linked Google Doc opens outside the scheduler.</p>
+            <a class="btn btn-secondary" href="https://example.invalid" style="width:100%;margin-top:1rem" aria-label="Open 2026 Tree-Lot Rules of Conduct in external site">Open Agreement ↗</a>
+            <div class="alert alert-info" style="margin-top:.8rem"><span class="alert-icon">i</span><div><strong>About this document</strong><p>The scheduler links to the approved public document. It does not store or verify the Google Doc.</p></div></div>
+            <div class="subsection-title" style="margin-top:1.5rem"><h4>Rivera Household</h4></div>
+            <div class="card">
+              <div class="list-row"><span class="avatar">AR</span><span class="list-main"><strong>Alex Rivera · You</strong><span class="caption">Confirmed Nov 12, 2026</span></span><span class="badge badge-success">✓ Confirmed</span></div>
+              <div class="list-row"><span class="avatar scout">JR</span><span class="list-main"><strong>Jordan Rivera</strong><span class="caption">Managed Scout · Family Manager may facilitate</span></span><span class="badge badge-warning">! Not Confirmed</span></div>
+              <div class="alert alert-blocking" style="margin:.75rem 0"><span class="alert-icon">!</span><div><strong>Participation is blocked for Jordan</strong><p>You are Alex Rivera, acting for Jordan Rivera.</p></div></div>
+              <form action="#screen-agreement" method="get" data-enhanceable>
+                <label class="choice"><input type="checkbox" name="agreed" required><span><strong>I have read and agree to the tree-lot rules of conduct.</strong><small>Confirming for Jordan Rivera as Family Manager Alex Rivera.</small></span></label>
+                <button class="btn btn-primary" style="width:100%;margin-top:.5rem">Confirm Agreement for Jordan</button>
+              </form>
+              <div class="list-row"><span class="avatar">MR</span><span class="list-main"><strong>Maya Rivera</strong><span class="caption">Adult · Facilitated by Alex Rivera · Nov 14, 2026</span></span><span class="badge badge-success">✓ Confirmed</span></div>
+            </div>
+          </div>
+          <nav class="mobile-bottom-nav" aria-label="Family navigation"><a href="#screen-dashboard"><span>⌂</span>Home</a><a href="#screen-week"><span>▦</span>Shifts</a><a href="#screen-agreement" aria-current="page"><span>✓</span>Agreement</a><a href="#screen-dashboard"><span>●</span>Updates</a></nav>
+        </div>
+      </article>
+
+      <article class="subsection section" id="screen-week" aria-labelledby="week-title">
+        <div class="screen-toolbar">
+          <div><p class="eyebrow">Screen 3 · Responsive</p><h3 id="week-title">Week View</h3></div>
+          <div class="state-switcher" data-switcher="week" aria-label="Week View phone treatment">
+            <button type="button" aria-pressed="true" data-state="stacked">Stacked days</button>
+            <button type="button" aria-pressed="false" data-state="compact">Compact cards</button>
+          </div>
+        </div>
+        <div class="screen" id="week-screen">
+          <div class="screen-chrome"><strong><span aria-hidden="true">C</span> Canopy Schedule</strong><nav class="screen-nav" aria-label="Schedule screen navigation"><a href="#screen-week">Week View</a><a href="#screen-dashboard">My Family</a><a href="#screen-dashboard">Announcements (2)</a><a href="#screen-agreement">Agreement</a></nav></div>
+          <div class="context-strip"><span>2026 Tree Lot</span><span>Rivera Household</span><span>8 shifts this week</span></div>
+          <div class="screen-body">
+            <div class="week-nav"><button class="btn btn-secondary btn-icon" aria-label="Previous week">←</button><div class="week-nav-center"><strong>November 30–December 6</strong><small>8 published shifts · Pacific Time</small></div><button class="btn btn-secondary btn-icon" aria-label="Next week">→</button></div>
+            <div class="controls"><label class="field" style="min-width:13rem"><span class="label">Week</span><select><option>Nov 30–Dec 6 · 8 shifts</option></select></label><label class="field" style="min-width:13rem"><span class="label">Show</span><select><option>All staffing levels</option><option>Needs help</option></select></label><span class="caption">Status: ● staffing · ✓ family assignment · ◇ special event</span></div>
+            <section class="day-group" aria-labelledby="fri-title"><div class="day-heading"><h3 id="fri-title">Friday, December 4</h3><span class="caption">2 shifts</span></div><div class="day-shifts">
+              <div class="shift-card"><div class="shift-top"><div><span class="badge badge-success">● FULL</span><h4 style="margin-top:.45rem">Afternoon Setup</h4></div><span class="badge badge-success">✓ Signed Up</span></div><p class="shift-time">1:00–5:00 PM · Tree Lot</p><div class="meter"><div class="meter-head"><span>Adults 4/4</span><span>Scouts 6/6</span></div><div class="meter-bar"><span class="meter-fill" style="width:100%"></span></div></div><button class="btn btn-secondary">View your assignment</button></div>
+              <div class="shift-card"><div class="shift-top"><div><span class="badge badge-info">● OK</span><h4 style="margin-top:.45rem">Friday Evening</h4></div></div><p class="shift-time">5:00–9:00 PM · Tree Lot</p><div class="meter"><div class="meter-head"><span>Adults 3/4</span><span>Scouts 5/6</span></div><div class="meter-bar"><span class="meter-fill" style="width:80%"></span></div></div><button class="btn btn-primary">View and sign up</button></div>
+            </div></section>
+            <section class="day-group" aria-labelledby="sat-title"><div class="day-heading"><h3 id="sat-title">Saturday, December 5</h3><span class="caption">3 shifts</span></div><div class="day-shifts">
+              <div class="shift-card critical"><div class="shift-top"><div><span class="badge badge-critical">× CRITICAL</span><h4 style="margin-top:.45rem">Saturday Morning</h4></div></div><p class="shift-time">9:00 AM–1:00 PM · Tree Lot</p><div class="meter"><div class="meter-head"><span>Adults 2/4</span><span>Scouts 5/6</span></div><div class="meter-bar"><span class="meter-fill critical" style="width:50%"></span></div></div><button class="btn btn-primary">Help this shift</button></div>
+              <div class="shift-card"><div class="shift-top"><div><span class="badge badge-warning">! LOW</span><h4 style="margin-top:.45rem">Saturday Afternoon</h4></div></div><p class="shift-time">1:00–5:00 PM · Tree Lot</p><div class="meter"><div class="meter-head"><span>Adults 3/4</span><span>Scouts 3/6</span></div><div class="meter-bar"><span class="meter-fill low" style="width:58%"></span></div></div><button class="btn btn-primary">View and sign up</button></div>
+              <div class="shift-card"><div class="shift-top"><div><span class="badge badge-success">● FULL</span><h4 style="margin-top:.45rem">Saturday Evening</h4></div></div><p class="shift-time">5:00–9:00 PM · Tree Lot</p><div class="meter"><div class="meter-head"><span>Adults 4/4</span><span>Scouts 6/6</span></div><div class="meter-bar"><span class="meter-fill" style="width:100%"></span></div></div><button class="btn" disabled>Shift is full</button></div>
+            </div></section>
+            <section class="day-group" aria-labelledby="sun-title"><div class="day-heading"><h3 id="sun-title">Sunday, December 6</h3><span class="caption">Special Event</span></div><div class="day-shifts">
+              <div class="shift-card special"><div class="shift-top"><div><span class="badge badge-special">◇ ALL HANDS NEEDED</span><h4 style="margin-top:.45rem">Community Delivery Day</h4></div></div><p class="shift-time">8:00 AM–2:00 PM · Tree Lot and neighborhood routes</p><div class="meter"><div class="meter-head"><span>Adults 8/12 · LOW</span><span>Scouts 14/18 · OK</span></div><div class="meter-bar"><span class="meter-fill low" style="width:72%"></span></div></div><button class="btn btn-primary">Join Delivery Day</button></div>
+            </div></section>
+          </div>
+        </div>
+      </article>
+
+      <article class="subsection section" id="screen-shift" aria-labelledby="shift-title">
+        <div class="screen-toolbar">
+          <div><p class="eyebrow">Screen 4 · Responsive</p><h3 id="shift-title">Shift Detail and Signup</h3></div>
+          <div class="state-switcher" data-switcher="shift" aria-label="Shift signup outcome">
+            <button type="button" aria-pressed="true" data-state="available">Available</button>
+            <button type="button" aria-pressed="false" data-state="full">Concurrent: Shift Full</button>
+            <button type="button" aria-pressed="false" data-state="success">Signed Up</button>
+          </div>
+        </div>
+        <div class="screen">
+          <div class="screen-chrome"><strong><span aria-hidden="true">←</span> Shift details</strong><nav class="screen-nav"><a href="#screen-week">Week View</a><a href="#screen-dashboard">My Family</a><a href="#screen-dashboard">Announcements (2)</a></nav></div>
+          <div class="screen-body">
+            <div id="shift-result" aria-live="polite"></div>
+            <div class="split">
+              <div>
+                <span class="badge badge-special">◇ ALL HANDS NEEDED</span>
+                <h3 class="screen-title" style="margin-top:.65rem">Community Delivery Day</h3>
+                <p class="screen-subtitle">Sunday, December 13 · 8:00 AM–2:00 PM · Troop 900 Tree Lot and neighborhood routes</p>
+                <div class="card" style="margin-top:1rem"><dl class="definition"><dt>Lifecycle</dt><dd><span class="badge badge-info">Published</span></dd><dt>Adult staffing</dt><dd>11 of 12 · OK · 1 slot remains</dd><dt>Scout staffing</dt><dd>17 of 18 · OK · 1 slot remains</dd><dt>What to bring</dt><dd>Work gloves, water, and weather layers</dd><dt>Notes</dt><dd>Drivers meet at the east gate. Scouts will be paired with adults for each route.</dd></dl></div>
+                <div class="subsection-title" style="margin-top:1.5rem"><h4>Current roster</h4></div>
+                <div class="roster-row"><span class="avatar">MC</span><span><strong>Morgan Chen · Adult</strong><span class="caption">Scheduled · Oak Household · Pending</span></span><span class="badge badge-neutral">○ Pending</span></div>
+                <div class="roster-row"><span class="avatar scout">SP</span><span><strong>Sam Patel · Scout</strong><span class="caption">Scheduled · Cedar Household · Pending</span></span><span class="badge badge-neutral">○ Pending</span></div>
+              </div>
+              <aside class="card raised sticky-card">
+                <h3>Sign up your family</h3>
+                <p class="muted">Acting as Alex Rivera for the Rivera Household.</p>
+                <form action="#shift-result" method="get" id="signup-form">
+                  <fieldset style="margin-top:1rem">
+                    <legend>Select one person</legend>
+                    <label class="person-option"><input type="radio" name="person" value="Alex" checked><span><strong>Alex Rivera</strong><span class="caption">Adult · eligible for 1 remaining adult slot</span></span><span class="badge badge-success">Eligible</span></label>
+                    <label class="person-option disabled"><input type="radio" name="person" value="Jordan" disabled><span><strong>Jordan Rivera</strong><span class="caption">Scout · Seasonal Agreement Not Confirmed</span></span><span class="badge badge-warning">Ineligible</span></label>
+                    <label class="person-option disabled"><input type="radio" name="person" value="Maya" disabled><span><strong>Maya Rivera</strong><span class="caption">Adult · already assigned to this shift</span></span><span class="badge badge-info">Signed Up</span></label>
+                    <label class="person-option disabled"><input type="radio" name="person" value="Riley" disabled><span><strong>Riley Rivera</strong><span class="caption">Scout · no compatible slot selected for this person</span></span><span class="badge badge-neutral">Wrong role</span></label>
+                  </fieldset>
+                  <div class="alert alert-info" style="margin-top:.8rem"><span class="alert-icon">i</span><div><strong>Selected: Alex Rivera</strong><p>Adult slot · Rivera Household</p></div></div>
+                  <button class="btn btn-primary" style="width:100%;margin-top:.8rem">Sign Up Alex</button>
+                  <p class="hint">A normal form submission returns a complete result page. Enable inline enhancement below to update this panel in place.</p>
+                </form>
+                <div class="pe-mode" style="margin-top:.8rem"><span><strong>Inline enhancement</strong><span class="caption" style="display:block">Same form, faster update</span></span><label class="switch"><input id="enhance-toggle" type="checkbox" aria-label="Enable inline enhanced signup"><span></span></label></div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="subsection section" id="screen-roster" aria-labelledby="roster-title">
+        <div class="screen-toolbar"><div><p class="eyebrow">Screen 5 · 390 px operational phone</p><h3 id="roster-title">Mobile Live Roster</h3></div><span class="badge badge-info">In Progress</span></div>
+        <div class="screen mobile-screen">
+          <div class="screen-chrome"><strong><span aria-hidden="true">←</span> Saturday Morning</strong><span class="badge badge-special">Live</span></div>
+          <div class="context-strip"><span>Sat, Dec 5 · 9:00 AM–1:00 PM</span><span>On-site actor: Alex Rivera</span></div>
+          <div class="screen-body">
+            <div style="display:flex;justify-content:space-between;gap:.75rem;align-items:start"><div><h3 class="screen-title">Arrival roster</h3><p class="screen-subtitle">6 people · 2 still expected</p></div><button class="btn btn-primary" data-walkin>Add Walk-In</button></div>
+            <label class="field" style="margin-top:1rem"><span class="label">Find in roster</span><input type="search" placeholder="Search name"></label>
+            <div class="roster-row" style="margin-top:1rem"><span class="avatar">MC</span><span><strong>Morgan Chen · Adult</strong><span class="caption">Scheduled · Pending · Oak Household</span></span><button class="btn btn-primary">Check In Morgan</button></div>
+            <div class="roster-row"><span class="avatar scout">JR</span><span><strong>Jordan Rivera · Scout</strong><span class="caption">Checked in by Alex Rivera · 8:56 AM · 00:38 elapsed</span></span><button class="btn btn-secondary">Check Out Jordan</button></div>
+            <div class="roster-row"><span class="avatar">SP</span><span><strong>Sam Patel · Adult</strong><span class="caption">Walk-In · checked in by Morgan Chen · 9:08 AM</span></span><span class="badge badge-info">✓ Walk-In</span></div>
+            <div class="roster-row"><span class="avatar scout">LC</span><span><strong>Lee Chen · Scout</strong><span class="caption">Checked out by Alex Rivera · 10:02 AM · 1h 02m</span></span><span class="badge badge-success">✓ Checked Out</span></div>
+            <div class="roster-row"><span class="avatar scout">TW</span><span><strong>Taylor Wilson · Scout</strong><span class="caption">Scheduled assignment retained · note added by Morgan Chen</span></span><span class="badge badge-critical">× No Show</span></div>
+            <div class="roster-row"><span class="avatar">RB</span><span><strong>Robin Brooks · Adult</strong><span class="caption">Pending · check-in window closes at 10:00 AM</span></span><button class="btn btn-primary">Check In Robin</button></div>
+          </div>
+          <nav class="mobile-bottom-nav" aria-label="Committee operations navigation"><a href="#screen-week"><span>▦</span>Week</a><a href="#screen-roster" aria-current="page"><span>✓</span>Roster</a><a href="#screen-staffing"><span>!</span>Alerts</a><a href="#screen-dashboard"><span>•••</span>More</a></nav>
+        </div>
+      </article>
+
+      <article class="subsection section" id="screen-staffing" aria-labelledby="staffing-title">
+        <div class="screen-toolbar"><div><p class="eyebrow">Screen 6 · Tablet and desktop</p><h3 id="staffing-title">Committee Staffing View</h3></div><span class="badge badge-critical">3 staffing alerts</span></div>
+        <div class="screen">
+          <div class="screen-chrome"><strong><span aria-hidden="true">C</span> Committee Operations</strong><nav class="screen-nav"><a href="#screen-week">Week View</a><a href="#screen-staffing">Staffing Alerts (3)</a><a href="#screen-roster">Attendance</a><a href="#screen-announcement">Announcements</a><a href="#screen-treasurer">Reports</a></nav></div>
+          <div class="context-strip"><span>2026 Tree Lot</span><span>Nov 30–Dec 6</span><span>Pacific Time</span><span>Committee Member · Morgan Chen</span></div>
+          <div class="screen-body">
+            <div class="screen-toolbar"><div><h3 class="screen-title">Staffing health</h3><p class="screen-subtitle">Prioritize shifts that cannot safely open.</p></div><div class="controls"><button class="btn btn-secondary">Copy public signup link</button><button class="btn btn-primary">Send targeted reminder</button></div></div>
+            <div class="summary-stats"><div class="summary-stat"><strong>8</strong><span class="caption">Published shifts</span></div><div class="summary-stat"><strong>2</strong><span class="caption">CRITICAL</span></div><div class="summary-stat"><strong>1</strong><span class="caption">LOW</span></div><div class="summary-stat"><strong>81%</strong><span class="caption">Slots filled</span></div></div>
+            <div class="operation-layout" style="margin-top:1rem">
+              <aside class="card filter-card"><h3>Filters</h3><label>Staffing<select><option>Needs help (3)</option><option>All levels</option></select></label><label>Day<select><option>All days</option><option>Saturday</option></select></label><label>Role gap<select><option>Any role</option><option>Adults</option><option>Scouts</option></select></label><button class="btn btn-secondary" style="width:100%;margin-top:1rem">Apply filters</button></aside>
+              <div>
+                <div class="alert alert-critical"><span class="alert-icon">!</span><div><strong>Saturday Morning cannot safely open</strong><p>2 of 4 adults · CRITICAL. Target 9 eligible adults who are not yet scheduled.</p><div class="controls" style="margin-top:.65rem"><button class="btn btn-primary">Send targeted reminder</button><button class="btn btn-secondary">Copy shift link</button></div></div></div>
+                <div class="table-wrap" style="margin-top:.8rem">
+                  <table>
+                    <caption>Week staffing by priority</caption>
+                    <thead><tr><th scope="col" aria-sort="ascending">Priority ↑</th><th scope="col">Shift</th><th scope="col">Adults</th><th scope="col">Scouts</th><th scope="col">Overall</th><th scope="col">Action</th></tr></thead>
+                    <tbody>
+                      <tr><td>1</td><td><strong>Sat, Dec 5 · Morning</strong><br><span class="caption">9:00 AM–1:00 PM</span></td><td><strong>2/4</strong><div class="progress" aria-label="Adults 2 of 4"><span class="meter-fill critical" style="width:50%"></span></div></td><td><strong>5/6</strong><div class="progress" aria-label="Scouts 5 of 6"><span style="width:83%"></span></div></td><td><span class="badge badge-critical">× CRITICAL</span></td><td><button class="btn btn-quiet">Manage</button></td></tr>
+                      <tr><td>2</td><td><strong>Sun, Dec 6 · Closing</strong><br><span class="caption">5:00–9:00 PM</span></td><td><strong>2/4</strong><div class="progress" aria-label="Adults 2 of 4"><span class="meter-fill critical" style="width:50%"></span></div></td><td><strong>3/6</strong><div class="progress" aria-label="Scouts 3 of 6"><span class="meter-fill critical" style="width:50%"></span></div></td><td><span class="badge badge-critical">× CRITICAL</span></td><td><button class="btn btn-quiet">Manage</button></td></tr>
+                      <tr><td>3</td><td><strong>Sat, Dec 5 · Afternoon</strong><br><span class="caption">1:00–5:00 PM</span></td><td><strong>3/4</strong><div class="progress" aria-label="Adults 3 of 4"><span class="meter-fill low" style="width:75%"></span></div></td><td><strong>3/6</strong><div class="progress" aria-label="Scouts 3 of 6"><span class="meter-fill low" style="width:50%"></span></div></td><td><span class="badge badge-warning">! LOW</span></td><td><button class="btn btn-quiet">Manage</button></td></tr>
+                      <tr><td>4</td><td><strong>Fri, Dec 4 · Evening</strong><br><span class="caption">5:00–9:00 PM</span></td><td>3/4</td><td>5/6</td><td><span class="badge badge-info">● OK</span></td><td><button class="btn btn-quiet">Manage</button></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="subsection section" id="screen-announcement" aria-labelledby="announcement-title">
+        <div class="screen-toolbar">
+          <div><p class="eyebrow">Screen 7 · Responsive</p><h3 id="announcement-title">Announcement Compose and Delivery</h3></div>
+          <div class="state-switcher" data-switcher="delivery" aria-label="Delivery example state">
+            <button type="button" aria-pressed="true" data-state="disabled">Groups.io disabled</button>
+            <button type="button" aria-pressed="false" data-state="enabled">Optional enabled</button>
+            <button type="button" aria-pressed="false" data-state="failed">SMS failed</button>
+          </div>
+        </div>
+        <div class="screen">
+          <div class="screen-chrome"><strong><span aria-hidden="true">C</span> Announcements</strong><nav class="screen-nav"><a href="#screen-announcement">All announcements</a><a href="#screen-announcement">Compose</a><a href="#screen-staffing">Committee</a></nav></div>
+          <div class="screen-body">
+            <div id="delivery-alert" aria-live="polite"></div>
+            <div class="compose-layout">
+              <form class="card">
+                <p class="eyebrow">New announcement</p><h3 class="screen-title">Keep the crew informed</h3>
+                <div class="field" style="margin-top:1rem"><label for="compose-title">Title <span aria-hidden="true">*</span></label><input id="compose-title" value="Cold-weather plan for Saturday" required></div>
+                <div class="field" style="margin-top:.8rem"><label for="compose-body">Message <span aria-hidden="true">*</span></label><textarea id="compose-body" required>Temperatures will be below freezing Saturday morning. Please bring gloves, dress in layers, and check the Week View before leaving home.</textarea><span class="hint">143 of 500 characters</span></div>
+                <fieldset style="margin-top:.8rem"><legend>Priority</legend><div class="controls"><label class="choice"><input type="radio" name="priority"><span>Informational</span></label><label class="choice"><input type="radio" name="priority" checked><span>Important</span></label><label class="choice"><input type="radio" name="priority"><span>Urgent</span></label></div></fieldset>
+                <fieldset style="margin-top:.8rem"><legend>Delivery channels</legend><label class="choice"><input type="checkbox" checked disabled><span><strong>Web · required</strong><small>Visible to 47 active volunteers.</small></span></label><label class="choice"><input type="checkbox" checked disabled><span><strong>SMS · required</strong><small>Sends to 39 verified recipients; phone numbers remain private.</small></span></label><label class="choice" id="groups-choice"><input id="groups-checkbox" type="checkbox" disabled><span><strong>Groups.io · Disabled</strong><small>An Admin can enable this optional channel.</small></span></label></fieldset>
+                <fieldset style="margin-top:.8rem"><legend>Publication</legend><label class="choice"><input type="radio" name="timing" checked><span>Publish immediately</span></label><label class="choice"><input type="radio" name="timing"><span>Save as draft</span></label></fieldset>
+                <button class="btn btn-primary" type="button" data-publish style="width:100%;margin-top:.8rem">Review and publish announcement</button>
+              </form>
+              <aside>
+                <div class="card"><h3>Recipient preview</h3><dl class="definition" style="margin-top:.8rem"><dt>Audience</dt><dd>All active volunteers</dd><dt>Web</dt><dd>47 people</dd><dt>SMS</dt><dd>39 verified recipients</dd><dt>Excluded</dt><dd>3 inactive, 5 without SMS</dd></dl><p class="hint">Counts are shown without exposing recipients’ phone numbers.</p></div>
+                <div class="card" style="margin-top:1rem"><div style="display:flex;justify-content:space-between;gap:.5rem"><h3>Delivery status</h3><span class="badge badge-info">Published</span></div><p class="caption">Revision 1 · Dec 2 at 4:32 PM · Morgan Chen</p>
+                  <div class="delivery-row"><span><strong>Web</strong><span class="caption" style="display:block">47 recipients</span></span><span class="badge badge-success">✓ Delivered</span></div>
+                  <div class="delivery-row"><span><strong>SMS</strong><span class="caption" id="sms-detail" style="display:block">39 sent · 38 delivered · 1 pending</span></span><span class="badge badge-info" id="sms-badge">◷ Sent</span></div>
+                  <div class="delivery-row"><span><strong>Groups.io</strong><span class="caption" style="display:block">Optional channel</span></span><span class="badge badge-neutral" id="groups-badge">○ Disabled</span></div>
+                  <button class="btn btn-secondary" id="retry-button" type="button" hidden>Retry failed SMS only</button>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="subsection section" id="screen-treasurer" aria-labelledby="treasurer-title">
+        <div class="screen-toolbar"><div><p class="eyebrow">Screen 8 · Responsive data-dense</p><h3 id="treasurer-title">Treasurer Scout Bucks Finalization</h3></div><span class="badge badge-warning">Ready to Finalize</span></div>
+        <div class="screen">
+          <div class="screen-chrome"><strong><span aria-hidden="true">C</span> Reports & Scout Bucks</strong><nav class="screen-nav"><a href="#screen-treasurer">Credited hours</a><a href="#screen-treasurer">Finalization</a><a href="#screen-staffing">Reports</a></nav></div>
+          <div class="context-strip"><span>2026 Tree Lot</span><span>Season completed Dec 23</span><span>Treasurer · Dana Brooks</span><span>Revision 2 current</span></div>
+          <div class="screen-body">
+            <div class="screen-toolbar"><div><h3 class="screen-title">Finalize Scout Bucks awards</h3><p class="screen-subtitle">Credited hours are locked for this revision. Review the exact pool reconciliation before finalizing.</p></div><button class="btn btn-secondary">Export current CSV</button></div>
+            <div class="alert alert-info"><span class="alert-icon">i</span><div><strong>Existing finalized revision 1</strong><p>Finalized Jan 8, 2027 by Dana Brooks for $12,000.00. This correction will create revision 2 and preserve prior history.</p></div></div>
+            <div class="grid grid-3" style="margin-top:1rem">
+              <div class="card"><span class="badge badge-provisional">◇ Provisional Credited Hours</span><p class="stat" style="margin-top:.8rem">642.75</p><p class="caption">Finalized credited-hour total for calculation</p></div>
+              <div class="card"><div class="field"><label for="pool">Distributable profit</label><div class="money-wrap"><span>$</span><input id="pool" type="text" inputmode="decimal" value="12,500.00" aria-describedby="pool-hint"></div><span class="hint" id="pool-hint">Normalized value: $12,500.00 USD</span></div></div>
+              <div class="card"><p class="caption">Informational effective rate</p><p class="stat" style="margin-top:.8rem">$19.4485</p><p class="caption">per credited hour · not a stored balance or redemption value</p></div>
+            </div>
+            <div class="table-wrap treasurer-table" style="margin-top:1rem">
+              <table>
+                <caption>Proposed Scout Bucks awards · Revision 2</caption>
+                <thead><tr><th scope="col">Scout</th><th scope="col" class="num hide-phone">Own hours</th><th scope="col" class="num hide-phone">Adult allocation</th><th scope="col" class="num">Credited hours</th><th scope="col" class="num">Raw award</th><th scope="col" class="num">Final award</th><th scope="col">Rounding</th></tr></thead>
+                <tbody>
+                  <tr class="current-row"><td><strong>Jordan Rivera</strong><br><span class="caption">Rivera family unit · current household</span></td><td class="num hide-phone">22.50</td><td class="num hide-phone">8.00</td><td class="num">30.50</td><td class="num">$593.18</td><td class="num"><strong>$593.18</strong></td><td><span class="badge badge-neutral">Exact</span></td></tr>
+                  <tr><td><strong>Sam Patel</strong><br><span class="caption">Patel family unit</span></td><td class="num hide-phone">45.00</td><td class="num hide-phone">12.25</td><td class="num">57.25</td><td class="num">$1,113.47</td><td class="num"><strong>$1,113.47</strong></td><td><span class="badge badge-neutral">Exact</span></td></tr>
+                  <tr><td><strong>Lee Chen</strong><br><span class="caption">Chen family unit</span></td><td class="num hide-phone">38.75</td><td class="num hide-phone">10.00</td><td class="num">48.75</td><td class="num">$947.92</td><td class="num"><strong>$947.93</strong></td><td><span class="badge badge-info">+ $0.01</span></td></tr>
+                  <tr><td><strong>Taylor Wilson</strong><br><span class="caption">Wilson family unit</span></td><td class="num hide-phone">31.25</td><td class="num hide-phone">6.50</td><td class="num">37.75</td><td class="num">$734.18</td><td class="num"><strong>$734.18</strong></td><td><span class="badge badge-neutral">Exact</span></td></tr>
+                  <tr><td><strong>17 additional Scouts</strong></td><td class="num hide-phone">368.50</td><td class="num hide-phone">100.00</td><td class="num">468.50</td><td class="num">$9,111.25</td><td class="num"><strong>$9,111.24</strong></td><td><span class="badge badge-warning">− $0.01</span></td></tr>
+                </tbody>
+                <tfoot><tr><th scope="row">21 Scouts total</th><td class="num hide-phone">506.00</td><td class="num hide-phone">136.75</td><td class="num"><strong>642.75</strong></td><td class="num">$12,500.00</td><td class="num"><strong>$12,500.00</strong></td><td>Exact pool</td></tr></tfoot>
+              </table>
+            </div>
+            <div class="reconcile" style="margin-top:1rem"><span><strong>✓ Exact reconciliation</strong><span class="caption" style="display:block;color:inherit">Largest-remainder rounding distributes cents by fractional remainder. No money is lost or created.</span></span><strong>$12,500.00 = $12,500.00</strong></div>
+            <div class="split" style="margin-top:1rem">
+              <div class="card"><h3>Revision history</h3><div class="table-wrap" style="margin-top:.8rem"><table><thead><tr><th>Revision</th><th>Status</th><th>Pool</th><th>Finalized</th><th>Export</th></tr></thead><tbody><tr><td>2</td><td><span class="badge badge-warning">Ready to Finalize</span></td><td>$12,500.00</td><td>Not yet</td><td>Preview CSV</td></tr><tr><td>1</td><td><span class="badge badge-success">Finalized</span></td><td>$12,000.00</td><td>Jan 8 · Dana Brooks</td><td><a href="#screen-treasurer">Download CSV</a></td></tr></tbody></table></div></div>
+              <aside class="card raised"><h3>Finalize revision 2</h3><p>This creates official dollar awards and preserves revision 1. The scheduler will not maintain Scout Bucks balances or redemptions.</p><label class="choice" style="margin-top:.7rem"><input type="checkbox" id="finalize-check"><span><strong>I reviewed the exact-pool reconciliation.</strong><small>Required before finalization.</small></span></label><button class="btn btn-primary" data-finalize style="width:100%;margin-top:.7rem">Finalize Scout Bucks Awards</button><p class="hint">A confirmation step will restate the pool, revision, and consequence.</p></aside>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <footer class="footer"><span><strong>Canopy</strong> · Troop 900 Tree Lot design-system POC</span><span>Offline-ready · Semantic HTML · Responsive from 390 to 1440+</span></footer>
+  </main>
+
+  <div class="dialog-backdrop" id="dialog-backdrop" hidden>
+    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title" aria-describedby="dialog-description">
+      <h3 id="dialog-title">Delete the archived 2025 season?</h3>
+      <p id="dialog-description">This permanently deletes live season data after archive verification. This action cannot be undone.</p>
+      <div class="alert alert-critical" style="margin-top:1rem"><span class="alert-icon">!</span><div><strong>Archive checksum verified</strong><p class="mono">SHA-256 · 7e3f91c2…a914</p></div></div>
+      <div class="controls" style="margin-top:1rem;justify-content:flex-end"><button class="btn btn-secondary" id="dialog-cancel">Keep season</button><button class="btn btn-danger">Delete Archived Season</button></div>
+    </section>
+  </div>
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <script>
+    (() => {
+      const $ = (selector, root = document) => root.querySelector(selector);
+      const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+      const toast = (message) => {
+        const node = $("#toast");
+        node.textContent = message;
+        node.hidden = false;
+        window.clearTimeout(toast.timer);
+        toast.timer = window.setTimeout(() => node.hidden = true, 3200);
+      };
+
+      $$(".state-switcher").forEach(group => {
+        group.addEventListener("click", event => {
+          const button = event.target.closest("button[data-state]");
+          if (!button) return;
+          $$("button", group).forEach(item => item.setAttribute("aria-pressed", String(item === button)));
+          const state = button.dataset.state;
+          const kind = group.dataset.switcher;
+          if (kind === "primitive") {
+            const demo = $(".demo-button");
+            const status = $("#primitive-status");
+            demo.disabled = state === "disabled";
+            demo.classList.toggle("loading", state === "loading");
+            demo.textContent = state === "loading" ? "Signing up" : "Sign Up Alex";
+            const messages = {
+              default: ["alert-info", "Default state", "Controls are ready for input."],
+              loading: ["alert-info", "Loading state", "Signing up Alex. The control keeps its width."],
+              error: ["alert-critical", "Validation error", "Select an eligible person before signing up."],
+              success: ["alert-success", "Success", "Alex is signed up for Saturday Morning."],
+              disabled: ["alert-warning", "Unavailable", "Shift is full. The reason remains visible."]
+            };
+            status.className = "alert " + messages[state][0];
+            status.innerHTML = '<span class="alert-icon" aria-hidden="true">' + (state === "success" ? "✓" : state === "error" ? "×" : "i") + '</span><div><strong>' + messages[state][1] + '</strong><p>' + messages[state][2] + '</p></div>';
+          }
+          if (kind === "week") $("#week-screen").classList.toggle("week-compact", state === "compact");
+          if (kind === "shift") {
+            const result = $("#shift-result");
+            if (state === "available") result.innerHTML = "";
+            if (state === "full") result.innerHTML = '<div class="alert alert-critical" style="margin-bottom:1rem"><span class="alert-icon">×</span><div><strong>Shift Full</strong><p>Another family took the last adult slot while you were signing up. No assignment was created. Choose another shift.</p></div></div>';
+            if (state === "success") result.innerHTML = '<div class="alert alert-success" style="margin-bottom:1rem"><span class="alert-icon">✓</span><div><strong>Alex is signed up</strong><p>Community Delivery Day · Adult slot · Rivera Household.</p></div></div>';
+          }
+          if (kind === "delivery") {
+            const checkbox = $("#groups-checkbox");
+            const choice = $("#groups-choice");
+            const groupsBadge = $("#groups-badge");
+            const smsBadge = $("#sms-badge");
+            const smsDetail = $("#sms-detail");
+            const retry = $("#retry-button");
+            checkbox.disabled = state === "disabled";
+            checkbox.checked = state !== "disabled";
+            choice.querySelector("strong").textContent = state === "disabled" ? "Groups.io · Disabled" : "Groups.io · Optional";
+            choice.querySelector("small").textContent = state === "disabled" ? "An Admin can enable this optional channel." : "Enabled for this announcement.";
+            groupsBadge.className = "badge " + (state === "disabled" ? "badge-neutral" : "badge-success");
+            groupsBadge.textContent = state === "disabled" ? "○ Disabled" : "✓ Delivered";
+            smsBadge.className = "badge " + (state === "failed" ? "badge-critical" : "badge-info");
+            smsBadge.textContent = state === "failed" ? "× Failed" : "◷ Sent";
+            smsDetail.textContent = state === "failed" ? "34 delivered · 5 failed" : "39 sent · 38 delivered · 1 pending";
+            retry.hidden = state !== "failed";
+            $("#delivery-alert").innerHTML = state === "failed" ? '<div class="alert alert-critical" style="margin-bottom:1rem"><span class="alert-icon">×</span><div><strong>SMS delivery partially failed</strong><p>Retry only the 5 failed SMS messages. Web and Groups.io will not be duplicated.</p></div></div>' : "";
+          }
+        });
+      });
+
+      const signup = $("#signup-form");
+      signup.addEventListener("submit", event => {
+        if (!$("#enhance-toggle").checked) return;
+        event.preventDefault();
+        $("#shift-result").innerHTML = '<div class="alert alert-success" style="margin-bottom:1rem"><span class="alert-icon">✓</span><div><strong>Alex is signed up</strong><p>Inline update complete. The same form would otherwise submit and return a full page.</p></div></div>';
+        $("#shift-result").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+      });
+
+      $$("[data-enhanceable]").forEach(form => form.addEventListener("submit", event => {
+        event.preventDefault();
+        if (!form.reportValidity()) return;
+        toast("Agreement confirmed for Jordan Rivera.");
+      }));
+
+      $$("[data-copy]").forEach(button => button.addEventListener("click", async () => {
+        try { await navigator.clipboard.writeText("PINE-900"); toast("Household link copied."); }
+        catch { toast("Copy unavailable. Select code PINE-900."); }
+      }));
+
+      const backdrop = $("#dialog-backdrop");
+      let dialogReturnFocus;
+      const closeDialog = () => { backdrop.hidden = true; dialogReturnFocus?.focus(); };
+      $$("[data-dialog-open]").forEach(button => button.addEventListener("click", () => {
+        dialogReturnFocus = button;
+        backdrop.hidden = false;
+        $("#dialog-cancel").focus();
+      }));
+      $("#dialog-cancel").addEventListener("click", closeDialog);
+      backdrop.addEventListener("keydown", event => {
+        if (event.key === "Escape") closeDialog();
+        if (event.key !== "Tab") return;
+        const focusable = $$("button", backdrop);
+        const first = focusable[0], last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      });
+
+      $("[data-walkin]").addEventListener("click", () => toast("Walk-In panel opened: search person, verify role and agreement, then check in."));
+      $("[data-publish]").addEventListener("click", () => toast("Ready to publish to web and SMS for 47 volunteers."));
+      $("#retry-button").addEventListener("click", () => {
+        $("#sms-badge").className = "badge badge-info";
+        $("#sms-badge").textContent = "↻ Retrying";
+        toast("Retrying 5 failed SMS messages only.");
+      });
+      $("[data-finalize]").addEventListener("click", () => {
+        if (!$("#finalize-check").checked) { toast("Review and confirm the exact-pool reconciliation first."); $("#finalize-check").focus(); return; }
+        toast("Confirmation ready: Revision 2 · $12,500.00 · balances are not maintained.");
+      });
+
+      const hash = location.hash;
+      if (hash) requestAnimationFrame(() => document.querySelector(hash)?.scrollIntoView());
+    })();
+  </script>
+</body>
+</html>

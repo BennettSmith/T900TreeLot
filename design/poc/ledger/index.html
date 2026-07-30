@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Open Grove — Troop 900 Design System</title>
+  <style>
+    :root {
+      --canvas:#fafaf8; --surface:#ffffff; --surface-soft:#f3f4f1; --surface-muted:#eff0ec;
+      --text:#20222a; --text-2:#666a73; --text-disabled:#8b8e95; --border:#dedfd9; --border-strong:#a8aaa3;
+      --action:#4f56a6; --focus:#3842a0; --info:#49657a; --success:#2f6957; --warning:#866018;
+      --critical:#a23f54; --special:#625a94; --line:#dedfd9; --accent:#4f56a6;
+      --serif:ui-serif,Georgia,Cambria,"Times New Roman",serif; --sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      --mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+      --s1:.25rem; --s2:.5rem; --s3:.75rem; --s4:1rem; --s5:1.5rem; --s6:2rem; --s7:3rem;
+      --gutter:clamp(1rem,3vw,3rem); --control:2.75rem; --touch:2.75rem; --content:96rem;
+      --radius-control:8px; --radius-card:10px; --radius-dialog:14px;
+      --shadow-overlay:0 22px 60px rgba(32,34,42,.18);
+      --immediate:80ms; --standard:180ms; --entrance:260ms;
+    }
+    * { box-sizing:border-box }
+    html { scroll-behavior:smooth }
+    body { margin:0; color:var(--text); background:var(--canvas); font:15px/1.55 var(--sans); letter-spacing:-.006em }
+    body:before { display:none }
+    a { color:var(--action); text-underline-offset:3px }
+    button,input,select,textarea { font:inherit }
+    button,a,input,select,textarea { -webkit-tap-highlight-color:transparent }
+    :focus-visible { outline:3px solid rgba(79,86,166,.65); outline-offset:3px }
+    .skip { position:fixed; left:1rem; top:-5rem; z-index:100; background:var(--surface); padding:.75rem 1rem; border:1px solid var(--border-strong); border-radius:8px; box-shadow:var(--shadow-overlay) }
+    .skip:focus { top:1rem }
+    .app-header { position:sticky; top:0; z-index:40; color:var(--text); background:rgba(255,255,255,.97); border-bottom:1px solid var(--line); backdrop-filter:blur(16px) }
+    .masthead { min-height:56px; max-width:var(--content); margin:auto; padding:.4rem var(--gutter); display:flex; align-items:center; gap:1.75rem }
+    .brand { display:flex; align-items:center; gap:.6rem; min-width:max-content }
+    .brand-mark { width:26px; height:26px; display:grid; place-items:center; border:0; color:#fff; background:var(--accent); border-radius:50%; font:700 9px var(--sans); letter-spacing:.03em }
+    .brand h1 { margin:0; color:var(--text); font:750 .98rem/1.1 var(--sans); letter-spacing:-.02em }
+    .brand small { display:block; color:var(--text-2); font:.65rem var(--sans); letter-spacing:.02em }
+    .desktop-nav { display:flex; align-self:stretch; overflow-x:auto; scrollbar-width:none }
+    .desktop-nav button { color:var(--text-2); background:transparent; border:0; border-bottom:1px solid transparent; padding:.35rem .75rem; min-height:44px; cursor:pointer; white-space:nowrap }
+    .desktop-nav button:hover,.desktop-nav button[aria-current="page"] { color:var(--accent); background:transparent; border-bottom-color:var(--accent) }
+    .header-context { margin-left:auto; display:flex; align-items:center; gap:.6rem; color:var(--text-2); font-size:.8rem; white-space:nowrap }
+    .season { padding:.3rem .55rem; border:0; border-radius:999px; background:var(--surface-soft) }
+    .notice-dot { display:inline-grid; min-width:1.45rem; height:1.45rem; place-items:center; color:#fff; background:var(--accent); border:0; border-radius:50%; font-size:.7rem; font-weight:750 }
+    .mobile-menu { display:none; width:100%; color:var(--text); background:#fff; border:0; border-bottom:1px solid var(--line); min-height:46px; padding:.5rem 1rem; text-align:left }
+    .layout { display:block }
+    .section-tabs { position:sticky; top:56px; z-index:30; width:100%; height:auto; padding:0 var(--gutter); border-bottom:1px solid var(--line); background:rgba(250,250,248,.97); overflow:auto; backdrop-filter:blur(14px) }
+    .section-tabs nav { max-width:var(--content); margin:auto; display:flex; align-items:center; overflow-x:auto; scrollbar-width:none }
+    .tab-group-label { display:none }
+    .section-tabs button { width:auto; min-width:max-content; min-height:40px; margin:0; padding:.3rem .7rem; text-align:center; color:var(--text-2); background:transparent; border:0; border-bottom:1px solid transparent; cursor:pointer }
+    .section-tabs button:hover { color:var(--text); background:transparent }
+    .section-tabs button[aria-current="page"] { color:var(--accent); background:transparent; border-bottom-color:var(--accent); font-weight:700 }
+    main { min-width:0; max-width:var(--content); margin:auto; padding:3.75rem var(--gutter) 7rem }
+    .page { display:none; animation:reveal var(--entrance) ease-out }
+    .page.active { display:block }
+    @keyframes reveal { from { opacity:.2; transform:translateY(5px) } }
+    .eyebrow { margin:0 0 .55rem; color:var(--accent); font-weight:700; font-size:.76rem; letter-spacing:.02em }
+    h2,h3,h4 { line-height:1.2 }
+    h2 { max-width:24ch; margin:.15rem 0 .8rem; font:500 clamp(2rem,5vw,2.75rem)/1.08 var(--serif); letter-spacing:-.035em }
+    h3 { margin:0 0 1rem; font:700 1.35rem/1.2 var(--sans); letter-spacing:-.025em }
+    .screen-title h3,.phone-content h3 { font-size:1.8rem }
+    h4 { margin:0 0 .55rem; font-size:1.02rem }
+    .dek { max-width:72ch; margin:0 0 2.5rem; color:var(--text-2); font:1.05rem/1.7 var(--sans) }
+    .rule-title { display:flex; align-items:center; gap:.8rem; margin:3.75rem 0 1.25rem; color:var(--text-2); font:700 .82rem var(--sans); letter-spacing:0 }
+    .rule-title:after { content:""; height:1px; flex:1; background:var(--line) }
+    .grid { display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:1rem }
+    .col-12 { grid-column:span 12 }.col-8 { grid-column:span 8 }.col-7 { grid-column:span 7 }.col-6 { grid-column:span 6 }.col-5 { grid-column:span 5 }.col-4 { grid-column:span 4 }.col-3 { grid-column:span 3 }
+    .panel { padding:1.35rem 0; background:transparent; border:0; border-top:1px solid var(--line); border-radius:0 }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-card) }
+    .card { padding:1rem }
+    .accent-panel { border-top:1px solid var(--line) }
+    .card-header { display:flex; align-items:start; justify-content:space-between; gap:1rem; margin-bottom:.75rem }
+    .card-header h3,.card-header h4 { margin:0 }
+    .meta { color:var(--text-2); font-size:.8rem }
+    .caps { font-size:.74rem; letter-spacing:.01em; font-weight:700 }
+    .btn { display:inline-flex; align-items:center; justify-content:center; gap:.45rem; min-height:var(--control); padding:.55rem .9rem; color:var(--text); background:var(--surface); border:1px solid var(--border-strong); border-radius:var(--radius-control); font-weight:700; text-decoration:none; cursor:pointer; transition:background var(--standard),transform var(--immediate) }
+    .btn:hover { background:var(--surface-soft) }.btn:active { transform:translateY(1px) }
+    .btn.primary { color:#fff; background:var(--action); border-color:var(--action) }.btn.primary:hover { background:#42498e }
+    .btn.danger { color:#fff; background:var(--critical); border-color:var(--critical) }
+    .btn.quiet { border-color:transparent; background:transparent }.btn.icon { width:44px; padding:0 }
+    .btn:disabled,.btn.disabled { color:var(--text-disabled); background:var(--surface-muted); border-color:var(--border); cursor:not-allowed }
+    .btn.loading:before { content:""; width:.9rem; height:.9rem; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:spin .8s linear infinite }
+    @keyframes spin { to { transform:rotate(360deg) } }
+    .button-row { display:flex; flex-wrap:wrap; gap:.6rem; align-items:center }
+    .badge { display:inline-flex; align-items:center; gap:.35rem; min-height:24px; padding:.2rem .55rem; border:0; border-radius:999px; background:var(--surface-muted); font-size:.72rem; font-weight:700; letter-spacing:0; white-space:nowrap }
+    .badge:before { content:""; width:5px; height:5px; border-radius:50%; background:currentColor }.neutral { color:#5a625f }.info { color:var(--info); background:#e9f0f4 }.complete,.ok { color:var(--success); background:#e5f3ed }.warning,.low,.provisional { color:var(--warning); background:#fff1ce }.critical { color:var(--critical); background:#fbe7eb }.special { color:var(--special); background:#eeeafa }
+    .alert { display:grid; grid-template-columns:auto 1fr auto; gap:.75rem; align-items:start; padding:.9rem 1rem; margin:.75rem 0; color:var(--text); background:#edf3f6; border:0; border-left:3px solid var(--info); border-radius:8px }
+    .alert.success { border-left-color:var(--success); background:#e8f4ef }.alert.warning { border-left-color:var(--warning); background:#fff3d8 }.alert.critical { border-left-color:var(--critical); background:#fce9ed }.alert.blocking { border:1px solid rgba(162,63,84,.25); border-left:3px solid var(--critical) }
+    .alert-symbol { font-weight:900 }.alert p { margin:.15rem 0 }
+    .field { margin-bottom:1rem }.field label,.label { display:block; margin-bottom:.3rem; font-weight:800; font-size:.78rem }
+    .hint,.validation { display:block; margin-top:.3rem; color:var(--text-2); font-size:.76rem }.validation { color:var(--critical); font-weight:700 }
+    input,select,textarea { width:100%; min-height:var(--control); padding:.55rem .7rem; color:var(--text); background:#fff; border:1px solid var(--border-strong); border-radius:var(--radius-control) }
+    input[aria-invalid="true"],textarea[aria-invalid="true"] { border:2px solid var(--critical) }
+    input:disabled { color:var(--text-disabled); background:var(--surface-muted) }
+    textarea { min-height:7rem; resize:vertical }
+    fieldset { padding:1rem; border:1px solid var(--border); border-radius:10px } legend { padding:0 .35rem; font:700 .9rem var(--sans) }
+    .check { display:flex; align-items:flex-start; gap:.65rem; padding:.55rem 0 }.check input { width:22px; min-height:22px; flex:0 0 auto; margin:.05rem 0 }
+    .switch { display:flex; align-items:center; justify-content:space-between; gap:1rem; min-height:48px }
+    .switch input { appearance:none; width:46px; min-height:26px; padding:0; border-radius:20px; background:#aaa; border:2px solid #777 }
+    .switch input:checked { background:var(--success); border-color:var(--success) }.switch input:after { content:""; display:block; width:18px; height:18px; margin:2px; border-radius:50%; background:white; transition:transform var(--standard) }.switch input:checked:after { transform:translateX(20px) }
+    .token { min-height:112px; padding:1rem; border:1px solid var(--border); border-radius:10px; background:var(--surface); overflow:hidden }.swatch { height:46px; margin:-1rem -1rem .65rem; background:var(--token); border-bottom:1px solid var(--border) }.token code { display:block; margin-top:.3rem; color:var(--text-2); font:11px var(--mono) }
+    .type-specimen { padding:1rem 0; border-bottom:1px solid var(--border) }.type-specimen:last-child { border:0 }
+    .component-strip { display:flex; flex-wrap:wrap; gap:.6rem; align-items:center }
+    table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums }
+    caption { margin:0 0 .6rem; text-align:left; font:700 1.1rem var(--serif) }
+    th { color:var(--text-2); font-size:.72rem; letter-spacing:.01em; text-align:left; background:transparent }
+    th,td { padding:.65rem .7rem; border-bottom:1px solid var(--border); vertical-align:top }
+    tbody tr:hover { background:var(--surface-soft) }.num { text-align:right; font-variant-numeric:tabular-nums }
+    .list { margin:0; padding:0; list-style:none }.list-row { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:.75rem; min-height:56px; padding:.65rem 0; border-bottom:1px solid var(--border) }.list-row:last-child { border:0 }
+    .avatar { width:38px; height:38px; display:grid; place-items:center; flex:0 0 auto; color:var(--accent); background:#eceefa; border:0; border-radius:50%; font:750 .76rem var(--sans) }
+    .stat { padding:1.15rem 0; border:0; border-top:1px solid var(--line); background:transparent }.stat strong { display:block; font:650 clamp(1.6rem,4vw,2.45rem)/1 var(--sans); letter-spacing:-.05em; font-variant-numeric:tabular-nums }
+    .definition { display:grid; grid-template-columns:minmax(100px,1fr) 2fr; gap:.4rem 1rem; margin:0 }.definition dt { color:var(--text-2) }.definition dd { margin:0; font-weight:700 }
+    .progress { height:8px; overflow:hidden; background:#e3e4df; border-radius:999px }.progress span { display:block; height:100%; background:var(--success); border-radius:999px }
+    .staffing { display:grid; grid-template-columns:1fr 1fr; gap:.6rem; margin:.7rem 0 }.meter label { display:flex; justify-content:space-between; font-size:.74rem; font-weight:800 }
+    .shift-card { position:relative; padding:1rem; background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--success); border-radius:var(--radius-card) }
+    .shift-card.low { border-left-color:var(--warning) }.shift-card.critical { border-left-color:var(--critical) }.shift-card.special { border:1px solid #cfc8e8; border-left:3px solid var(--special); background:#f8f6fc }
+    .shift-card h4 { margin:.25rem 0 }.shift-time { font:700 .9rem var(--sans) }.shift-actions { display:flex; justify-content:space-between; align-items:end; gap:.75rem; margin-top:.8rem }
+    .day { margin-bottom:2rem }.day-title { display:flex; align-items:baseline; gap:.6rem; padding-bottom:.55rem; border-bottom:1px solid var(--line) }.day-title h3 { margin:0 }.day-title span { color:var(--text-2) }
+    .week-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.8rem }
+    .week-nav { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.25rem; padding:.75rem; background:var(--surface); border-block:1px solid var(--border) }
+    .week-nav strong { font:700 1.1rem var(--serif) }
+    .phone-frame { max-width:390px; margin:auto; border:1px solid var(--line); border-radius:24px; background:#fff; box-shadow:0 16px 50px rgba(32,34,42,.12); overflow:hidden }
+    .phone-top { padding:.6rem 1rem; color:var(--text-2); background:#fff; border-bottom:1px solid var(--line); font-size:.72rem; display:flex; justify-content:space-between }
+    .phone-content { padding:1rem; max-height:780px; overflow:auto }
+    .phone-content h3 { font-size:1.7rem }.phone-bottom { display:grid; grid-template-columns:repeat(4,1fr); position:sticky; bottom:0; background:var(--surface); border-top:1px solid var(--border) }.phone-bottom button { min-height:52px; border:0; background:transparent; font-size:.64rem; font-weight:800 }
+    .preview-bar { position:sticky; top:97px; z-index:20; display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; margin:0 0 1.5rem; padding:.6rem .75rem; background:rgba(255,255,255,.96); border:1px solid var(--line); border-radius:10px }
+    .preview-bar span { font-size:.74rem; font-weight:700; letter-spacing:0 }.preview-bar .btn { min-height:36px; padding:.35rem .65rem }
+    .preview-area { container-type:inline-size }
+    .preview-area.viewport-phone { max-width:390px; margin-inline:auto; border:1px solid var(--border-strong); box-shadow:var(--shadow-overlay) }
+    .preview-area.viewport-tablet { max-width:768px; margin-inline:auto; border:1px solid var(--border-strong) }
+    .screen-shell { background:#fff; padding:1rem; border-radius:10px }
+    .screen-title { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; margin-bottom:1.2rem }.screen-title h3 { margin:0; font-size:1.8rem }.screen-title p { margin:.25rem 0 0;color:var(--text-2) }
+    .split { display:grid; grid-template-columns:minmax(0,1.7fr) minmax(280px,.8fr); gap:1rem }
+    .roster-row { display:grid; grid-template-columns:auto 1fr auto; gap:.75rem; align-items:center; padding:.75rem 0; border-bottom:1px solid var(--border) }
+    .roster-row .btn { min-width:120px }.timer { font:700 1.4rem var(--mono); font-variant-numeric:tabular-nums }
+    .person-option { position:relative; display:grid; grid-template-columns:auto 1fr auto; gap:.75rem; align-items:center; min-height:64px; padding:.7rem; border:1px solid var(--border); background:var(--surface) }.person-option + .person-option { border-top:0 }.person-option.selected { outline:3px solid var(--action); outline-offset:-3px; background:#f1f2fb }.person-option.disabled { color:var(--text-disabled); background:var(--surface-muted) }.person-option input { width:22px; min-height:22px }
+    .special-banner { margin:-1.35rem 0 1.25rem; padding:.65rem 1rem; color:var(--special); background:#eeeafa; border-radius:8px; font-weight:750; letter-spacing:.01em; text-align:center }
+    .mobile-cards { display:none }
+    .receipt { padding:1rem; background:var(--surface-soft); border:1px solid var(--border); border-radius:8px; font-family:var(--mono); font-size:.8rem }.receipt hr { border:0; border-top:1px dashed var(--border-strong) }
+    .state-note { display:none }.state-concurrent .state-note.concurrent,.state-failed .state-note.failed,.state-success .state-note.success-note { display:grid }
+    .state-concurrent .signup-normal { display:none }.state-failed .delivery-normal { display:none }
+    .state-loading .state-loadable { opacity:.72; pointer-events:none }.state-loading .state-loadable .btn.primary { color:transparent; position:relative }.state-loading .state-loadable .btn.primary:after { content:"Loading…"; color:white; position:absolute }
+    dialog { max-width:34rem; padding:0; color:var(--text); background:var(--surface); border:1px solid var(--border-strong); border-radius:var(--radius-dialog); box-shadow:var(--shadow-overlay) } dialog::backdrop { background:rgba(13,29,42,.65) }.dialog-body { padding:1.4rem }.dialog-actions { display:flex; justify-content:flex-end; gap:.6rem; padding:1rem 1.4rem; background:var(--surface-muted) }
+    .toast { position:fixed; right:1rem; bottom:1rem; z-index:80; max-width:22rem; padding:.8rem 1rem; color:#fff; background:var(--success); box-shadow:var(--shadow-overlay); display:none }.toast.show { display:block }
+    @container (max-width:600px) {
+      .week-grid { grid-template-columns:1fr }.split { grid-template-columns:1fr }.screen-title { display:block }
+      .screen-title .button-row { margin-top:.8rem }.desktop-table { display:none }.mobile-cards { display:grid; gap:.65rem }
+      .roster-row { grid-template-columns:auto 1fr }.roster-row .btn { grid-column:1/-1; width:100% }
+      .week-nav { align-items:flex-start; flex-wrap:wrap }.week-nav strong { order:-1; width:100% }
+    }
+    @media (max-width:900px) {
+      .desktop-nav { display:none }.mobile-menu { display:block }.layout { display:block }.section-tabs { display:none; position:fixed; inset:102px 0 auto; z-index:50; height:auto; max-height:70vh; padding:1rem; background:var(--surface); border-bottom:1px solid var(--line); box-shadow:var(--shadow-overlay) }.section-tabs.open { display:block }.section-tabs nav { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)) }.section-tabs button { width:100%; text-align:left; border:0; border-radius:7px }.section-tabs button[aria-current="page"] { background:#eceefa }
+      .header-context .season,.header-context .role-name { display:none }.masthead { min-height:64px }
+      .grid { grid-template-columns:repeat(6,minmax(0,1fr)) }.col-8,.col-7,.col-6,.col-5,.col-4,.col-3 { grid-column:span 3 }.col-12 { grid-column:span 6 }
+      .preview-bar { top:112px }
+    }
+    @media (max-width:600px) {
+      main { padding:1.5rem 1rem 4rem }.grid { grid-template-columns:1fr }.col-12,.col-8,.col-7,.col-6,.col-5,.col-4,.col-3 { grid-column:1 }
+      h2 { font-size:2.35rem }.alert { grid-template-columns:auto 1fr }.alert .btn { grid-column:1/-1; width:100% }
+      .definition { grid-template-columns:1fr }.definition dd { margin-bottom:.5rem }
+      .phone-frame { border:0; border-radius:0; box-shadow:none }.phone-content { max-height:none }
+      .preview-bar { position:static }.preview-bar .label-view { width:100% }
+      .hide-phone { display:none }.button-row .btn.mobile-full { width:100% }
+      .header-context { gap:.25rem }.brand small { display:none }
+    }
+    @media (prefers-reduced-motion:reduce) {
+      *,*:before,*:after { scroll-behavior:auto!important; animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important }
+    }
+    @media print { .app-header,.section-tabs,.preview-bar,.phone-bottom { display:none!important }.layout { display:block } main { padding:0 }.page { display:block; break-before:page } }
+
+    /* Open Grove visual direction */
+    :root {
+      --canvas:#fafaf8; --surface:#ffffff; --surface-soft:#f3f4f1; --surface-muted:#eff0ec;
+      --text:#20222a; --text-2:#666a73; --text-disabled:#8b8e95; --border:#dedfd9; --border-strong:#a8aaa3;
+      --action:#4f56a6; --focus:#3842a0; --info:#49657a; --success:#2f6957; --warning:#866018;
+      --critical:#a23f54; --special:#625a94; --line:#dedfd9; --accent:#4f56a6;
+      --serif:ui-serif,Georgia,Cambria,"Times New Roman",serif;
+      --sans:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      --radius-control:8px; --radius-card:10px; --radius-dialog:14px;
+      --shadow-overlay:0 22px 60px rgba(32,34,42,.18);
+      --content:96rem;
+    }
+    html { background:#fff }
+    body { background:var(--canvas); letter-spacing:-.006em }
+    body:before { display:none }
+    a { text-decoration-thickness:1px }
+    :focus-visible { outline:3px solid rgba(79,86,166,.65); outline-offset:3px }
+    .skip { border:1px solid var(--border-strong); border-radius:8px; box-shadow:var(--shadow-overlay) }
+    .app-header { color:var(--text); background:rgba(255,255,255,.96); border-bottom:1px solid var(--border); backdrop-filter:blur(16px) }
+    .masthead { min-height:60px; padding-block:.45rem; gap:2rem }
+    .brand { gap:.65rem }
+    .brand-mark { width:30px; height:30px; border:0; border-radius:50%; color:#fff; background:var(--action); clip-path:none; font:700 11px var(--sans); letter-spacing:.04em }
+    .brand h1 { color:var(--text); font:750 1rem/1.1 var(--sans); letter-spacing:-.02em }
+    .brand small { color:var(--text-2); font:.64rem var(--sans); letter-spacing:.08em }
+    .desktop-nav button { color:var(--text-2); border-bottom-width:2px; padding-inline:.9rem }
+    .desktop-nav button:hover,.desktop-nav button[aria-current="page"] { color:var(--action); background:transparent; border-bottom-color:var(--action) }
+    .header-context { color:var(--text-2) }
+    .season { border:0; padding:.35rem .55rem; background:var(--surface-muted); border-radius:999px }
+    .notice-dot { color:#fff; background:var(--action); border:0; font-size:.7rem }
+    .mobile-menu { color:var(--text); background:#fff; border-bottom:1px solid var(--border) }
+    .layout { display:block }
+    .section-tabs { top:56px }
+    .section-tabs nav { max-width:var(--content); margin:auto; display:flex; align-items:center; overflow-x:auto; scrollbar-width:none }
+    .tab-group-label { display:none }
+    .section-tabs button { min-height:40px; border-bottom-width:1px }
+    main { max-width:var(--content); margin:auto; padding:3.5rem var(--gutter) 7rem }
+    .eyebrow { color:var(--action); font-weight:750; font-size:.69rem; letter-spacing:.12em }
+    h2 { max-width:24ch; font-size:clamp(2rem,5vw,2.75rem) }
+    h3,h4 { font-family:var(--sans); letter-spacing:-.025em }
+    h3 { font-size:1.35rem }
+    .dek { max-width:72ch; color:var(--text-2); font:1.05rem/1.7 var(--sans) }
+    .rule-title { margin-top:3.5rem; color:var(--text-2); font-size:.68rem; letter-spacing:.12em }
+    .rule-title:after { background:var(--border) }
+    .grid { gap:1.25rem }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-card) }
+    .panel { padding:1.35rem 0; background:transparent; border:0; border-top:1px solid var(--line); border-radius:0 }
+    .card { padding:1.1rem }
+    .accent-panel { border-top:1px solid var(--line) }
+    .btn { border-color:var(--border-strong); border-radius:var(--radius-control); font-weight:700 }
+    .btn:hover { background:var(--surface-muted) }
+    .btn.primary { background:var(--action); border-color:var(--action) }
+    .btn.primary:hover { background:#42498e }
+    .btn.danger { background:var(--critical); border-color:var(--critical) }
+    .btn:disabled,.btn.disabled { background:var(--surface-muted); border-color:var(--border) }
+    .badge { border:0; border-radius:999px; padding:.2rem .55rem; letter-spacing:.045em; background:var(--surface-muted) }
+    .badge:before { content:""; width:5px; height:5px; border-radius:50%; background:currentColor }
+    .badge.info { background:#e9f0f4 }.badge.complete,.badge.ok { background:#e5f3ed }
+    .badge.warning,.badge.low,.badge.provisional { background:#fff1ce }.badge.critical { background:#fbe7eb }
+    .badge.special { background:#eeeafa }
+    .alert { border:0; border-left:3px solid var(--info); border-radius:8px; background:#edf3f6 }
+    .alert.success { background:#e8f4ef }.alert.warning { background:#fff3d8 }.alert.critical { background:#fce9ed }
+    .alert.blocking { border:1px solid rgba(162,63,84,.25); border-left:3px solid var(--critical) }
+    input,select,textarea { background:#fff; border-color:var(--border-strong); border-radius:8px }
+    fieldset { border-color:var(--border); border-radius:10px }
+    fieldset legend { font:700 .9rem var(--sans) }
+    .token { min-height:112px; border-color:var(--border); border-radius:10px; background:#fff; overflow:hidden }
+    .swatch { height:46px }
+    .type-specimen { padding:1.25rem 0 }
+    th { background:transparent; color:var(--text-2) }
+    th,td { padding:.75rem; border-bottom-color:var(--border) }
+    tbody tr:hover { background:#f7f7f4 }
+    .avatar { color:var(--action); background:#eceefa; border:0; font:750 .76rem var(--sans) }
+    .stat { padding:1.15rem 0; border:0; border-top:1px solid var(--border); background:transparent }
+    .stat strong { font:650 clamp(1.6rem,4vw,2.45rem)/1 var(--sans); letter-spacing:-.05em }
+    .progress { background:#e3e4df; border-radius:999px }.progress span { border-radius:999px }
+    .shift-card { border-color:var(--border); border-left-width:3px; border-radius:10px }
+    .shift-card.special { border:1px solid #cfc8e8; border-left:3px solid var(--special); background:#f8f6fc }
+    .shift-time { font:700 .88rem var(--sans) }
+    .day-title { border-bottom:1px solid var(--border) }
+    .week-nav { background:transparent; border-block-color:var(--border); padding:.9rem 0 }
+    .week-nav strong { font:700 1.05rem var(--sans) }
+    .phone-frame { border:1px solid var(--border); border-radius:24px; background:#fff; box-shadow:0 16px 50px rgba(32,34,42,.12) }
+    .phone-top { color:var(--text-2); background:#fff; border-bottom:1px solid var(--border) }
+    .phone-bottom { background:rgba(255,255,255,.97) }
+    .preview-bar { top:97px; background:rgba(255,255,255,.96); border-color:var(--border); border-radius:10px }
+    .screen-shell { background:#fff; border-radius:10px }
+    .person-option { background:#fff; border-color:var(--border) }.person-option.selected { outline-color:var(--action); background:#f1f2fb }.person-option.disabled { background:var(--surface-muted) }
+    .special-banner { margin:-1.35rem -1.35rem 1.25rem; color:var(--special); background:#eeeafa; letter-spacing:.07em }
+    .receipt { background:#f7f7f4; border-color:var(--border); border-radius:8px }
+    dialog { border-color:var(--border); border-radius:14px }
+    dialog::backdrop { background:rgba(32,34,42,.55) }
+    .dialog-actions { background:var(--surface-muted) }
+    .toast { border-radius:10px; background:var(--success) }
+    @media (max-width:900px) {
+      .section-tabs { display:none; position:fixed; inset:102px 0 auto; max-height:70vh; padding:1rem; border-bottom:1px solid var(--border); box-shadow:var(--shadow-overlay) }
+      .section-tabs.open { display:block }.section-tabs nav { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)) }
+      .section-tabs button { width:100%; text-align:left; border:0; border-radius:7px }.section-tabs button[aria-current="page"] { background:#eceefa }
+      .preview-bar { top:108px }
+    }
+    @media (max-width:600px) {
+      main { padding-top:2.5rem }.section-tabs nav { grid-template-columns:1fr }
+      h2 { font-size:2.25rem }.screen-shell { padding:.75rem }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to main content</a>
+  <header class="app-header">
+    <div class="masthead">
+      <div class="brand"><div class="brand-mark" aria-hidden="true">OG</div><div><h1>Open Grove</h1><small>Troop 900 · Tree Lot</small></div></div>
+      <nav class="desktop-nav" aria-label="Primary gallery">
+        <button data-page="overview" aria-current="page">Overview</button><button data-page="foundations">Foundations</button><button data-page="primitives">Primitives</button><button data-page="domain">Domain components</button><button data-page="family">Screens</button>
+      </nav>
+      <div class="header-context"><span class="season">2026 Tree Lot</span><span aria-label="2 unread announcements">Notices <b class="notice-dot">2</b></span><span class="role-name">Morgan Reed · Family Manager</span></div>
+    </div>
+    <button class="mobile-menu" id="menuButton" aria-expanded="false" aria-controls="sideNav">☰ &nbsp; Browse design system</button>
+  </header>
+  <div class="layout">
+    <aside class="section-tabs" id="sideNav">
+      <nav aria-label="Design system sections">
+        <p class="tab-group-label">System</p>
+        <button data-page="overview" aria-current="page">00 · Overview</button>
+        <button data-page="foundations">01 · Foundations</button>
+        <button data-page="primitives">02 · Primitives</button>
+        <button data-page="domain">03 · Domain components</button>
+        <p class="tab-group-label" style="margin-top:1.4rem">Representative screens</p>
+        <button data-page="family">01 · Family dashboard</button>
+        <button data-page="agreement">02 · Agreement Center</button>
+        <button data-page="week">03 · Week View</button>
+        <button data-page="shift">04 · Shift detail</button>
+        <button data-page="roster">05 · Live roster</button>
+        <button data-page="committee">06 · Committee staffing</button>
+        <button data-page="announcement">07 · Announcement delivery</button>
+        <button data-page="treasurer">08 · Scout Bucks</button>
+      </nav>
+    </aside>
+    <main id="main" tabindex="-1">
+      <section class="page active" id="overview" aria-labelledby="overview-title">
+        <p class="eyebrow">Concept 03 · Modern editorial</p>
+        <h2 id="overview-title">Clear work, shared openly.</h2>
+        <p class="dek">Open Grove uses bright space, precise typography, and quiet semantic color to make every tree-lot task feel direct. Information stays calm and readable; important actions remain unmistakable under pressure.</p>
+        <div class="grid">
+          <article class="panel col-7 accent-panel"><p class="eyebrow">Design thesis</p><h3>Open space. Decisive action.</h3><p>Editorial rhythm, subtle rules, clear labels, and tabular numerals keep family workflows approachable while allowing Committee and Treasurer views to become genuinely dense.</p>
+            <div class="grid"><div class="stat col-4"><strong>44px</strong><span>minimum target</span></div><div class="stat col-4"><strong>AA</strong><span>contrast target</span></div><div class="stat col-4"><strong>8</strong><span>complete screens</span></div></div>
+          </article>
+          <aside class="panel col-5"><p class="eyebrow">Persistent context</p><dl class="definition"><dt>Season</dt><dd>2026 Tree Lot</dd><dt>Household</dt><dd>Reed Household</dd><dt>Current week</dt><dd>Nov 23–29</dd><dt>Unread</dt><dd>2 announcements</dd><dt>Role</dt><dd>Family Manager</dd></dl></aside>
+        </div>
+        <p class="rule-title">Guiding principles</p>
+        <div class="grid">
+          <article class="card col-3"><h3>01</h3><h4>Show the next valid action</h4><p class="meta">Actions answer “what can I do now?” before exposing workflow complexity.</p></article>
+          <article class="card col-3"><h3>02</h3><h4>Name actor and target</h4><p class="meta">Facilitated actions always identify Morgan as actor and Alex as participant.</p></article>
+          <article class="card col-3"><h3>03</h3><h4>Status is written</h4><p class="meta">Text, symbols, shape, and color communicate state redundantly.</p></article>
+          <article class="card col-3"><h3>04</h3><h4>Mobile is operational</h4><p class="meta">No core attendance or signup action waits for a desktop.</p></article>
+        </div>
+        <p class="rule-title">Tour the system</p>
+        <div class="grid">
+          <button class="panel col-4" data-page="foundations" style="text-align:left;cursor:pointer"><span class="caps">01</span><h3>Foundations →</h3><span class="meta">Tokens, type, spacing, depth, motion, responsive ranges</span></button>
+          <button class="panel col-4" data-page="primitives" style="text-align:left;cursor:pointer"><span class="caps">02</span><h3>Primitives →</h3><span class="meta">Controls, forms, feedback, lists, tables, progress</span></button>
+          <button class="panel col-4" data-page="domain" style="text-align:left;cursor:pointer"><span class="caps">03</span><h3>Domain components →</h3><span class="meta">Shifts, staffing, people, attendance, finance</span></button>
+        </div>
+      </section>
+
+      <section class="page" id="foundations" aria-labelledby="foundations-title">
+        <p class="eyebrow">01 · Foundations</p><h2 id="foundations-title">The field guide.</h2><p class="dek">Concrete, semantic values intended to translate directly to CSS custom properties, Tailwind configuration, and server-rendered component contracts.</p>
+        <p class="rule-title">Color roles</p>
+        <div class="grid">
+          <div class="token col-3"><div class="swatch" style="--token:#f7f7f4"></div>Canvas<code>--canvas · #F7F7F4</code></div><div class="token col-3"><div class="swatch" style="--token:#ffffff"></div>Primary surface<code>--surface · #FFFFFF</code></div><div class="token col-3"><div class="swatch" style="--token:#ffffff"></div>Raised surface<code>#FFFFFF</code></div><div class="token col-3"><div class="swatch" style="--token:#f0f1ed"></div>Muted surface<code>#F0F1ED</code></div>
+          <div class="token col-3"><div class="swatch" style="--token:#20222a"></div>Primary text<code>#20222A · 15.2:1</code></div><div class="token col-3"><div class="swatch" style="--token:#666a73"></div>Secondary text<code>#666A73 · 5.4:1</code></div><div class="token col-3"><div class="swatch" style="--token:#8b8e95"></div>Disabled text<code>#8B8E95</code></div><div class="token col-3"><div class="swatch" style="--token:#dedfd9"></div>Border<code>#DEDFD9</code></div>
+          <div class="token col-3"><div class="swatch" style="--token:#4f56a6"></div>Primary action<code>#4F56A6</code></div><div class="token col-3"><div class="swatch" style="--token:#3842a0"></div>Focus<code>#3842A0</code></div><div class="token col-3"><div class="swatch" style="--token:#2f6957"></div>Successful<code>#2F6957 · mint tint</code></div><div class="token col-3"><div class="swatch" style="--token:#866018"></div>Warning<code>#866018 · amber tint</code></div>
+          <div class="token col-3"><div class="swatch" style="--token:#a23f54"></div>Critical<code>#A23F54 · rose tint</code></div><div class="token col-3"><div class="swatch" style="--token:#49657a"></div>Informational<code>#49657A</code></div><div class="token col-3"><div class="swatch" style="--token:#625a94"></div>Special event<code>#625A94</code></div><div class="token col-3"><div class="swatch" style="--token:#a8aaa3"></div>Strong border<code>#A8AAA3</code></div>
+        </div>
+        <p class="rule-title">Typography roles</p>
+        <div class="panel">
+          <div class="type-specimen"><span class="caps">Page title · System Serif 44/48, 500</span><div style="font:500 clamp(2rem,5vw,2.75rem)/1.08 var(--serif)">A season of service</div></div>
+          <div class="type-specimen"><span class="caps">Section heading · System Sans 22/26, 700</span><h3 style="margin:.3rem 0">Upcoming family shifts</h3></div>
+          <div class="type-specimen"><span class="caps">Subsection · System Sans 16/20, 700</span><h4 style="margin:.3rem 0">Friday evening shift</h4></div>
+          <div class="type-specimen"><span class="caps">Body · System Sans 15/22</span><p style="margin:.3rem 0">Bring warm layers and arrive ten minutes before your shift begins.</p></div>
+          <div class="type-specimen"><span class="caps">Supporting · System Sans 12/18</span><span class="meta">Published by Casey Lin · Today at 8:42 AM</span></div>
+          <div class="type-specimen"><span class="caps">Numeric statistic · System Sans tabular</span><span style="font:650 2.5rem var(--sans);font-variant-numeric:tabular-nums">$8,420.00</span></div>
+          <div class="type-specimen"><span class="caps">Checksum · Monospace 12/18</span><code>sha256:d7a2b98c…81e44f09</code></div>
+        </div>
+        <p class="rule-title">Scale, shape & depth</p>
+        <div class="grid">
+          <div class="panel col-4"><h3>Spacing</h3><dl class="definition"><dt>Inline</dt><dd>4 · 8 · 12 · 16 · 24px</dd><dt>Stack</dt><dd>8 · 12 · 16 · 24 · 32px</dd><dt>Sections</dt><dd>40–48px</dd><dt>Gutters</dt><dd>16–40px fluid</dd><dt>Content</dt><dd>1472px max</dd></dl></div>
+          <div class="panel col-4"><h3>Controls</h3><dl class="definition"><dt>Control</dt><dd>44px minimum</dd><dt>Touch</dt><dd>44 × 44px</dd><dt>Icon</dt><dd>16 · 20 · 24px</dd><dt>Dense row</dt><dd>40px minimum</dd><dt>Comfort row</dt><dd>56px minimum</dd></dl></div>
+          <div class="panel col-4"><h3>Shape & depth</h3><dl class="definition"><dt>Control</dt><dd>8px radius</dd><dt>Card</dt><dd>10px radius</dd><dt>Dialog</dt><dd>14px radius</dd><dt>Panels</dt><dd>Hairline rules, no shadow</dd><dt>Overlay</dt><dd>0 22px 60px / 18%</dd></dl></div>
+        </div>
+        <p class="rule-title">Motion & responsive ranges</p>
+        <div class="grid"><div class="panel col-6"><h3>Motion</h3><dl class="definition"><dt>Immediate</dt><dd>80ms</dd><dt>Standard</dt><dd>180ms</dd><dt>Entrance</dt><dd>260ms</dd><dt>Loading</dt><dd>800ms cycle</dd></dl><p class="meta">All nonessential motion collapses to 0.01ms when reduced motion is preferred.</p></div>
+        <div class="panel col-6"><h3>Responsive ranges</h3><dl class="definition"><dt>Narrow phone</dt><dd>320–419px · one column</dd><dt>Large phone</dt><dd>420–639px · one column</dd><dt>Tablet</dt><dd>640–1023px · split when useful</dd><dt>Desktop</dt><dd>1024px+ · full-width with section tabs</dd></dl></div></div>
+      </section>
+
+      <section class="page" id="primitives" aria-labelledby="primitives-title">
+        <p class="eyebrow">02 · Primitive gallery</p><h2 id="primitives-title">The parts drawer.</h2><p class="dek">Accessible controls retain their native semantics. Hover is supplemental; focus is conspicuous; disabled controls pair with a written reason.</p>
+        <p class="rule-title">Buttons & links</p>
+        <div class="panel">
+          <div class="component-strip"><button class="btn primary">Primary action</button><button class="btn">Secondary</button><button class="btn quiet">Quiet action</button><button class="btn danger">Destructive</button><button class="btn icon" aria-label="More actions">•••</button><button class="btn primary loading">Publishing</button><button class="btn" disabled title="Check-in is not open yet">Disabled</button></div>
+          <p class="meta">Disabled reason: Check-in is not open yet.</p>
+          <div class="component-strip"><a href="#primitives">Inline link</a><a class="btn quiet" href="#primitives">Standalone action →</a><a href="https://example.com" target="_blank" rel="noreferrer">External resource ↗ <span class="meta">(leaves scheduler)</span></a><button class="btn quiet" style="color:var(--critical)">Remove access</button></div>
+        </div>
+        <p class="rule-title">Form controls</p>
+        <div class="grid">
+          <form class="panel col-7" onsubmit="return false">
+            <div class="grid"><div class="field col-6"><label for="displayName">Display name <span aria-hidden="true">*</span></label><input id="displayName" value="Morgan Reed" autocomplete="name" required><small class="hint">Shown to your household and on shift rosters.</small></div>
+            <div class="field col-6"><label for="phone">Mobile phone</label><input id="phone" type="tel" inputmode="tel" placeholder="(555) 555-0123" autocomplete="tel"><small class="hint">Use any common US formatting. We do not reveal whether a number has an account.</small></div></div>
+            <div class="grid"><div class="field col-6"><label for="weekPick">Week</label><select id="weekPick"><option>Nov 23–29 · 12 shifts</option><option>Nov 30–Dec 6 · 15 shifts</option></select></div><div class="field col-6"><label for="pool">Distributable profit</label><input id="pool" inputmode="decimal" value="$ 8,420.00"><small class="hint">Normalized value: $8,420.00 USD</small></div></div>
+            <div class="field"><label for="reason">Adjustment reason</label><textarea id="reason" aria-invalid="true" aria-describedby="reasonError">Correcting</textarea><small class="validation" id="reasonError">⚠ Explain the source of the corrected time (at least 20 characters).</small></div>
+            <fieldset><legend>Publication</legend><label class="check"><input type="radio" name="pub" checked><span><b>Publish immediately</b><br><span class="meta">Send required channels after confirmation.</span></span></label><label class="check"><input type="radio" name="pub"><span><b>Save as Draft</b><br><span class="meta">Only Committee members can view it.</span></span></label></fieldset>
+          </form>
+          <div class="panel col-5">
+            <h3>Selection controls</h3><label class="check"><input type="checkbox"><span><b>I have read and agree to the tree-lot rules of conduct.</b><br><span class="meta">Required before participation.</span></span></label>
+            <label class="switch"><span><b>Shift reminders</b><br><span class="meta">Send 24 hours before</span></span><input type="checkbox" checked aria-label="Shift reminders"></label>
+            <label class="switch"><span><b>Groups.io delivery</b><br><span class="meta">Optional channel</span></span><input type="checkbox" aria-label="Groups.io delivery"></label>
+            <div class="field"><label for="otp">6-digit verification code</label><input id="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000 000"><small class="hint">Code expires in 08:42 · Resend available in 24 seconds</small></div>
+            <div class="field"><label for="disabledField">Season</label><input id="disabledField" value="2026 Tree Lot" disabled></div>
+          </div>
+        </div>
+        <p class="rule-title">Status, alerts & progress</p>
+        <div class="panel"><div class="component-strip"><span class="badge neutral">Neutral</span><span class="badge info">Published</span><span class="badge complete">Confirmed</span><span class="badge warning">LOW</span><span class="badge critical">CRITICAL</span><span class="badge special">Special Event</span><span class="badge provisional">Provisional</span></div>
+          <div class="alert"><b class="alert-symbol">i</b><div><b>Schedule published</b><p>12 shifts are available for Nov 23–29.</p></div></div>
+          <div class="alert success"><b>✓</b><div><b>Alex is signed up</b><p>Friday, Nov 27 · 4:00–7:00 PM.</p></div><button class="btn">View assignment</button></div>
+          <div class="alert warning"><b>!</b><div><b>Seasonal Agreement needed</b><p>Alex cannot join a shift until confirmed.</p></div><button class="btn">Open Agreement</button></div>
+          <div class="alert critical"><b>×</b><div><b>Delivery failed</b><p>SMS failed for 3 recipients. Successful channels will not be duplicated.</p></div><button class="btn">Retry SMS</button></div>
+          <label class="label" for="onboardProgress">Household setup · step 4 of 6</label><progress id="onboardProgress" value="4" max="6" style="width:100%">4 of 6</progress>
+        </div>
+        <p class="rule-title">Rows, tables & alternate states</p>
+        <div class="grid"><div class="panel col-5"><ul class="list"><li class="list-row"><span class="avatar">AR</span><div><b>Alex Reed</b><div class="meta">Scout · Managed person</div></div><span class="badge warning">Not Confirmed</span></li><li class="list-row"><span class="avatar" style="background:var(--action)">MR</span><div><b>Morgan Reed</b><div class="meta">Adult · Family Manager</div></div><span class="badge complete">Confirmed</span></li></ul>
+          <div style="padding:1.5rem;text-align:center;border-top:1px solid var(--border)"><h4>No assignments yet</h4><p class="meta">This is expected before the schedule is published.</p><button class="btn">Find shifts</button></div></div>
+          <div class="panel col-7"><table><caption>Compact attendance table</caption><thead><tr><th scope="col">Person</th><th scope="col">Status</th><th scope="col">Time</th><th scope="col">Actor</th></tr></thead><tbody><tr><td>Jordan Lee</td><td><span class="badge complete">Checked In</span></td><td>3:54 PM</td><td>Self</td></tr><tr><td>Alex Reed</td><td><span class="badge warning">Adjusted</span></td><td>4:02 PM</td><td>Casey Lin</td></tr></tbody></table>
+          <nav aria-label="Pagination" class="button-row" style="margin-top:1rem"><button class="btn" disabled>← Previous</button><span class="meta">1–20 of 42</span><button class="btn">Next →</button></nav></div></div>
+        <p class="rule-title">Dialog & feedback</p><div class="panel button-row"><button class="btn danger" id="openDialog">Preview confirmation dialog</button><button class="btn" id="copyButton" data-copy="H9K-4M2">Copy household code</button><span class="meta"><code>H9K-4M2</code> remains selectable without JavaScript.</span></div>
+      </section>
+
+      <section class="page" id="domain" aria-labelledby="domain-title">
+        <p class="eyebrow">03 · Domain gallery</p><h2 id="domain-title">Built for the lot.</h2><p class="dek">Components combine shared primitives into legible operational patterns. Principal variants are shown together for quick review.</p>
+        <p class="rule-title">Week navigator & shift cards</p>
+        <div class="week-nav"><button class="btn" disabled aria-label="Previous week">←</button><div><strong>Nov 23–29, 2026</strong><div class="meta">Week 1 of 5 · 12 shifts</div></div><select aria-label="Choose week" style="width:auto"><option>Nov 23–29</option></select><button class="btn" aria-label="Next week">→</button></div>
+        <div class="grid">
+          <article class="shift-card col-4"><span class="badge complete">FULL</span><h4>Friday opening</h4><div class="shift-time">Fri, Nov 27 · 10:00 AM–1:00 PM</div><p class="meta">North Lot · Adults 2/2 · Scouts 4/4</p><button class="btn" disabled>Shift is full</button></article>
+          <article class="shift-card low col-4"><span class="badge warning">LOW</span><h4>Friday evening</h4><div class="shift-time">Fri, Nov 27 · 4:00–7:00 PM</div><p class="meta">North Lot · Adults 1/2 · Scouts 2/4</p><button class="btn primary">View openings</button></article>
+          <article class="shift-card critical col-4"><span class="badge critical">CRITICAL</span><h4>Saturday closing</h4><div class="shift-time">Sat, Nov 28 · 7:00–9:30 PM</div><p class="meta">North Lot · Adults 0/2 · Scouts 1/4</p><button class="btn primary">Sign up</button></article>
+          <article class="shift-card special col-4"><span class="badge special">All Hands Needed</span><h4>Opening Day</h4><div class="shift-time">Sat, Nov 28 · 8:00–11:00 AM</div><p class="meta">Both lots · Adults 3/8 · Scouts 6/14</p><button class="btn primary">Join event</button></article>
+          <article class="shift-card col-4"><span class="badge info">Signed Up</span><h4>Sunday afternoon</h4><div class="shift-time">Sun, Nov 29 · 1:00–4:00 PM</div><p class="meta">Alex Reed · Scout slot · Reed Household</p><button class="btn">View assignment</button></article>
+          <article class="shift-card col-4" style="border-left-color:var(--text-2)"><span class="badge neutral">Draft</span><h4>Monday restock</h4><div class="shift-time">Mon, Nov 30 · 6:00–8:00 PM</div><p class="meta">Committee view only · 0 assignments</p><button class="btn">Edit draft</button></article>
+        </div>
+        <p class="rule-title">Staffing & attendance</p>
+        <div class="grid">
+          <div class="panel col-6"><h3>Staffing meter</h3><div class="staffing"><div class="meter"><label>Adults <span>1 / 2</span></label><div class="progress"><span style="width:50%;background:var(--warning)"></span></div></div><div class="meter"><label>Scouts <span>1 / 4</span></label><div class="progress"><span style="width:25%;background:var(--critical)"></span></div></div></div><span class="badge critical">CRITICAL</span> <span class="meta">3 people still needed</span></div>
+          <div class="panel col-6"><h3>Current valid action</h3><p><b>Jordan Lee</b> · Adult · Scheduled</p><div class="timer" aria-label="Elapsed time 2 hours 13 minutes">02:13:08</div><p class="meta">Checked in at 3:54 PM by Jordan Lee. Attendance timestamps remain authoritative.</p><button class="btn primary">Check Out Jordan</button></div>
+        </div>
+        <p class="rule-title">Agreement, people & announcements</p>
+        <div class="grid"><div class="panel col-6"><h3>Agreement status panel</h3><ul class="list"><li class="list-row"><span class="avatar">MR</span><div><b>Morgan Reed</b><div class="meta">Confirmed Nov 2, 2026</div></div><span class="badge complete">Confirmed</span></li><li class="list-row"><span class="avatar">AR</span><div><b>Alex Reed</b><div class="meta">Scout · participation blocked</div></div><button class="btn">Confirm Agreement</button></li></ul><p class="meta">Acting as Morgan Reed for Alex Reed · Reed Household</p></div>
+          <div class="panel col-6"><div class="card-header"><div><span class="badge critical">Unread · Urgent</span><h3 style="margin-top:.5rem">Weather plan for Sunday</h3></div><span class="caps">2 new</span></div><p>Heavy rain is expected. The South Lot will remain closed until noon.</p><p class="meta">Casey Lin · Today at 8:42 AM</p><div class="button-row"><button class="btn">Read announcement</button><button class="btn quiet">Mark as Read</button></div></div></div>
+        <p class="rule-title">Statistics & settlement</p>
+        <div class="grid"><div class="stat col-3"><strong>18.5</strong><span>Total hours</span></div><div class="stat col-3"><strong>6</strong><span>Shift count</span></div><div class="stat col-3"><strong>#4</strong><span>Scout rank</span></div><div class="stat col-3"><strong>23.0</strong><span>Provisional Credited Hours</span></div></div>
+      </section>
+
+      <section class="page" id="family" aria-labelledby="family-title">
+        <p class="eyebrow">Screen 01 · 390px reference</p><h2 id="family-title">Mobile Family Dashboard</h2><p class="dek">The household’s blockers, next commitments, help needed, and unread news fit into a calm, operational phone hierarchy.</p>
+        <div class="phone-frame"><div class="phone-top"><span>9:41</span><span>2026 Tree Lot · ◉</span></div><div class="phone-content">
+          <p class="eyebrow">Reed Household</p><h3>Good morning, Morgan.</h3><div class="alert warning"><b>!</b><div><b>Alex needs the Seasonal Agreement</b><p>Participation is blocked until confirmed.</p></div><button class="btn">Review</button></div>
+          <div class="card-header"><h4>Next for your family</h4><a href="#family">Full schedule</a></div>
+          <article class="shift-card"><span class="badge info">Signed Up</span><h4>Friday evening</h4><div class="shift-time">Fri, Nov 27 · 4:00–7:00 PM</div><p class="meta">Morgan Reed · Adult · North Lot</p><div class="shift-actions"><span class="badge warning">LOW staffing</span><button class="btn">Details</button></div></article>
+          <article class="shift-card" style="margin-top:.65rem"><span class="badge info">Signed Up</span><h4>Sunday afternoon</h4><div class="shift-time">Sun, Nov 29 · 1:00–4:00 PM</div><p class="meta">Alex Reed · Scout · North Lot</p><div class="shift-actions"><span class="badge complete">OK staffing</span><button class="btn">Details</button></div></article>
+          <div class="alert critical"><b>!</b><div><b>Saturday closing is CRITICAL</b><p>0 of 2 adults · 1 of 4 scouts.</p></div><button class="btn primary">View shift</button></div>
+          <div class="card accent-panel"><div class="card-header"><h4>Announcements</h4><span class="notice-dot">2</span></div><b>Weather plan for Sunday</b><p class="meta">Unread · Urgent · Today, 8:42 AM</p><hr style="border:0;border-top:1px solid var(--border)"><b>Opening weekend reminders</b><p class="meta">Unread · Important · Yesterday</p></div>
+          <div class="grid" style="margin-top:.8rem"><div class="stat col-6"><strong>31.5</strong><span>Family hours</span></div><div class="stat col-6"><strong>23.0</strong><span>Provisional credited</span></div></div>
+        </div><nav class="phone-bottom" aria-label="Mobile"><button>⌂<br>Home</button><button>▦<br>Schedule</button><button>＋<br>Find shifts</button><button>•••<br>More</button></nav></div>
+      </section>
+
+      <section class="page" id="agreement" aria-labelledby="agreement-title">
+        <p class="eyebrow">Screen 02 · Family workflow</p><h2 id="agreement-title">Agreement Center</h2><p class="dek">The public document and each person’s status remain distinct. Facilitated confirmation explicitly names who is acting and who is affected.</p>
+        <div class="phone-frame"><div class="phone-top"><span>9:41</span><span>Reed Household</span></div><div class="phone-content">
+          <p class="eyebrow">2026 Tree Lot</p><h3>Seasonal Agreement</h3><div class="card accent-panel"><span class="caps">Public document</span><h4>Tree-Lot Rules of Conduct</h4><p class="meta">Hosted in Google Docs. The scheduler links to this document; it does not store or verify its contents.</p><a class="btn" href="https://docs.google.com" target="_blank" rel="noreferrer">Open Agreement ↗</a></div>
+          <div class="alert blocking warning"><b>!</b><div><b>1 person cannot participate yet</b><p>Confirm for Alex after reviewing the agreement together.</p></div></div>
+          <h4>Household status</h4>
+          <div class="card"><ul class="list"><li class="list-row"><span class="avatar">MR</span><div><b>Morgan Reed</b><div class="meta">You · Nov 2, 2026</div></div><span class="badge complete">Confirmed</span></li><li class="list-row"><span class="avatar">AR</span><div><b>Alex Reed</b><div class="meta">Managed scout · blocked</div></div><span class="badge warning">Not Confirmed</span></li><li class="list-row"><span class="avatar">TR</span><div><b>Taylor Reed</b><div class="meta">Adult · confirmed by Morgan Nov 3</div></div><span class="badge complete">Confirmed</span></li></ul></div>
+          <div class="panel" style="margin-top:.8rem"><p class="eyebrow">Confirming for Alex Reed</p><p class="meta">You are acting as Morgan Reed, Family Manager for the Reed Household.</p><label class="check"><input type="checkbox"><span><b>I have read and agree to the tree-lot rules of conduct.</b><br><span class="meta">You confirm that you reviewed the rules with Alex.</span></span></label><button class="btn primary mobile-full" data-feedback="Alex’s agreement is confirmed.">Confirm Agreement for Alex</button></div>
+        </div><nav class="phone-bottom" aria-label="Mobile"><button>←<br>Back</button><button>▦<br>Schedule</button><button>✓<br>Agreement</button><button>•••<br>More</button></nav></div>
+      </section>
+
+      <section class="page state-host" id="week" aria-labelledby="week-title">
+        <p class="eyebrow">Screen 03 · Responsive reference</p><h2 id="week-title">Week View</h2><p class="dek">At desktop, day columns support lateral comparison. At phone width, they become a chronological stack with staffing and the next action kept in view.</p>
+        <div class="preview-bar" aria-label="Preview controls"><span class="label-view">Preview width</span><button class="btn view-button" data-view="phone">390 phone</button><button class="btn view-button" data-view="tablet">Tablet</button><button class="btn view-button primary" data-view="desktop">1440 desktop</button><span style="margin-left:auto">Phone treatment</span><select class="phone-treatment" aria-label="Phone treatment" style="width:auto;min-height:36px"><option value="roomy">Roomy cards</option><option value="compact">Compact cards</option></select></div>
+        <div class="preview-area"><div class="screen-shell">
+          <div class="screen-title"><div><p class="eyebrow">Schedule · 2026 Tree Lot</p><h3>Week View</h3></div><div class="button-row"><button class="btn">Filters · All shifts</button><button class="btn primary">Find a shift</button></div></div>
+          <div class="week-nav"><button class="btn" disabled aria-label="Previous week">←</button><div><strong>Nov 23–29, 2026</strong><div class="meta">12 shifts · America/Los_Angeles</div></div><select aria-label="Choose week" style="width:auto"><option>Week 1</option></select><button class="btn" aria-label="Next week">→</button></div>
+          <div class="day"><div class="day-title"><h3>Friday</h3><span>Nov 27 · 3 shifts</span></div><div class="week-grid">
+            <article class="shift-card"><span class="badge complete">FULL</span><h4>Opening shift</h4><div class="shift-time">10:00 AM–1:00 PM</div><p class="meta">Adults 2/2 · Scouts 4/4</p><button class="btn" disabled>Shift is full</button></article>
+            <article class="shift-card low"><span class="badge warning">LOW</span><h4>Afternoon shift</h4><div class="shift-time">1:00–4:00 PM</div><p class="meta">Adults 1/2 · Scouts 3/4</p><button class="btn">View 2 openings</button></article>
+            <article class="shift-card"><span class="badge info">Signed Up</span><h4>Evening shift</h4><div class="shift-time">4:00–7:00 PM</div><p class="meta">Morgan Reed · Adult slot</p><button class="btn">View assignment</button></article>
+          </div></div>
+          <div class="day"><div class="day-title"><h3>Saturday</h3><span>Nov 28 · 2 shifts</span></div><div class="week-grid">
+            <article class="shift-card special"><span class="badge special">All Hands Needed</span><h4>Opening Day</h4><div class="shift-time">8:00–11:00 AM · Both lots</div><p class="meta">Adults 3/8 · Scouts 6/14</p><button class="btn primary">Join event</button></article>
+            <article class="shift-card critical"><span class="badge critical">CRITICAL</span><h4>Closing shift</h4><div class="shift-time">7:00–9:30 PM · North Lot</div><p class="meta">Adults 0/2 · Scouts 1/4</p><button class="btn primary">Sign up</button></article>
+          </div></div>
+          <div class="day"><div class="day-title"><h3>Sunday</h3><span>Nov 29 · 1 shift</span></div><div class="week-grid"><article class="shift-card"><span class="badge ok">OK</span><h4>Afternoon shift</h4><div class="shift-time">1:00–4:00 PM · North Lot</div><p class="meta">Adults 2/2 · Scouts 2/4</p><button class="btn">View 2 openings</button></article></div></div>
+        </div></div>
+      </section>
+
+      <section class="page state-host" id="shift" aria-labelledby="shift-title">
+        <p class="eyebrow">Screen 04 · Responsive + stateful</p><h2 id="shift-title">Shift Detail & Signup</h2><p class="dek">Role fit, agreement eligibility, assignment status, and concurrent capacity feedback can all be inspected without editing source.</p>
+        <div class="preview-bar"><span class="label-view">Preview width</span><button class="btn view-button" data-view="phone">390 phone</button><button class="btn view-button" data-view="tablet">Tablet</button><button class="btn view-button primary" data-view="desktop">1440 desktop</button><span style="margin-left:auto">State</span><button class="btn state-button primary" data-state="">Open slots</button><button class="btn state-button" data-state="concurrent">Concurrent: Shift Full</button><button class="btn state-button" data-state="loading">Loading</button></div>
+        <div class="preview-area"><div class="screen-shell state-loadable">
+          <div class="panel accent-panel"><div class="special-banner">All Hands Needed · Special Event</div><div class="screen-title"><div><span class="badge info">Published</span><h3 style="margin-top:.5rem">Opening Day</h3><p>Saturday, Nov 28 · 8:00–11:00 AM · Both lots</p></div><div class="button-row"><button class="btn">Share shift</button><button class="btn">Add to calendar</button></div></div>
+            <div class="grid"><dl class="definition col-6"><dt>Arrival</dt><dd>7:50 AM</dd><dt>Location</dt><dd>North & South Lots</dd><dt>Coordinator</dt><dd>Casey Lin</dd><dt>Lifecycle</dt><dd>Published</dd></dl><div class="col-6"><div class="staffing"><div class="meter"><label>Adults <span>7 / 8</span></label><div class="progress"><span style="width:87.5%;background:var(--warning)"></span></div></div><div class="meter"><label>Scouts <span>13 / 14</span></label><div class="progress"><span style="width:93%"></span></div></div></div><span class="badge warning">LOW · 1 adult and 1 scout needed</span></div></div>
+            <p><b>Notes:</b> Meet at the north gate for the safety briefing. Wear closed-toe shoes and warm layers.</p>
+          </div>
+          <div class="alert critical state-note concurrent" role="status"><b>×</b><div><b>Shift Full</b><p>Another household filled the last openings while you were choosing. No assignment was created for Alex.</p></div><button class="btn">Return to Week View</button></div>
+          <div class="split signup-normal" style="margin-top:1rem">
+            <div class="panel"><p class="eyebrow">Step 1 of 2</p><h3>Who are you signing up?</h3><p class="meta">Acting as Morgan Reed · Reed Household. One adult slot and one scout slot remain.</p>
+              <div class="person-option selected"><input type="radio" name="person" checked aria-label="Select Alex Reed"><span class="avatar">AR</span><div><b>Alex Reed</b><div class="meta">Scout · Eligible for scout slot</div></div></div>
+              <div class="person-option"><input type="radio" name="person" aria-label="Select Morgan Reed"><span class="avatar">MR</span><div><b>Morgan Reed</b><div class="meta">Adult · Eligible for adult slot</div></div></div>
+              <div class="person-option disabled"><input type="radio" name="person" disabled aria-label="Taylor Reed unavailable"><span class="avatar">TR</span><div><b>Taylor Reed</b><div class="meta">Adult · Already assigned to this shift</div></div><span class="badge neutral">Assigned</span></div>
+              <div class="person-option disabled"><input type="radio" name="person" disabled aria-label="Jamie Reed ineligible"><span class="avatar">JR</span><div><b>Jamie Reed</b><div class="meta">Scout · Seasonal Agreement Not Confirmed</div></div><span class="badge warning">Ineligible</span></div>
+              <div class="person-option disabled"><input type="radio" name="person" disabled aria-label="Chris Reed wrong role"><span class="avatar">CR</span><div><b>Chris Reed</b><div class="meta">Adult · No compatible slot in selected scout category</div></div><span class="badge neutral">Wrong role</span></div>
+            </div>
+            <aside class="panel"><p class="eyebrow">Selection</p><h3>Alex Reed</h3><dl class="definition"><dt>Person</dt><dd>Alex Reed</dd><dt>Role</dt><dd>Scout slot</dd><dt>Household</dt><dd>Reed Household</dd><dt>Agreement</dt><dd>Confirmed</dd><dt>Shift</dt><dd>Sat, Nov 28 · 8:00 AM</dd></dl><div class="alert"><b>i</b><div><b>Submitting normally</b><p>This form can return a complete confirmation page. With enhancement, the same result appears inline.</p></div></div><button class="btn primary mobile-full" data-feedback="Alex is signed up for Opening Day.">Sign Up Alex</button></aside>
+          </div>
+        </div></div>
+      </section>
+
+      <section class="page" id="roster" aria-labelledby="roster-title">
+        <p class="eyebrow">Screen 05 · 390px operational</p><h2 id="roster-title">Mobile Live Roster</h2><p class="dek">Large named actions, plain attendance labels, and actor attribution keep arrivals fast and corrections trustworthy.</p>
+        <div class="phone-frame"><div class="phone-top"><span>3:58 PM</span><span>Live · 5 volunteers</span></div><div class="phone-content">
+          <p class="eyebrow">Friday, Nov 27</p><h3>Evening shift</h3><p class="meta">4:00–7:00 PM · North Lot · You are Casey Lin, Committee Member</p>
+          <div class="alert warning"><b>!</b><div><b>1 volunteer pending</b><p>Check-in is open now.</p></div></div>
+          <button class="btn primary mobile-full" style="width:100%;margin-bottom:.8rem">＋ Add Walk-In</button>
+          <div class="card">
+            <div class="roster-row"><span class="avatar">AR</span><div><b>Alex Reed</b><div class="meta">Scout · Scheduled</div><span class="badge warning">Pending</span></div><button class="btn primary">Check In Alex</button></div>
+            <div class="roster-row"><span class="avatar">JL</span><div><b>Jordan Lee</b><div class="meta">Adult · Scheduled · 3:54 PM by self</div><span class="badge complete">Checked In</span> <span class="timer" style="font-size:.78rem">00:04:12</span></div><button class="btn">Check Out Jordan</button></div>
+            <div class="roster-row"><span class="avatar">SK</span><div><b>Sam Kim</b><div class="meta">Scout · Scheduled · 1:03–3:57 PM</div><span class="badge info">Checked Out</span></div><button class="btn quiet">Review</button></div>
+            <div class="roster-row"><span class="avatar">DP</span><div><b>Devon Patel</b><div class="meta">Adult · Walk-In · 3:51 PM by Casey Lin</div><span class="badge special">Walk-In · Checked In</span></div><button class="btn">Check Out Devon</button></div>
+            <div class="roster-row"><span class="avatar">NB</span><div><b>Nico Brown</b><div class="meta">Scout · Scheduled · note added</div><span class="badge critical">No Show</span></div><button class="btn quiet">View note</button></div>
+          </div>
+          <details class="panel" style="margin-top:.8rem"><summary><b>Add Walk-In panel preview</b></summary><div class="field" style="margin-top:1rem"><label for="walkin">Find participant</label><input id="walkin" type="search" placeholder="Name"><small class="hint">Results show role and agreement eligibility, never phone numbers.</small></div><p class="meta">Adding a walk-in immediately checks the person in, even when over capacity.</p><button class="btn primary">Add Walk-In and Check In</button></details>
+        </div><nav class="phone-bottom" aria-label="Roster"><button>←<br>Shifts</button><button>☷<br>Roster</button><button>＋<br>Walk-In</button><button>•••<br>More</button></nav></div>
+      </section>
+
+      <section class="page state-host" id="committee" aria-labelledby="committee-title">
+        <p class="eyebrow">Screen 06 · Privileged density</p><h2 id="committee-title">Committee Staffing View</h2><p class="dek">Week-level staffing risk is summarized first, then supported by sortable operational detail and targeted actions.</p>
+        <div class="preview-bar"><span class="label-view">Preview width</span><button class="btn view-button" data-view="phone">390 phone</button><button class="btn view-button" data-view="tablet">Tablet</button><button class="btn view-button primary" data-view="desktop">1440 desktop</button><span style="margin-left:auto">Density</span><button class="btn density-button primary" data-density="dense">Dense</button><button class="btn density-button" data-density="comfortable">Comfortable</button></div>
+        <div class="preview-area"><div class="screen-shell">
+          <div class="screen-title"><div><p class="eyebrow">Committee · Staffing</p><h3>Nov 23–29</h3><p>12 published shifts · updated 1 minute ago</p></div><div class="button-row"><button class="btn">Export report</button><button class="btn primary">Manage schedule</button></div></div>
+          <div class="grid"><div class="stat col-3"><strong>12</strong><span>Total shifts</span></div><div class="stat col-3"><strong>2</strong><span>CRITICAL</span></div><div class="stat col-3"><strong>3</strong><span>LOW</span></div><div class="stat col-3"><strong>78%</strong><span>Slots filled</span></div></div>
+          <div class="alert critical"><b>!</b><div><b>Saturday closing needs 1 adult and 3 scouts</b><p>No reminders have been sent for this shift.</p></div><div class="button-row"><button class="btn">Copy share link</button><button class="btn primary">Send targeted reminder</button></div></div>
+          <div class="grid" style="margin-top:1rem"><aside class="panel col-3"><h3>Filters</h3><div class="field"><label for="statusFilter">Staffing</label><select id="statusFilter"><option>Needs attention (5)</option><option>All statuses</option></select></div><div class="field"><label for="dayFilter">Day</label><select id="dayFilter"><option>All days</option><option>Saturday</option></select></div><label class="check"><input type="checkbox" checked> Published only</label><button class="btn" style="width:100%">Apply filters</button></aside>
+          <div class="panel col-9"><div class="desktop-table"><table><caption>Staffing exceptions · 5 results</caption><thead><tr><th scope="col" aria-sort="ascending">Shift ↕</th><th scope="col">Adults</th><th scope="col">Scouts</th><th scope="col">Status</th><th scope="col">Last reminder</th><th scope="col">Actions</th></tr></thead><tbody><tr><td><b>Sat closing</b><div class="meta">Nov 28 · 7:00–9:30 PM</div></td><td>0 / 2</td><td>1 / 4</td><td><span class="badge critical">CRITICAL</span></td><td>Never</td><td><button class="btn">Remind</button></td></tr><tr><td><b>Sun closing</b><div class="meta">Nov 29 · 7:00–9:30 PM</div></td><td>1 / 2</td><td>0 / 4</td><td><span class="badge critical">CRITICAL</span></td><td>Yesterday</td><td><button class="btn">Remind</button></td></tr><tr><td><b>Fri afternoon</b><div class="meta">Nov 27 · 1:00–4:00 PM</div></td><td>1 / 2</td><td>3 / 4</td><td><span class="badge warning">LOW</span></td><td>2 hours ago</td><td><button class="btn">Share</button></td></tr><tr><td><b>Sat morning</b><div class="meta">Nov 28 · 10:00 AM–1:00 PM</div></td><td>2 / 2</td><td>2 / 4</td><td><span class="badge warning">LOW</span></td><td>Yesterday</td><td><button class="btn">Share</button></td></tr></tbody></table></div>
+          <div class="mobile-cards"><article class="shift-card critical"><span class="badge critical">CRITICAL</span><h4>Sat closing</h4><p class="meta">Adults 0/2 · Scouts 1/4 · Never reminded</p><button class="btn primary">Send targeted reminder</button></article><article class="shift-card critical"><span class="badge critical">CRITICAL</span><h4>Sun closing</h4><p class="meta">Adults 1/2 · Scouts 0/4 · Reminded yesterday</p><button class="btn">Copy share link</button></article><article class="shift-card low"><span class="badge warning">LOW</span><h4>Fri afternoon</h4><p class="meta">Adults 1/2 · Scouts 3/4</p><button class="btn">Share</button></article></div></div></div>
+        </div></div>
+      </section>
+
+      <section class="page state-host" id="announcement" aria-labelledby="announcement-title">
+        <p class="eyebrow">Screen 07 · Compose + delivery</p><h2 id="announcement-title">Announcement Delivery</h2><p class="dek">Publication channels are independent. Switch among default, enabled, failed, and loading states to inspect configuration and recovery.</p>
+        <div class="preview-bar"><span>Delivery state</span><button class="btn state-button primary" data-state="">Groups.io disabled</button><button class="btn state-button" data-state="success">Optional enabled</button><button class="btn state-button" data-state="failed">SMS failed</button><button class="btn state-button" data-state="loading">Publishing</button></div>
+        <div class="screen-shell state-loadable"><div class="split"><form class="panel" onsubmit="return false"><p class="eyebrow">New announcement</p><h3>Compose</h3><div class="field"><label for="annTitle">Title <span aria-hidden="true">*</span></label><input id="annTitle" value="Weather plan for Sunday" required></div><div class="field"><label for="annBody">Message <span aria-hidden="true">*</span></label><textarea id="annBody">Heavy rain is expected. The South Lot will remain closed until noon. Check the Week View before leaving home.</textarea><small class="hint">126 of 500 characters</small></div><div class="field"><label for="priority">Priority</label><select id="priority"><option>Urgent priority</option><option>Important priority</option><option>Informational priority</option></select></div>
+          <fieldset><legend>Delivery channels</legend><label class="check"><input type="checkbox" checked disabled><span><b>Web publication · required</b><br><span class="meta">Visible to 48 recipients.</span></span></label><label class="check"><input type="checkbox" checked disabled><span><b>SMS · required</b><br><span class="meta">48 recipients; phone numbers stay private.</span></span></label><label class="check"><input type="checkbox" class="groups-toggle"><span><b>Groups.io · optional</b><br><span class="meta groups-copy">Disabled in season configuration.</span></span></label></fieldset><div class="alert warning"><b>!</b><div><b>Confirm publication</b><p>This will publish to the web and send required SMS to 48 recipients.</p></div></div><div class="button-row"><button class="btn">Save as Draft</button><button class="btn primary">Publish Announcement</button></div></form>
+          <aside><div class="panel"><p class="eyebrow">Recipient preview</p><h3>48 people</h3><dl class="definition"><dt>Family Managers</dt><dd>18</dd><dt>Young Adult Scouts</dt><dd>7</dd><dt>Committee</dt><dd>8</dd><dt>Managed people</dt><dd>15 via manager</dd></dl><p class="meta">No recipient phone numbers are exposed.</p></div>
+          <div class="panel delivery-normal" style="margin-top:1rem"><h3>Delivery status</h3><ul class="list"><li class="list-row"><span>Web</span><b>Published</b><span class="badge complete">Complete</span></li><li class="list-row"><span>SMS</span><b>48 queued</b><span class="badge info">Pending</span></li><li class="list-row"><span>Groups.io</span><b class="groups-status">Not configured</b><span class="badge neutral">Disabled</span></li></ul></div>
+          <div class="panel state-note failed" style="margin-top:1rem"><h3>Delivery status</h3><ul class="list"><li class="list-row"><span>Web</span><b>Published 10:03 AM</b><span class="badge complete">Complete</span></li><li class="list-row"><span>SMS</span><b>45 delivered · 3 failed</b><span class="badge critical">Failed</span></li><li class="list-row"><span>Groups.io</span><b>Delivered</b><span class="badge complete">Complete</span></li></ul><div class="alert critical"><b>×</b><div><b>3 SMS deliveries failed</b><p>Retrying SMS will not duplicate successful web or Groups.io delivery.</p></div><button class="btn primary">Retry failed SMS</button></div></div></aside></div></div>
+      </section>
+
+      <section class="page state-host" id="treasurer" aria-labelledby="treasurer-title">
+        <p class="eyebrow">Screen 08 · Treasurer only</p><h2 id="treasurer-title">Scout Bucks Finalization</h2><p class="dek">A responsive financial ledger separates provisional credited hours from final dollar awards and reconciles every cent before an irreversible revision.</p>
+        <div class="preview-bar"><span class="label-view">Preview width</span><button class="btn view-button" data-view="phone">390 phone</button><button class="btn view-button" data-view="tablet">Tablet</button><button class="btn view-button primary" data-view="desktop">1440 desktop</button><span style="margin-left:auto">Revision</span><button class="btn state-button primary" data-state="">Ready to Finalize</button><button class="btn state-button" data-state="success">Finalized</button></div>
+        <div class="preview-area"><div class="screen-shell">
+          <div class="screen-title"><div><p class="eyebrow">Reports · Scout Bucks · 2026</p><h3>Finalization ledger</h3><p>Prepared from attendance through Dec 20, 2026 · America/Los_Angeles</p></div><div class="button-row"><button class="btn">Export credited hours CSV</button><button class="btn">Revision history</button></div></div>
+          <div class="alert"><b>i</b><div><b>Credited hours are provisional until finalization</b><p>Dollar awards appear only in this Treasurer workflow. The scheduler does not maintain balances or redemptions.</p></div></div>
+          <div class="grid"><div class="stat col-3"><strong>412.75</strong><span>Finalized credited-hour total</span></div><div class="stat col-3"><strong>38</strong><span>Participating scouts</span></div><div class="stat col-3"><strong>$8,420.00</strong><span>Distributable pool</span></div><div class="stat col-3"><strong>$20.3998</strong><span>Informational effective rate</span></div></div>
+          <div class="split" style="margin-top:1rem"><div class="panel"><div class="card-header"><div><h3>Proposed awards</h3><span class="badge provisional">Provisional Credited Hours</span></div><button class="btn">Download CSV</button></div>
+            <div class="desktop-table"><table><caption>38 scouts · sorted by credited hours</caption><thead><tr><th scope="col">Scout</th><th scope="col" class="num">Own</th><th scope="col" class="num">Adult allocated</th><th scope="col" class="num">Total credited</th><th scope="col" class="num">Raw award</th><th scope="col" class="num">Proposed</th></tr></thead><tbody><tr><td><b>Alex Reed</b><div class="meta">Reed family unit · View sources</div></td><td class="num">18.50</td><td class="num">4.50</td><td class="num"><b>23.00</b></td><td class="num">$469.1954</td><td class="num"><b>$469.20</b></td></tr><tr><td><b>Riley Chen</b><div class="meta">Chen family unit · View sources</div></td><td class="num">21.25</td><td class="num">2.00</td><td class="num"><b>23.25</b></td><td class="num">$474.2953</td><td class="num"><b>$474.30</b></td></tr><tr><td><b>Jamie Patel</b><div class="meta">Patel family unit · View sources</div></td><td class="num">15.00</td><td class="num">5.75</td><td class="num"><b>20.75</b></td><td class="num">$423.2959</td><td class="num"><b>$423.30</b></td></tr><tr><td><b>35 other scouts</b></td><td class="num">—</td><td class="num">—</td><td class="num">345.75</td><td class="num">—</td><td class="num">$7,053.19</td></tr></tbody><tfoot><tr><th scope="row">Total</th><td></td><td></td><td class="num"><b>412.75</b></td><td></td><td class="num"><b>$8,419.99</b></td></tr></tfoot></table></div>
+            <div class="mobile-cards"><article class="card"><h4>Alex Reed</h4><dl class="definition"><dt>Own hours</dt><dd>18.50</dd><dt>Adult allocated</dt><dd>4.50</dd><dt>Total credited</dt><dd>23.00</dd><dt>Proposed award</dt><dd>$469.20</dd></dl><button class="btn">View allocation sources</button></article><article class="card"><h4>Riley Chen</h4><dl class="definition"><dt>Total credited</dt><dd>23.25</dd><dt>Proposed award</dt><dd>$474.30</dd></dl></article><article class="card"><h4>Jamie Patel</h4><dl class="definition"><dt>Total credited</dt><dd>20.75</dd><dt>Proposed award</dt><dd>$423.30</dd></dl></article></div>
+          </div>
+          <aside><div class="panel accent-panel"><p class="eyebrow">Settlement</p><h3>Exact-pool reconciliation</h3><div class="field"><label for="settlementPool">Distributable profit (USD)</label><input id="settlementPool" value="$ 8,420.00" inputmode="decimal"><small class="hint">Normalized: eight thousand four hundred twenty dollars and zero cents.</small></div><div class="receipt"><div>Rounded proposed awards <span style="float:right">$8,419.99</span></div><div>Rounding remainder <span style="float:right">+$0.01</span></div><div>Assigned to highest fractional remainder <span style="float:right">Alex Reed</span></div><hr><b>Reconciled award total <span style="float:right">$8,420.00</span></b><hr><b>Difference <span style="float:right">$0.00</span></b></div><p class="meta">Largest-remainder reconciliation ensures proposed awards equal the pool exactly.</p>
+            <div class="alert success state-note success-note"><b>✓</b><div><b>Revision 2 Finalized</b><p>Finalized Dec 22, 2026 by Avery Brooks.</p></div></div>
+            <button class="btn danger mobile-full" id="finalizeButton" style="width:100%;margin-top:.8rem">Finalize Scout Bucks Awards</button></div>
+            <div class="panel" style="margin-top:1rem"><h3>Revision history</h3><ul class="list"><li class="list-row"><span>Revision 1</span><div><b>$8,250.00</b><div class="meta">Finalized Dec 21 · corrected</div></div><span class="badge warning">Corrected Revision</span></li><li class="list-row"><span>Revision 2</span><div><b>$8,420.00</b><div class="meta">Current proposal</div></div><span class="badge info">Ready to Finalize</span></li></ul></div></aside></div>
+        </div></div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="confirmDialog" aria-labelledby="dialogTitle"><div class="dialog-body"><p class="eyebrow">Irreversible action</p><h3 id="dialogTitle">Finalize Scout Bucks awards?</h3><p>This creates a new finalized revision totaling <b>$8,420.00</b>. The scheduler will not maintain Scout Bucks balances or redemptions.</p><div class="alert warning"><b>!</b><div><b>Review before finalizing</b><p>Future corrections require a new revision and an audit reason.</p></div></div></div><div class="dialog-actions"><button class="btn" id="cancelDialog">Return to review</button><button class="btn danger" id="confirmFinalize">Finalize Scout Bucks Awards</button></div></dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script>
+    (() => {
+      const pages = [...document.querySelectorAll('.page')];
+      const navButtons = [...document.querySelectorAll('[data-page]')];
+      const menu = document.getElementById('sideNav');
+      const menuButton = document.getElementById('menuButton');
+      const toast = document.getElementById('toast');
+      const showToast = message => {
+        toast.textContent = message; toast.classList.add('show');
+        window.clearTimeout(showToast.timer); showToast.timer = window.setTimeout(() => toast.classList.remove('show'), 3200);
+      };
+      const showPage = id => {
+        const target = document.getElementById(id) || document.getElementById('overview');
+        pages.forEach(page => page.classList.toggle('active', page === target));
+        navButtons.forEach(button => button.toggleAttribute('aria-current', button.dataset.page === target.id));
+        history.replaceState(null, '', '#' + target.id);
+        menu.classList.remove('open'); menuButton.setAttribute('aria-expanded', 'false');
+        document.getElementById('main').focus({preventScroll:true}); window.scrollTo(0,0);
+      };
+      navButtons.forEach(button => button.addEventListener('click', () => showPage(button.dataset.page)));
+      menuButton.addEventListener('click', () => {
+        const open = menu.classList.toggle('open'); menuButton.setAttribute('aria-expanded', String(open));
+      });
+      document.querySelectorAll('.view-button').forEach(button => button.addEventListener('click', () => {
+        const bar = button.closest('.preview-bar'); const area = bar.nextElementSibling;
+        area.classList.remove('viewport-phone','viewport-tablet');
+        if (button.dataset.view !== 'desktop') area.classList.add('viewport-' + button.dataset.view);
+        bar.querySelectorAll('.view-button').forEach(b => b.classList.toggle('primary', b === button));
+      }));
+      document.querySelectorAll('.state-button').forEach(button => button.addEventListener('click', () => {
+        const host = button.closest('.state-host'); const state = button.dataset.state;
+        host.classList.remove('state-concurrent','state-failed','state-success','state-loading');
+        if (state) host.classList.add('state-' + state);
+        button.closest('.preview-bar').querySelectorAll('.state-button').forEach(b => b.classList.toggle('primary', b === button));
+        if (host.id === 'announcement') {
+          const enabled = state === 'success' || state === 'failed';
+          host.querySelector('.groups-toggle').checked = enabled; host.querySelector('.groups-toggle').disabled = !enabled;
+          host.querySelector('.groups-copy').textContent = enabled ? 'Enabled for this season.' : 'Disabled in season configuration.';
+          const status = host.querySelector('.groups-status');
+          const statusBadge = status.nextElementSibling;
+          status.textContent = enabled ? 'Enabled · ready' : 'Not configured';
+          statusBadge.textContent = enabled ? 'Enabled' : 'Disabled';
+          statusBadge.className = 'badge ' + (enabled ? 'complete' : 'neutral');
+        }
+      }));
+      document.querySelector('.phone-treatment').addEventListener('change', event => {
+        const area = event.target.closest('.preview-bar').nextElementSibling;
+        area.querySelectorAll('.shift-card').forEach(card => {
+          card.style.padding = event.target.value === 'compact' ? '.6rem' : '';
+          card.querySelectorAll('.meta').forEach(meta => meta.classList.toggle('hide-phone', event.target.value === 'compact'));
+        });
+      });
+      document.querySelectorAll('[data-feedback]').forEach(button => button.addEventListener('click', () => showToast('✓ ' + button.dataset.feedback)));
+      document.getElementById('copyButton').addEventListener('click', async event => {
+        try { await navigator.clipboard.writeText(event.currentTarget.dataset.copy); showToast('✓ Household code copied'); }
+        catch { showToast('Select and copy code: ' + event.currentTarget.dataset.copy); }
+      });
+      const dialog = document.getElementById('confirmDialog');
+      document.getElementById('openDialog').addEventListener('click', () => dialog.showModal());
+      document.getElementById('finalizeButton').addEventListener('click', () => dialog.showModal());
+      document.getElementById('cancelDialog').addEventListener('click', () => dialog.close());
+      document.getElementById('confirmFinalize').addEventListener('click', () => { dialog.close(); showToast('✓ Revision 2 finalized · CSV ready'); });
+      if (location.hash) showPage(location.hash.slice(1));
+    })();
+  </script>
+</body>
+</html>
