@@ -1,4 +1,6 @@
 -- Increment 1 foundation primitives: audit, outbox, jobs, sessions.
+-- TIMESTAMPTZ defaults use now() so the stored instant is independent of the
+-- session TimeZone. Avoid casting now() through timestamp without time zone.
 
 CREATE TABLE audit_events (
     id BIGSERIAL PRIMARY KEY,
@@ -8,7 +10,7 @@ CREATE TABLE audit_events (
     target_id TEXT NOT NULL,
     correlation_id TEXT NOT NULL,
     payload JSONB NOT NULL DEFAULT '{}'::jsonb,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT (now() AT TIME ZONE 'utc')
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX audit_events_created_at_idx ON audit_events (created_at);
@@ -21,9 +23,9 @@ CREATE TABLE outbox_messages (
     payload JSONB NOT NULL DEFAULT '{}'::jsonb,
     status TEXT NOT NULL DEFAULT 'pending',
     attempts INTEGER NOT NULL DEFAULT 0,
-    available_at TIMESTAMPTZ NOT NULL DEFAULT (now() AT TIME ZONE 'utc'),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT (now() AT TIME ZONE 'utc'),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT (now() AT TIME ZONE 'utc'),
+    available_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT outbox_messages_status_check CHECK (status IN ('pending', 'processing', 'delivered', 'failed'))
 );
 
@@ -36,11 +38,11 @@ CREATE TABLE background_jobs (
     payload JSONB NOT NULL DEFAULT '{}'::jsonb,
     status TEXT NOT NULL DEFAULT 'pending',
     attempts INTEGER NOT NULL DEFAULT 0,
-    available_at TIMESTAMPTZ NOT NULL DEFAULT (now() AT TIME ZONE 'utc'),
+    available_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     lease_owner TEXT NULL,
     lease_expires_at TIMESTAMPTZ NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT (now() AT TIME ZONE 'utc'),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT (now() AT TIME ZONE 'utc'),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT background_jobs_status_check CHECK (status IN ('pending', 'leased', 'completed', 'failed'))
 );
 
@@ -56,8 +58,8 @@ CREATE TABLE sessions (
     csrf_token TEXT NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
     revoked_at TIMESTAMPTZ NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT (now() AT TIME ZONE 'utc'),
-    last_seen_at TIMESTAMPTZ NOT NULL DEFAULT (now() AT TIME ZONE 'utc')
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_seen_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX sessions_expires_at_idx ON sessions (expires_at);

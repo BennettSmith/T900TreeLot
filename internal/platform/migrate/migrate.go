@@ -97,7 +97,7 @@ func ensureBookkeeping(ctx context.Context, db *postgres.DB) error {
 	_, err := db.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS schema_migrations (
 			version INTEGER PRIMARY KEY,
-			applied_at TIMESTAMPTZ NOT NULL DEFAULT (now() AT TIME ZONE 'utc')
+			applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
 		)
 	`)
 	if err != nil {
