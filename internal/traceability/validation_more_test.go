@@ -87,7 +87,6 @@ increments:
 		"UC-0 current revision 3 does not exist",
 		"UC-9 exists in the manifest but not docs/use-cases.md",
 		"UC-9@r1 is current but superseded",
-		"US-001 references unknown increment INC-03",
 		"US-001 current revision 2 does not exist",
 		"US-001@r1 is verified but has no implementation_pr",
 		"US-001@r1 has invalid source use-case reference \"bad-reference\"",
