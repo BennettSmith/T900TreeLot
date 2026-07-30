@@ -65,7 +65,13 @@ func TestAcceptancePreflightPassesWhenLocalEnvironmentIsReady(t *testing.T) {
 	writeExecutable(t, bin, "node", "#!/bin/sh\necho 'v22.0.0'\n")
 	writeExecutable(t, bin, "lsof", "#!/bin/sh\nexit 1\n")
 	writeExecutable(t, bin, "curl", "#!/bin/sh\nexit 0\n")
-	writeExecutable(t, bin, "docker", "#!/bin/sh\nexit 0\n")
+	writeExecutable(t, bin, "docker", `#!/bin/sh
+case "$*" in
+  *"busybox:1.36 sh -c"*"exec httpd"*) exit 0 ;;
+  *"run -d --rm --network host"*) exit 1 ;;
+  *) exit 0 ;;
+esac
+`)
 
 	command := exec.Command("bash", "preflight.sh", "acceptance")
 	command.Env = append(os.Environ(),
