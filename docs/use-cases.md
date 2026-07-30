@@ -5,6 +5,13 @@
 **Date:** July 2026  
 **Purpose:** This document describes what the Troop 900 Tree Lot Shift Scheduler does from a user's perspective. It covers all functional use cases organized by category.
 
+The document version identifies an edition of the complete requirements set.
+Per-use-case revisions, delivery status, and implementation evidence are
+tracked separately in the generated
+[`docs/traceability.md`](traceability.md). Follow the
+[traceability process](traceability-process.md) for semantic requirement
+changes; editorial changes do not increment per-use-case revisions.
+
 ---
 
 ## Table of Contents
@@ -2314,6 +2321,10 @@ The manager must take one of these actions:
 ---
 
 ## Document History
+
+This table records editions of the complete document. When an edition changes
+use-case behavior or policy, the same change must update the affected
+per-use-case and user-story revisions in `traceability/manifest.yaml`.
 
 | Version | Date | Changes |
 |---------|------|---------|
