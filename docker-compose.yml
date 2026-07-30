@@ -101,6 +101,8 @@ services:
       SESSION_KEY: 0123456789abcdef0123456789abcdef
       GROUPS_IO_ENABLED: "false"
       TEST_CONTROL_KEY: acceptance-test-control-key
+    ports:
+      - "8080:8080"
     depends_on:
       postgres:
         condition: service_healthy

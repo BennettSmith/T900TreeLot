@@ -18,17 +18,18 @@ import (
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	os.Exit(run(logger))
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	os.Exit(run(ctx, logger, 0))
 }
 
-func run(logger *slog.Logger) int {
+// run starts the worker. If maxTicks > 0, it processes at most that many ticks (for tests).
+func run(ctx context.Context, logger *slog.Logger, maxTicks int) int {
 	cfg, err := config.Load()
 	if err != nil {
 		logger.Error("load config", "error", err)
 		return 1
 	}
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
 
 	db, err := postgres.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
@@ -47,6 +48,7 @@ func run(logger *slog.Logger) int {
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
+	ticks := 0
 	for {
 		claimed, err := worker.Tick(ctx)
 		if err != nil {
@@ -57,6 +59,11 @@ func run(logger *slog.Logger) int {
 			logger.Error("worker tick failed", "error", err)
 		} else if claimed > 0 {
 			logger.Info("worker claimed work", "claimed", claimed)
+		}
+		ticks++
+		if maxTicks > 0 && ticks >= maxTicks {
+			logger.Info("worker stopped after max ticks", "ticks", ticks)
+			return 0
 		}
 
 		select {

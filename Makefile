@@ -3,7 +3,8 @@
 override COVERAGE_MIN := 85
 GO_FILES = $(shell git ls-files --cached --others --exclude-standard '*.go')
 NODE_MODULES_STAMP = node_modules/.package-lock.json
-COMPOSE = docker compose
+DOCKER ?= $(shell if docker info >/dev/null 2>&1; then echo docker; else echo sudo docker; fi)
+COMPOSE = $(DOCKER) compose
 IMAGE ?= treelot:local
 
 .PHONY: help assets assets-watch assets-check showcase format format-check lint test coverage ci \
@@ -74,7 +75,9 @@ test: ## Run all Go unit/component tests; use during development.
 coverage: ## Run tests and require at least 85% statement coverage.
 	@profile="$$(mktemp)"; \
 	trap 'rm -f "$$profile"' EXIT; \
-	go test ./... -covermode=atomic -coverprofile="$$profile"; \
+	packages="$$(go list ./internal/... ./web/... | grep -Ev '/testdb$$')"; \
+	coverpkg="$$(echo "$$packages" | paste -sd, -)"; \
+	go test ./... -count=1 -covermode=atomic -coverpkg="$$coverpkg" -coverprofile="$$profile"; \
 	total="$$(go tool cover -func="$$profile" | awk '/^total:/ {gsub(/%/, "", $$3); print $$3}')"; \
 	test -n "$$total" || { echo "Unable to determine total coverage." >&2; exit 1; }; \
 	awk -v total="$$total" -v minimum="$(COVERAGE_MIN)" 'BEGIN { \
@@ -88,7 +91,7 @@ coverage: ## Run tests and require at least 85% statement coverage.
 ci: assets-check format-check lint coverage ## Run fast required checks (no Docker acceptance).
 
 image: ## Build the immutable production image used by Compose and acceptance.
-	@docker build -t "$(IMAGE)" .
+	@$(DOCKER) build -t "$(IMAGE)" .
 
 up: image ## Start the local Docker Compose development stack.
 	@$(COMPOSE) --profile dev up --build -d postgres
@@ -108,10 +111,6 @@ logs: ## Tail logs for postgres, web, and worker.
 ps: ## Show Docker Compose service status.
 	@$(COMPOSE) --profile dev --profile acceptance ps
 
-acceptance: image ## Build the production image and run foundation acceptance specs.
-	@$(COMPOSE) --profile acceptance down $(DOWN_FLAGS)
-	@$(COMPOSE) --profile acceptance up -d postgres
-	@$(COMPOSE) run --rm migrate
-	@$(COMPOSE) --profile acceptance up -d acceptance-web acceptance-worker provider-stubs
-	@$(COMPOSE) --profile acceptance run --rm acceptance
-	@if test -z "$$ACCEPTANCE_KEEP"; then $(COMPOSE) --profile acceptance down; fi
+acceptance: ## Build the production image and run foundation acceptance specs.
+	@chmod +x ./scripts/acceptance.sh
+	@./scripts/acceptance.sh

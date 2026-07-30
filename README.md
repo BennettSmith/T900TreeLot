@@ -41,10 +41,12 @@ compatibility and refuse to start on mismatch.
 ## Acceptance tests
 
 Foundation acceptance specs live under `acceptance/` (ATDD four-layer layout) and
-run only with `-tags=acceptance` against a deployed Compose stack:
+run only with `-tags=acceptance` against the production Docker image:
 
 ```sh
 make acceptance
 ```
 
-Set `ACCEPTANCE_KEEP=1` to leave the acceptance stack running after the suite.
+`make acceptance` builds the image, starts PostgreSQL via Compose, runs migrate/web/worker
+from the production image (host networking), then executes the suite. Set
+`ACCEPTANCE_KEEP=1` to leave containers running after the suite.

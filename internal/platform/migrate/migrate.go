@@ -155,7 +155,12 @@ func LatestAvailableVersion(directory string) (int, error) {
 // or a well-known absolute layout inside the container image.
 func Directory(candidates ...string) (string, error) {
 	if len(candidates) == 0 {
-		candidates = []string{"migrations", "/app/migrations"}
+		candidates = []string{
+			"migrations",
+			"/app/migrations",
+			filepath.Join("..", "migrations"),
+			filepath.Join("..", "..", "migrations"),
+		}
 	}
 	var tried []string
 	for _, candidate := range candidates {

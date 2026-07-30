@@ -12,7 +12,7 @@ import (
 
 func TestStoreCreatesAndLoadsSession(t *testing.T) {
 	db := testdb.OpenMigrated(t)
-	store := session.NewStore(db, clock.System(), 24*time.Hour)
+	store := session.NewStore(db, clock.System(), 0)
 
 	created, rawToken, err := store.Create(context.Background())
 	if err != nil {
