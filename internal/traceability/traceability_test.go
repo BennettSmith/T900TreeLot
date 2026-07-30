@@ -14,7 +14,7 @@ func TestValidateAcceptsRevisionMatchedEvidence(t *testing.T) {
 	writeFixture(t, root, "docs/user-stories/roadmap.md", "## INC-01 — Foundation\n## INC-02 — Bootstrap\n")
 	writeFixture(t, root, "acceptance/cases/bootstrap_test.go", `package cases
 
-// Trace: UC-0@r1 US-001@r1
+// Trace: INC-01 INC-02 UC-0@r1 US-001@r1
 func TestBootstrap() {}
 `)
 	writeFixture(t, root, "traceability/manifest.yaml", `schema_version: 1
@@ -101,6 +101,50 @@ increments:
 	problems := Validate(root, manifest)
 	if joined := strings.Join(problems, "\n"); !strings.Contains(joined, "US-001@r2 is verified but has no matching acceptance trace") {
 		t.Fatalf("Validate() problems = %v, want stale revision problem", problems)
+	}
+}
+
+func TestValidateRejectsVerifiedIncrementWithoutAcceptanceTrace(t *testing.T) {
+	root := t.TempDir()
+	writeFixture(t, root, "docs/use-cases.md", "### Use Case 0: Bootstrap\n")
+	writeFixture(t, root, "docs/user-stories/bootstrap/us-001-bootstrap.md", "# US-001: Bootstrap\n")
+	writeFixture(t, root, "docs/user-stories/roadmap.md", "## INC-01 — Foundation\n## INC-02 — Bootstrap\n")
+	writeFixture(t, root, "acceptance/cases/bootstrap_test.go", "// Trace: UC-0@r1 US-001@r1\n")
+	writeFixture(t, root, "traceability/manifest.yaml", `schema_version: 1
+baseline:
+  requirements_commit: c66a77c
+  use_case_document_version: "3.13"
+use_cases:
+  UC-0:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+stories:
+  US-001:
+    path: docs/user-stories/bootstrap/us-001-bootstrap.md
+    increment: INC-02
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-0@r1]
+increments:
+  INC-01:
+    delivery_status: verified
+    implementation_pr: 4
+  INC-02:
+    delivery_status: planned
+`)
+
+	manifest, err := Load(filepath.Join(root, "traceability/manifest.yaml"))
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	joined := strings.Join(Validate(root, manifest), "\n")
+	if !strings.Contains(joined, "INC-01 is verified but has no matching acceptance trace") {
+		t.Fatalf("Validate() problems = %q, want missing increment trace", joined)
 	}
 }
 
