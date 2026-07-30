@@ -131,14 +131,15 @@ Each increment below is intended to be independently deployable. “Exit” mean
 **Operational and migration needs:**
 
 - Add seasons, reusable templates, generated shifts, local date/time plus zone conversion, draft/publication state, special-event metadata, target slots, and minimum operating headcount.
-- Add publication and individual-shift in-app inbox notices, plus optional Groups.io outbox messages with stable idempotency keys for troop-wide summaries.
+- Persist publication and individual-shift inbox notice records for eligible recipients, plus optional Groups.io outbox messages with stable idempotency keys for troop-wide summaries when that channel is selected.
+- Treat the personal Inbox UI, unread counts, and announcement/reminder workflows as increment 7; this increment only needs durable notice records and optional Groups.io fan-out so publication does not depend on SMS.
 - Seed no production schedule automatically; Committee authors the first season through normal workflows.
 
 **Acceptance-based exit:**
 
 - UC-3, UC-20 through UC-24, and UC-44 pass for template independence, closed-day exceptions, draft privacy, atomic publication, one optional summary inbox notice per recipient, immediate individual publication, and off-season/draft navigation.
 - Minimum headcount below two is rejected, and no template or shift can configure away local two-deep policy.
-- Provider failure cannot roll back web publication; draft operations send no messages.
+- Groups.io failure cannot roll back web publication or inbox notice records; draft operations send no messages.
 
 ## 6. Sign up and cancel
 
@@ -171,9 +172,10 @@ Each increment below is intended to be independently deployable. “Exit” mean
 
 **Operational and migration needs:**
 
-- Add projected staffing read models, canonical announcements, per-user inbox messages, private per-identity read state, recipient snapshots, optional Groups.io delivery attempts, retries, reminder preferences, and hourly enqueue jobs.
+- Add projected staffing read models, canonical announcements, the personal Inbox UI over per-user inbox messages (including any notices already recorded in increment 5), private per-identity read state, recipient snapshots, optional Groups.io delivery attempts, retries, reminder preferences, and hourly enqueue jobs.
 - Keep `GROUPS_IO_ENABLED=false` by default. Add its adapter/configuration tests independently; unavailable Groups.io must not block this increment.
-- Do not introduce SMS or phone-number notification delivery.
+- Limit Groups.io to troop-wide messages; keep direct and family-scoped reminders in-app only. Do not introduce SMS or phone-number notification delivery.
+- Leave verified-email notification delivery out of this increment; mailbox verification and opt-in email remain a later follow-on.
 
 **Acceptance-based exit:**
 
@@ -191,7 +193,7 @@ Each increment below is intended to be independently deployable. “Exit” mean
 
 **Operational and migration needs:**
 
-- Add immutable attendance events, open-record constraints, no-shows, separate adjustments, walk-in origin, actual-coverage transitions, closure/reopening state, reasons, and urgent operational outbox messages.
+- Add immutable attendance events, open-record constraints, no-shows, separate adjustments, walk-in origin, actual-coverage transitions, closure/reopening state, reasons, and urgent operational inbox notices with optional Groups.io outbox posts for troop-wide closure/reopening updates.
 - Store instants in UTC and evaluate check-in/out windows in `TREE_LOT_TIME_ZONE` using an injected clock.
 - Document that local adult classification does not verify Scouting America registration, age, training, or leader eligibility; Committee retains that operational responsibility.
 
