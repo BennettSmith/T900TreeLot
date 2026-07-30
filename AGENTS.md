@@ -159,3 +159,40 @@ Use injected clocks in time-dependent tests. Poll observable asynchronous
 outcomes with deadlines; do not use fixed sleeps or retries that hide flakes.
 Keep acceptance-test vocabulary in tree-lot domain language rather than routes,
 selectors, tables, or implementation terminology.
+
+## Cursor Cloud specific instructions
+
+The Cloud VM has no `systemd`; services are started by the environment update
+script on boot, not by an init system. Standard commands and DB resolution are
+documented in `README.md` and the `Makefile`; only the non-obvious caveats
+below are repeated here.
+
+Services required to develop and validate this repository:
+
+- PostgreSQL 16 on `127.0.0.1:5432`, role/password `treelot`/`treelot`, with
+  databases `treelot` (dev) and `treelot_test` (unit/component tests). The
+  update script starts the cluster (`pg_ctlcluster 16 main start`) and creates
+  the role/databases idempotently.
+- Docker with the `vfs` storage driver, used only by `make acceptance`.
+
+Non-obvious caveats:
+
+- `make ci` / `make test` need only local PostgreSQL. `scripts/ensure-test-db.sh`
+  finds `treelot_test` on `:5432` and never touches Docker in this environment.
+  Do not set `TEST_DATABASE_URL`; leaving it unset uses the reachable `:5432` DB.
+- `make acceptance` needs Docker. It builds the production image and runs its
+  own throwaway Compose PostgreSQL on host port `:5433` plus host-networked
+  web/worker/stub on `:8080`, `:8081`, `:8090`. It does not use the dev
+  PostgreSQL on `:5432`, so the two never conflict.
+- Docker 29 defaults to the containerd snapshotter; the classic `vfs` graph
+  driver requires `/etc/docker/daemon.json` to set
+  `{"storage-driver":"vfs","features":{"containerd-snapshotter":false}}`.
+  `iptables` is set to `iptables-legacy` for nested-Docker networking.
+- `scripts/preflight.sh` (run by `make acceptance`) calls `docker info` without
+  `sudo`. The `ubuntu` user is in the `docker` group, so a fresh login shell can
+  reach Docker without `sudo`; a shell opened before that group was applied
+  cannot, and the `Makefile` then falls back to `sudo docker`.
+- Run the web app in dev without Docker: export the vars from `.env.example`
+  with `DATABASE_URL=postgres://treelot:treelot@127.0.0.1:5432/treelot?sslmode=disable`,
+  apply schema with `go run ./cmd/migrate up`, then `go run ./cmd/web` (serves
+  `:8080`). `make up`/`make acceptance` remain Docker-only.
