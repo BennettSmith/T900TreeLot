@@ -8,15 +8,25 @@ and [`docs/user-stories/roadmap.md`](docs/user-stories/roadmap.md).
 
 - Go (see `go.mod`)
 - Node.js 22+ (Tailwind asset build only)
-- Docker and Docker Compose (local stack and acceptance)
-- A disposable Postgres database named with a `_test` suffix for `make ci` /
-  `go test` (default `treelot_test`)
+- Docker and Docker Compose (local stack, acceptance, and local `make ci` fallback)
 
 Copy [`.env.example`](.env.example) to `.env` for local overrides.
 
-`TEST_DATABASE_URL` is used by helpers that drop foundation tables. The database
-name must end with `_test`; pointing it at the development `treelot` database is
-rejected.
+`make ci` / `make test` need a disposable Postgres database whose name ends with
+`_test` (default `treelot_test`). Helpers drop foundation tables there, so the
+development `treelot` database is rejected.
+
+Resolution order for `TEST_DATABASE_URL`:
+
+1. Use `TEST_DATABASE_URL` when set and reachable (GitHub Actions does this).
+2. Otherwise use `postgres://treelot:treelot@127.0.0.1:5432/treelot_test` when that
+   role/database already exists.
+3. Otherwise start Compose Postgres on host port **5433** and create `treelot_test`.
+
+A failure like `role "treelot" does not exist` means the Postgres on `:5432` is
+not the project test database (for example a Homebrew server). Unset
+`TEST_DATABASE_URL`, ensure Docker is running, and re-run `make ci` so Compose
+can supply `:5433`.
 
 ## Common commands
 

@@ -7,7 +7,7 @@ DOCKER ?= $(shell if docker info >/dev/null 2>&1; then echo docker; else echo su
 COMPOSE = $(DOCKER) compose
 IMAGE ?= treelot:local
 
-.PHONY: help assets assets-watch assets-check showcase format format-check lint test coverage ci \
+.PHONY: help assets assets-watch assets-check showcase format format-check lint test-db test coverage ci \
 	image up down migrate logs ps acceptance
 
 help: ## List available targets and explain when to use them.
@@ -69,15 +69,22 @@ format-check: ## Check Go formatting without changing files; use in CI.
 lint: ## Run Go static analysis; use before submitting changes.
 	@go vet ./...
 
+test-db: ## Resolve disposable treelot_test Postgres (host :5432 or Compose :5433).
+	@chmod +x ./scripts/ensure-test-db.sh
+	@./scripts/ensure-test-db.sh >/dev/null
+
 test: ## Run all Go unit/component tests; use during development.
-	@go test ./...
+	@chmod +x ./scripts/ensure-test-db.sh
+	@TEST_DATABASE_URL="$$(./scripts/ensure-test-db.sh)" go test ./...
 
 coverage: ## Run tests and require at least 85% statement coverage.
+	@chmod +x ./scripts/ensure-test-db.sh
 	@profile="$$(mktemp)"; \
 	trap 'rm -f "$$profile"' EXIT; \
 	packages="$$(go list ./internal/... ./web/... | grep -Ev '/testdb$$')"; \
 	coverpkg="$$(echo "$$packages" | paste -sd, -)"; \
-	go test ./... -count=1 -covermode=atomic -coverpkg="$$coverpkg" -coverprofile="$$profile"; \
+	TEST_DATABASE_URL="$$(./scripts/ensure-test-db.sh)" \
+		go test ./... -count=1 -covermode=atomic -coverpkg="$$coverpkg" -coverprofile="$$profile"; \
 	total="$$(go tool cover -func="$$profile" | awk '/^total:/ {gsub(/%/, "", $$3); print $$3}')"; \
 	test -n "$$total" || { echo "Unable to determine total coverage." >&2; exit 1; }; \
 	awk -v total="$$total" -v minimum="$(COVERAGE_MIN)" 'BEGIN { \
