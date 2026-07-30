@@ -25,6 +25,7 @@ The design system must:
 - Give Committee and Admin users efficient data-dense operational views
 - Use one consistent vocabulary for status, severity, actions, and feedback
 - Work across full-page navigation and HTMX-enhanced partial updates
+- Support passkey enrollment and sign-in ceremonies that require browser JavaScript
 - Meet WCAG 2.2 Level AA for core workflows
 - Remain small enough to implement and maintain as reusable Go template components
 
@@ -38,10 +39,10 @@ The logical design system does not prescribe:
 - Exact spacing, radius, shadow, or motion values
 - A dark theme
 - A desktop-first information architecture
-- A JavaScript component framework
+- A JavaScript application framework such as React or Angular
 - The final visual treatment of any POC
 
-The POCs do not need to implement authentication, persistence, SMS, concurrency, provider integrations, or production authorization. They should simulate those outcomes with representative state.
+The POCs do not need to implement production authentication, persistence, messaging providers, concurrency, or authorization. They should simulate passkey and invitation outcomes with representative state and may use modest browser JavaScript where the real product would require WebAuthn or HTMX.
 
 ## 4. Product context
 
@@ -105,7 +106,7 @@ When useful and safe, disabled or omitted actions should be accompanied by a rea
 - Check-in is not open yet
 - This household is inactive
 
-Authentication and phone-identity errors remain generic to avoid account enumeration.
+Authentication and account-identifier errors remain generic to avoid account enumeration.
 
 ### Preserve actor and target clarity
 
@@ -123,9 +124,9 @@ Color alone never communicates status. Status includes a text label and, where u
 
 Routine cancellation needs a concise confirmation. Account removal, privacy deletion, agreement-link replacement, and season deletion need progressively stronger warnings and confirmation.
 
-### Progressive enhancement is invisible
+### Progressive enhancement shares one result path
 
-HTMX may improve speed, but full-page and partial-page interactions must use the same component language and provide the same result.
+HTMX may improve speed, but full-page and partial-page interactions must use the same component language and provide the same authorized result. Passkey flows may require JavaScript, but they still complete through server-validated commands.
 
 ### Financial language is precise
 
@@ -328,13 +329,17 @@ Specialized uses include:
 - Confirmation phrase
 - Archive passphrase
 
-### Phone-number field
+### Email account-identifier field
 
-Uses telephone input behavior, explains expected formatting without implying that formatting controls identity, and supports generic security errors.
+Uses email input behavior, explains that the address identifies the account, and supports generic security errors that do not reveal whether an address is already registered. Copy may note that mailbox confirmation happens later when email notifications or recovery need it.
 
-### OTP field
+### Passkey ceremony controls
 
-Supports mobile numeric entry, paste/autofill, resend timing, expiration, loading, and generic invalid-code feedback.
+Supports register-passkey and sign-in-with-passkey actions, browser/OS authenticator prompts, loading, cancellation, unsupported-browser guidance, and generic failure feedback. These controls require browser JavaScript.
+
+### Invitation and QR presentation
+
+Shows a copyable invitation link and scannable QR code for household, co-manager, Young Adult Scout, or scout-link enrollment, with expiry guidance and explicit copied feedback.
 
 ### Money field
 
@@ -425,7 +430,7 @@ Used only where an in-context confirmation is appropriate. It has:
 - Safe default focus
 - Cancel action
 - No reliance on clicking outside to escape
-- Full-page fallback when JavaScript is unavailable
+- Keyboard-dismissible cancel action
 
 ### Progress indicator
 
@@ -448,7 +453,7 @@ Supports:
 
 ### Photo input
 
-Supports camera/library selection, preview, crop, replace, remove, upload progress, and failure. This is one of the few components permitted to require browser JavaScript for its enhanced experience.
+Supports camera/library selection, preview, crop, replace, remove, upload progress, and failure. Like passkey controls, photo capture may require browser JavaScript.
 
 ### Card
 
@@ -504,7 +509,7 @@ Displays elapsed shift time. It must not be the only source of authoritative att
 
 ### Copy action
 
-Used for household link codes and shareable signup links. Provides explicit copied feedback and a non-JavaScript selectable-text fallback.
+Used for household link codes, invitation links, and shareable enrollment QR targets. Provides explicit copied feedback and selectable text when clipboard access is unavailable.
 
 ## 10. Domain components
 
@@ -774,7 +779,7 @@ Shows:
 - Data categories and record counts
 - Verified archive status and checksum
 - Irreversibility warning
-- SMS re-authentication
+- Passkey step-up re-authentication
 - Typed season-name confirmation
 - Final destructive action
 
@@ -854,20 +859,21 @@ The following labels are canonical. POCs may alter visual treatment but not mean
 
 ## 12. Page templates and patterns
 
-### Welcome and OTP sign-in
+### Welcome and passkey sign-in
 
-Supports phone entry, generic submission feedback, OTP verification, resend, expiration, and role-appropriate landing.
+Supports discoverable passkey sign-in, optional email account hint, generic submission feedback, unsupported-browser guidance, and role-appropriate landing.
 
 ### Invitation onboarding
 
 Logical sequence:
 
-1. Invitation validation
-2. Phone verification
-3. Profile completion
-4. Household setup or access acceptance
-5. Family-member setup
-6. Agreement Center
+1. Invitation or QR validation
+2. Claimed email entry
+3. Passkey registration
+4. Profile completion
+5. Household setup or access acceptance
+6. Family-member setup
+7. Agreement Center
 
 ### Family dashboard
 
@@ -929,7 +935,7 @@ Separates provisional credited-hours reporting from Treasurer-only dollar finali
 
 ### Profile and account
 
-Includes display name, profile photo, phone change, session/security information, role continuity, and access removal.
+Includes display name, profile photo, claimed email change, passkey management, session/security information, role continuity, and access removal.
 
 ### Season maintenance
 
@@ -1104,13 +1110,13 @@ Avoid ambiguous labels such as `Submit`, `OK`, or `Continue` when the actual act
 
 ## 17. Privacy and security presentation
 
-- Do not show phone numbers on rosters, leaderboards, or unrelated household views
+- Do not show account emails or phone numbers on rosters, leaderboards, or unrelated household views
 - Do not expose per-recipient delivery details to ordinary recipients
-- Do not reveal whether an unknown phone number has an account
+- Do not reveal whether an unknown email has an account
 - Do not display archive passphrases after submission
 - Do not imply that the scheduler stores the public Google Doc
 - Make acting user and affected person visible for facilitated actions
-- Explain session revocation after phone-number changes
+- Explain session revocation after email changes and credential recovery
 - Distinguish access removal from permanent personal-data deletion
 
 ## 18. Required POC deliverables
@@ -1242,8 +1248,9 @@ Reviewers should not need to edit source code to see disabled, loading, error, e
 
 Agents may additionally explore:
 
-- OTP sign-in
-- Invitation onboarding
+- Passkey sign-in
+- Invitation / QR onboarding
+- Co-manager invite presentation
 - Multi-household assignment ownership
 - Attendance adjustment
 - Leaderboard
@@ -1266,7 +1273,7 @@ POCs will be compared on:
 - Responsive behavior
 - Consistency across components
 - Strength and distinctiveness of visual direction
-- Fit with server-rendered progressive enhancement
+- Fit with server-rendered HTML, HTMX, and required browser JavaScript for passkeys without a client-side application framework
 - Ease of translating the concepts into Go templates and Tailwind CSS
 
 A visually attractive POC that obscures permissions, status, actor/target relationships, or mobile actions does not satisfy this brief.

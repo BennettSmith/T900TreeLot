@@ -62,27 +62,26 @@ Each increment below is intended to be independently deployable. “Exit” mean
 
 ## 2. Bootstrap and sign-in
 
-**User-visible outcome:** The designated first Admin can bootstrap exactly once, authenticated people can sign in securely, and a signed-in person can change their own available phone credential without losing identity or history.
+**User-visible outcome:** The designated first Admin can bootstrap exactly once with a passkey, authenticated people can sign in with passkeys, and a signed-in person can manage passkeys and claimed account email without losing identity or history.
 
 **Included stories:** US-001, US-002, US-003.
 
-**Prerequisites:** Increment 1; configured Twilio Verify service and bootstrap Admin phone secret.
+**Prerequisites:** Increment 1; configured bootstrap enrollment token and WebAuthn relying-party settings.
 
 **Operational and migration needs:**
 
-- Add identities, roles, encrypted E.164 phone values, keyed blind indexes, hashed session tokens, revocation metadata, bootstrap closure, rate-limit state, and audit records.
-- Configure phone encryption/blind-index keys, secure host-only cookies, Twilio Verify credentials, and redacted authentication telemetry.
+- Add identities, roles, claimed email identifiers, passkey public credential records, hashed session tokens, revocation metadata, bootstrap closure, rate-limit state, and audit records.
+- Configure secure host-only cookies, WebAuthn relying-party ID/origin, and redacted authentication telemetry.
 - Provide a safe initial-Admin operating procedure and a separate future break-glass design without exposing it as ordinary bootstrap.
 
 **Acceptance-based exit:**
 
-- UC-0, UC-2, and the self-service path of UC-2B pass for success, expired/reused credentials, identity-enumeration resistance, rate limiting, secure session revocation, bootstrap closure, and atomic phone replacement.
-- Security notices are queued after phone change without provider calls inside the transaction.
-- The same identity, profile reference, roles, and history survive credential replacement.
+- UC-0, UC-2, and the self-service path of UC-2B pass for success, failed/cancelled WebAuthn ceremonies, identity-enumeration resistance, rate limiting, secure session revocation, bootstrap closure, passkey management, and atomic email replacement.
+- The same identity, profile reference, roles, and history survive credential and email changes.
 
 ## 3. Household onboarding and Young Adult Scout access
 
-**User-visible outcome:** Admin can invite a household; its first manager can establish people and explicit relationships, add a co-manager, link one scout across households, grant limited Young Adult Scout access, perform authorized assisted phone recovery, and let authenticated people maintain basic profile details.
+**User-visible outcome:** Admin can invite a household by link or QR code; its first manager can establish people and explicit relationships, add a co-manager, link one scout across households, grant limited Young Adult Scout access, perform authorized assisted passkey recovery, and let authenticated people maintain basic profile details.
 
 **Included stories:** US-004, US-005, US-006, US-007, US-008, US-009, US-010, US-053, US-054.
 
@@ -92,13 +91,13 @@ Each increment below is intended to be independently deployable. “Exit” mean
 
 - Add people, households, memberships, manager authority, family units, explicit adult-to-scout relationships, purpose-bound hashed invitation/link tokens, and Young Adult Scout identity links.
 - Add PostgreSQL `BYTEA` profile blobs behind `BlobStore`, including image validation, re-encoding, size limits, and lifecycle metadata.
-- Extend SMS stubs and outbox consumers for invitation and security messages; add expiry and idempotency cleanup policies.
+- Support out-of-band invitation link and QR presentation; add expiry and idempotency cleanup policies.
 - Define and secure the operator-only break-glass recovery procedure before relying on the no-active-Admin branch.
 
 **Acceptance-based exit:**
 
 - UC-1, UC-2A, UC-2B assisted recovery, UC-7, UC-26, UC-45, and UC-46 pass through invitation and browser flows.
-- Tests prove no open registration, global phone uniqueness, no duplicate scout profile, no scout search, independent household authority, one cross-household schedule identity, self-only Young Adult Scout permissions, and audited recovery.
+- Tests prove no open registration, global claimed-email uniqueness, no duplicate scout profile, no scout search, independent household authority, one cross-household schedule identity, self-only Young Adult Scout permissions, and audited recovery.
 - Relationship and invitation authorization is identical for full-page and HTMX-enhanced requests.
 
 ## 4. Seasonal agreement
@@ -241,7 +240,7 @@ Each increment below is intended to be independently deployable. “Exit” mean
 
 - UC-47 through UC-49 and UC-56 pass for relationship-aware authorization, continuity checks, separately verified requests, atomic deletion, report impact, and retained non-identifying evidence.
 - Login removal preserves profile/history; household deactivation preserves unrelated access; permanent removal deletes or anonymizes personal data; season deletion removes only exclusively season-owned data.
-- A completed season cannot be deleted until a current verified encrypted archive exists, SMS re-authentication and explicit confirmations pass, and archive round-trip restoration succeeds in an offline acceptance exercise.
+- A completed season cannot be deleted until a current verified encrypted archive exists, passkey step-up re-authentication and explicit confirmations pass, and archive round-trip restoration succeeds in an offline acceptance exercise.
 
 ## Story coverage check
 

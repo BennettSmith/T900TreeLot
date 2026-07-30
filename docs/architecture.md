@@ -20,15 +20,17 @@ The design is driven by the following requirements:
 
 - All user workflows run in a responsive web browser.
 - The backend is written in Go and renders HTML on the server.
-- HTMX may progressively enhance the interface, but core workflows work through ordinary HTTP requests.
-- Passwordless access uses verified, system-wide-unique mobile phone numbers and SMS one-time passcodes.
+- HTMX progressively enhances the interface; browser JavaScript is required for passkeys (WebAuthn) and may be required for other browser APIs.
+- Heavy client-side frameworks such as React or Angular are not used.
+- Passwordless access uses passkeys bound to authenticated identities that claim a system-wide-unique email account identifier.
+- Enrollment and recovery use authorized invitation links or QR codes rather than SMS authentication codes.
 - Authorization is relationship-aware. It cannot be represented by a single flat role check.
 - Scouts can belong to multiple households while retaining one person profile and one schedule.
 - Confirmation of the season's linked conduct agreement is person- and season-specific and gates participation.
 - Shift capacity and duplicate-assignment rules must hold under concurrent requests.
 - Attendance events and administrative corrections require a durable audit trail.
-- Announcements and reminders are delivered asynchronously through SMS. An optional deployment-time integration can also post troop announcements to Groups.io.
-- Personal data, profile photos, phone numbers, and agreement confirmations require restricted access and an explicit deletion lifecycle.
+- Announcements and reminders are currently delivered asynchronously through SMS. A planned follow-on migrates operational notifications to email and Groups.io. An optional deployment-time Groups.io integration can already post troop announcements.
+- Personal data, profile photos, account emails, and agreement confirmations require restricted access and an explicit deletion lifecycle.
 - The expected user base and budget do not justify microservices, Kubernetes, Redis, or a client-side application framework.
 
 ## 3. Technology decisions
@@ -39,7 +41,7 @@ The design is driven by the following requirements:
 - **HTTP server:** Go `net/http`; a small compatible router may be used if it improves route composition
 - **HTML rendering:** Go `html/template`
 - **Progressive enhancement:** HTMX for targeted partial-page updates
-- **Browser code:** Minimal JavaScript only where browser APIs are required, such as image selection and cropping
+- **Browser code:** Focused JavaScript for required browser APIs—especially WebAuthn passkey registration/assertion—and small enhancements such as image selection and cropping. No client-side application framework.
 - **Styling:** Tailwind CSS compiled into an application-owned static stylesheet
 - **Database access:** `pgx` with `sqlc`-generated, type-safe queries
 - **Schema migrations:** Versioned SQL migrations executed as a production pre-deploy step
@@ -54,15 +56,15 @@ The application should prefer Go's standard library and a small number of focuse
 
 - **System of record:** PostgreSQL
 - **Binary-file persistence:** PostgreSQL `BYTEA` behind a storage port
-- **SMS authentication:** Twilio Verify using SMS one-time passcodes
-- **Operational SMS:** Twilio Programmable Messaging through a Messaging Service
+- **Authentication:** WebAuthn/passkeys implemented in the Identity module; no SMS authentication provider
+- **Operational SMS (interim):** Twilio Programmable Messaging through a Messaging Service for announcements, reminders, and related notices until notification delivery migrates to email and Groups.io
 - **Optional troop group announcements:** Groups.io API through a dedicated adapter, disabled by default
 - **Rules-of-conduct document:** Public Google Doc maintained outside the application
 - **Season archive encryption:** Passphrase-based `age` encryption around a checksummed ZIP
 - **Background work:** A Go worker using PostgreSQL-backed jobs and a transactional outbox
 - **Production hosting:** Render
 
-SMS magic links can be added later through the same authentication port. The initial implementation should use numeric one-time passcodes because they avoid cross-device link behavior and keep the callback flow simple.
+Authentication never depends on Twilio. A later notification-channel change should replace operational SMS with email delivery and broader Groups.io use without changing passkey authentication.
 
 ## 4. System context
 
@@ -72,21 +74,20 @@ flowchart LR
     Web[Go web application]
     Worker[Go background worker]
     DB[(PostgreSQL including binary files)]
-    Twilio[Twilio Verify and Messaging]
+    Twilio[Twilio Messaging interim SMS]
     Groups[Optional Groups.io]
     Google[Public rules Google Doc]
 
-    Browser -->|HTTPS and server-rendered HTML| Web
+    Browser -->|HTTPS, HTML, WebAuthn| Web
     Browser -->|open public agreement link| Google
     Web --> DB
-    Web -->|request OTP or check OTP| Twilio
     Worker --> DB
-    Worker -->|send SMS| Twilio
+    Worker -->|send operational SMS| Twilio
     Worker -.->|when enabled, post announcement| Groups
     Twilio -->|signed delivery callback| Web
 ```
 
-The browser communicates with the Go web application and opens the public agreement document directly on Google Docs. It never connects directly to PostgreSQL, Twilio, or Groups.io. The application stores the Google Doc URL but does not fetch its contents.
+The browser communicates with the Go web application, performs WebAuthn ceremonies with that origin, and opens the public agreement document directly on Google Docs. It never connects directly to PostgreSQL, Twilio, or Groups.io. The application stores the Google Doc URL but does not fetch its contents.
 
 ## 5. Software architecture
 
@@ -113,12 +114,13 @@ internal/
   communications/
   reporting/
   privacy/
-  platform/
-    postgres/
-    blobstore/
-    twilio/
-    groupsio/
-    clock/
+    platform/
+      postgres/
+      blobstore/
+      webauthn/
+      twilio/
+      groupsio/
+      clock/
   web/
     handlers/
     middleware/
@@ -135,10 +137,10 @@ Package names may evolve, but dependencies must follow the boundaries below.
 
 Each domain module is organized around the following concepts:
 
-- **Domain:** Aggregates, entities, value objects, domain services, policies, and domain events. It contains business behavior and no HTTP, SQL, Twilio, Groups.io, or Render code.
+- **Domain:** Aggregates, entities, value objects, domain services, policies, and domain events. It contains business behavior and no HTTP, SQL, WebAuthn wire details, Twilio, Groups.io, or Render code.
 - **Application:** Use-case orchestration, commands, queries, transaction boundaries, authorization context, and ports required by the use case.
 - **Inbound adapters:** HTTP handlers, form decoding, HTMX/full-page response selection, worker job handlers, and administrative commands.
-- **Outbound adapters:** PostgreSQL repositories, binary-file persistence, Twilio, optional Groups.io, clock, ID generation, and structured audit persistence.
+- **Outbound adapters:** PostgreSQL repositories, binary-file persistence, WebAuthn ceremony support, Twilio messaging, optional Groups.io, clock, ID generation, and structured audit persistence.
 
 Dependency direction points inward:
 
@@ -147,10 +149,10 @@ flowchart LR
     Inbound[HTTP and worker adapters] --> Application[Application use cases]
     Application --> Domain[Domain model]
     Application --> Ports[Outbound port interfaces]
-    Adapters[PostgreSQL, Twilio, optional Groups.io] --> Ports
+    Adapters[PostgreSQL, WebAuthn, Twilio messaging, optional Groups.io] --> Ports
 ```
 
-Port interfaces should be declared by the module that consumes them. For example, the communications application layer defines an `SMSDispatcher` port, and the Twilio package implements it.
+Port interfaces should be declared by the module that consumes them. For example, the Identity application layer defines a `PasskeyCeremony` port, and the communications application layer defines an `SMSDispatcher` port implemented by the Twilio messaging adapter while SMS remains in use.
 
 HTTP handlers must not contain business rules. They:
 
@@ -167,9 +169,9 @@ The initial bounded contexts are:
 
 #### Identity and Access
 
-Owns authenticated identities, normalized phone credentials, OTP initiation and verification, browser sessions, role grants, bootstrap administration, invitations, access removal, and account recovery.
+Owns authenticated identities, claimed email account identifiers, passkey credential records, WebAuthn ceremony orchestration, browser sessions, role grants, bootstrap administration, invitation tokens, access removal, and account recovery.
 
-Important distinction: an authenticated identity is not a person profile. One identity links to one person and may carry multiple application roles.
+Important distinction: an authenticated identity is not a person profile. One identity links to one person and may carry multiple application roles. Email identifies the account; passkeys authenticate it. Email mailbox verification is deferred until notifications or email-based recovery require it.
 
 #### Families
 
@@ -201,7 +203,7 @@ Raw real-time events are immutable. Corrections are separate records that affect
 
 Owns canonical announcements, recipient resolution, personal read state, delivery records, notification preferences, reminders, channel-specific delivery attempts, and retries.
 
-Authentication messages are initiated by Identity and delivered through the Twilio Verify adapter. Operational and announcement SMS messages are delivered by Communications through Twilio Programmable Messaging.
+Identity authenticates locally with WebAuthn/passkeys and does not send authentication SMS. Operational and announcement SMS messages are delivered by Communications through Twilio Programmable Messaging until the planned migration to email and Groups.io.
 
 #### Reporting
 
@@ -227,6 +229,7 @@ Owns append-only audit entries, data-export orchestration, erasure/anonymization
 Likely aggregate boundaries include:
 
 - `AuthenticatedIdentity`
+- `PasskeyCredential`
 - `Invitation`
 - `Household`
 - `Person`
@@ -256,8 +259,8 @@ Twilio and enabled Groups.io network calls must not run while a database transac
 
 PostgreSQL stores:
 
-- Identities, verified phone-number hashes or encrypted values, roles, and sessions
-- Invitations and household link tokens
+- Identities, claimed email identifiers, email verification state, passkey public-key credential records, roles, and sessions
+- Invitations, recovery enrollment tokens, and household link tokens
 - Person profiles, households, memberships, and family units
 - Seasons, templates, shifts, assignments, and assignment ownership
 - Seasonal agreement links, per-person confirmation booleans, confirmation timestamps, and acting identities
@@ -275,7 +278,8 @@ All timestamps are stored as UTC instants. Season dates, shift entry, schedule d
 
 Important rules should be protected by database constraints in addition to domain validation:
 
-- Normalized active login phone number is unique system-wide.
+- Normalized active login email is unique system-wide.
+- Passkey credential IDs are unique for the relying party.
 - A person can have at most one assignment per shift.
 - Membership and role foreign keys cannot reference missing identities, people, or households.
 - An agreement confirmation is unique per person and season and applies only to the season's current configured link.
@@ -288,9 +292,9 @@ Shift signup must use a transaction with row locking or a conditional update so 
 
 Browser sessions use opaque, cryptographically random tokens stored in `Secure`, `HttpOnly`, and `SameSite=Lax` cookies. PostgreSQL stores only a cryptographic hash of each session token, along with identity, creation, expiry, last-use, and revocation metadata.
 
-Invitation, household-link, recovery, and idempotency tokens are also random, expire, are single-use where required, and are stored hashed when the clear value does not need to be recovered.
+Invitation, household-link, recovery, bootstrap, and idempotency tokens are also random, expire, are single-use where required, and are stored hashed when the clear value does not need to be recovered.
 
-Phone numbers must be normalized to E.164 before comparison. Because the number is required for future delivery, it cannot be irreversibly hashed as the only stored value. Store it encrypted at the application or database layer, and maintain a keyed blind index for uniqueness checks. Encryption and blind-index keys come from production secrets, not the database.
+Account emails are normalized before comparison and stored for account identification and later notification/recovery use. Maintain uniqueness with a normalized unique index or keyed blind index as appropriate. Passkey private keys never leave the authenticator; PostgreSQL stores only public-key credential material, credential IDs, sign-count/metadata, and the owning identity. While interim operational SMS remains enabled, any SMS destination numbers are stored separately from authentication credentials, encrypted with a keyed blind index, and are not used for sign-in.
 
 ### 6.4 Binary-file persistence
 
@@ -320,7 +324,7 @@ Archival and deletion are separate, ordered operations:
 3. The application produces a ZIP containing a machine-readable manifest, versioned JSON or CSV data files, record counts, creation timestamp, and SHA-256 checksums.
 4. The administrator enters and confirms an archive passphrase. The application uses passphrase-based `age` encryption to produce `season-{name}.zip.age`; it never logs, stores, or transmits the passphrase elsewhere.
 5. The administrator downloads the encrypted archive and confirms that it and the passphrase have been saved separately. The application verifies archive generation and checksum completion before enabling deletion.
-6. A separate deletion screen shows exact record counts, explains that deletion cannot be undone without both the external archive and its passphrase, requires recent SMS re-authentication, and requires the administrator to type the season name.
+6. A separate deletion screen shows exact record counts, explains that deletion cannot be undone without both the external archive and its passphrase, requires a recent passkey step-up, and requires the administrator to type the season name.
 7. One database transaction deletes all data owned exclusively by that season. Shared identities, people, households, family units, reusable templates, and roles remain because they are not season-owned.
 8. A minimal non-personal deletion receipt records the acting administrator, deletion time, former season ID, archive checksum, and deleted record counts. It contains no participant, agreement, attendance, or message content.
 
@@ -330,20 +334,26 @@ The archive generator and restore command are versioned with the application and
 
 ## 7. Authentication and authorization
 
-### 7.1 SMS one-time-passcode flow
+### 7.1 Passkey enrollment and sign-in
 
-1. The user submits a mobile number.
-2. The server normalizes it but returns a generic response whether or not it is registered.
-3. Rate limits are checked by phone blind index, client address, and overall account.
-4. For an eligible request, the Identity application service asks the Twilio Verify adapter to send an SMS code.
-5. The user submits the code.
-6. The server asks Twilio Verify to check it.
-7. On approval, the server resolves the existing identity and creates a local browser session.
-8. Security-sensitive actions may require a recent verification timestamp.
+**Enrollment (bootstrap, household, co-manager, or Young Adult Scout invitation):**
 
-The application never stores the OTP. Twilio Verify owns OTP generation, expiry, attempt limits, and verification.
+1. The browser presents a single-use invitation or bootstrap token.
+2. The server validates the token, purpose binding, expiry, and rate limits without revealing unrelated account details.
+3. The person claims an email address; the server normalizes it and enforces active uniqueness.
+4. The Identity application service begins a WebAuthn registration ceremony and returns public options to the browser.
+5. The browser completes passkey creation; the server verifies the attestation/registration response and stores the public credential on the authenticated identity.
+6. The email remains unverified. The server creates a local browser session and consumes the invitation or bootstrap token.
 
-The bootstrap administrator number is supplied through a production secret. The bootstrap path succeeds only when no administrator exists and permanently closes after the first administrator is created.
+**Sign-in:**
+
+1. The browser preferably performs a discoverable-credential (usernameless) WebAuthn assertion for the site's relying-party ID.
+2. When an account hint is needed, the person may enter their claimed email first; responses remain generic with respect to account existence.
+3. The server verifies the assertion against stored public-key material and sign-count/metadata.
+4. On approval, the server resolves the existing identity and creates a local browser session.
+5. Security-sensitive actions require a recent passkey step-up timestamp.
+
+The application never learns passkey private keys. Bootstrap uses a configured one-time enrollment token secret. The bootstrap path succeeds only when no administrator exists and permanently closes after the first administrator is created.
 
 ### 7.2 Authorization
 
@@ -364,12 +374,12 @@ Templates may hide controls for usability, but every command repeats authorizati
 
 ### 8.1 Channel separation
 
-Twilio is used through two separate adapters:
+Authentication is not an SMS concern. While operational SMS remains in the product:
 
-- **Twilio Verify** sends and checks authentication, invitation-verification, and re-authentication codes.
-- **Twilio Programmable Messaging** sends announcements, shift publication messages, reminders, staffing requests, and security notices.
+- **Identity / WebAuthn** handles authentication, invitation acceptance, re-authentication step-up, and recovery enrollment.
+- **Twilio Programmable Messaging** sends announcements, shift publication messages, reminders, staffing requests, and similar operational notices.
 
-This separation prevents custom authentication-code handling from leaking into the application and allows operational messages to have their own templates, sender configuration, delivery records, and opt-out policy.
+Invitation links and QR codes are issued by the application and delivered out of band; they are not sent through Twilio Verify. A later notification migration should replace operational SMS destinations with verified email addresses and Groups.io without reintroducing SMS authentication.
 
 ### 8.2 Reliable delivery
 
@@ -424,7 +434,8 @@ The Go server renders complete HTML pages. HTMX requests may receive fragments f
 - `GET` requests are side-effect free.
 - State changes use `POST`, `PUT`, or `DELETE` semantics as appropriate and include CSRF protection.
 - Successful form submissions use Post/Redirect/Get unless an HTMX fragment response is more appropriate.
-- User-facing validation errors are safe and specific; authentication and phone-conflict responses avoid account enumeration.
+- User-facing validation errors are safe and specific; authentication and email-conflict responses avoid account enumeration.
+- Passkey ceremonies require JavaScript and a supported WebAuthn implementation in Chrome or Safari on the supported matrix.
 - Templates receive purpose-built view models, not persistence records.
 - All pages meet responsive and keyboard-accessibility requirements.
 
@@ -442,7 +453,7 @@ The design system includes:
 
 Tokens are defined once in the Tailwind theme and exposed through semantic component variants such as `primary`, `critical`, `complete`, and `understaffed`. Domain meaning must not rely on color alone; text, icons, and accessible labels carry the same status.
 
-Components render semantic HTML and own their accessibility contract, including labels, descriptions, keyboard behavior, focus management, and ARIA only where native semantics are insufficient. HTMX behavior enhances these components without changing their non-JavaScript form and link behavior.
+Components render semantic HTML and own their accessibility contract, including labels, descriptions, keyboard behavior, focus management, and ARIA only where native semantics are insufficient. HTMX behavior enhances these components while sharing the same server-side authorization and validation path. Passkey and other browser-API flows may require JavaScript; they still submit attested results to server-validated commands.
 
 A development-only component gallery renders every component, variant, viewport-sensitive layout, and interaction state using representative tree-lot content. It serves as living documentation and supports automated accessibility checks and focused visual-regression tests. Production builds do not expose the gallery.
 
@@ -469,12 +480,12 @@ Docker Compose provides a reproducible local environment with:
 - `assets`: Tailwind compiler in watch mode for local template and style changes
 - `worker`: The same codebase running the job worker
 - `postgres`: PostgreSQL with a named volume and health check
-- `provider-stubs`: Controllable HTTP substitutes for Twilio and, when enabled, Groups.io interactions used by acceptance tests
+- `provider-stubs`: Controllable HTTP substitutes for interim Twilio messaging and, when enabled, Groups.io interactions used by acceptance tests
 - `acceptance`: A profile-only runner for the executable acceptance-test suite
 
 The required migration entry point is the only process permitted to apply schema migrations. Web and worker startup validate schema compatibility but never mutate the schema. Locally, developers run the migration command explicitly after PostgreSQL becomes healthy and before starting application processes; production invokes the same entry point as its pre-deploy command.
 
-Local SMS adapters do not contact real users. They record messages and verification codes in a development communications inbox exposed only in the local environment. Groups.io remains disabled unless a developer explicitly enables its stub or sandbox configuration. Integration tests can instead run against deterministic in-memory fakes.
+Local messaging adapters do not contact real users. They record operational SMS messages in a development communications inbox exposed only in the local environment. Passkey ceremonies use deterministic WebAuthn test authenticators or browser automation rather than a hosted SMS verification provider. Groups.io remains disabled unless a developer explicitly enables its stub or sandbox configuration. Integration tests can instead run against deterministic in-memory fakes.
 
 Recommended local commands are:
 
@@ -500,14 +511,14 @@ Production targets Render in one region:
 - One Docker **background worker** built from the same image
 - One hourly **cron job** that enqueues scheduled work
 - One paid **Render PostgreSQL** database, including binary-file persistence, with automated backups and point-in-time recovery
-- Twilio Verify and Programmable Messaging
+- Twilio Programmable Messaging for interim operational SMS
 - Optional Groups.io API integration, disabled by default
 
 The canonical production origin is **`https://treelot.troop900livermore.org`**. The troop retains ownership of `troop900livermore.org`, and the existing marketing site at `https://www.troop900livermore.org` remains independently hosted and unchanged.
 
 Troop-managed DNS points the `treelot` hostname to the Render web service using the record type and target supplied by Render. Render terminates TLS and automatically manages the certificate for the scheduler hostname. The application redirects any Render-provided hostname to the canonical origin.
 
-Session cookies are host-only for `treelot.troop900livermore.org`; they must not set `Domain=troop900livermore.org`. This prevents scheduler credentials from being sent to the marketing site or future sibling subdomains. SMS links, invitation links, outbound announcement links, and Twilio callback URLs are generated from one validated `PUBLIC_BASE_URL` set to the canonical HTTPS origin.
+Session cookies are host-only for `treelot.troop900livermore.org`; they must not set `Domain=troop900livermore.org`. This prevents scheduler credentials from being sent to the marketing site or future sibling subdomains. The WebAuthn relying-party ID and origin must match this canonical host. Invitation links, outbound announcement links, and Twilio callback URLs are generated from one validated `PUBLIC_BASE_URL` set to the canonical HTTPS origin.
 
 The web service listens on `0.0.0.0:$PORT`. The database and services are colocated in the same Render region.
 
@@ -533,9 +544,10 @@ Secrets include:
 
 - Database connection string
 - Cookie/session signing or encryption keys
-- Phone-number encryption and blind-index keys
-- Bootstrap administrator phone number
-- Twilio account credentials, Verify Service SID, and Messaging Service SID
+- Email uniqueness / blind-index keys when used
+- Interim SMS destination encryption and blind-index keys while SMS notifications remain enabled
+- Bootstrap administrator enrollment token
+- Twilio account credentials and Messaging Service SID while operational SMS remains enabled
 - Groups.io API credential and group identifier, only when `GROUPS_IO_ENABLED=true`
 - Break-glass recovery configuration
 
@@ -557,11 +569,11 @@ The baseline controls are:
 - Encryption at rest for sensitive columns and restricted binary records
 - Key rotation support with key identifiers on encrypted records
 - Structured audit records for privileged and sensitive actions
-- Redaction of phone numbers, tokens, message bodies, and provider secrets from logs
-- Content Security Policy and standard browser security headers
+- Redaction of email addresses, SMS destinations, tokens, message bodies, and provider secrets from logs
+- Content Security Policy and standard browser security headers compatible with required WebAuthn and HTMX behavior
 - Dependency, container, and static-analysis checks in CI
 
-Audit entries record actor identity, action, target type and identifier, server time, request correlation ID, and relevant before/after facts. They must not copy OTPs, session tokens, full phone numbers, or message bodies. Agreement-link changes and confirmation changes may be recorded, but the linked Google Doc's contents are never copied into the audit trail.
+Audit entries record actor identity, action, target type and identifier, server time, request correlation ID, and relevant before/after facts. They must not copy session tokens, passkey private material, full email addresses, SMS destinations, or message bodies. Agreement-link changes and confirmation changes may be recorded, but the linked Google Doc's contents are never copied into the audit trail.
 
 Agreement confirmation records and privacy-request data follow the same authorization and deletion rules as the associated person and season. No scheduled process deletes completed-season records.
 
@@ -656,15 +668,15 @@ The concrete DSL API can change as examples emerge. Its vocabulary should match 
 
 Acceptance tests exercise the application only through interfaces available to real actors or external integrations:
 
-- Browser-visible HTTP and HTML behavior, including sessions, forms, redirects, and HTMX where relevant
+- Browser-visible HTTP and HTML behavior, including sessions, forms, redirects, HTMX, and WebAuthn ceremonies where relevant
 - Worker processing through observable commands and resulting application behavior
-- Signed Twilio-style callbacks
-- SMS requests and, in the enabled configuration, Groups.io requests captured by provider stubs
+- Signed Twilio-style callbacks while interim operational SMS remains enabled
+- Operational SMS requests and, in the enabled configuration, Groups.io requests captured by provider stubs
 - Private profile-photo upload/download behavior through application-authorized flows
 
 Tests do not call application services directly, write fixtures directly to application tables, inspect private database state, or replace internal repositories. Setup is performed through public test-supported workflows using the DSL. A narrowly scoped test-control interface may control time and inspect external-provider stubs, but it must be unavailable in production.
 
-The acceptance environment uses the real deployable image, PostgreSQL schema, migrations, web process, worker process, and asynchronous outbox. Twilio and optionally enabled Groups.io are replaced by protocol-faithful stubs because delivery to real recipients is outside the system boundary, slow, costly, and nondeterministic. The primary acceptance suite runs with Groups.io disabled; a smaller configuration suite proves both enabled behavior and graceful channel failure. Separate contract tests verify that enabled adapters remain compatible with provider APIs.
+The acceptance environment uses the real deployable image, PostgreSQL schema, migrations, web process, worker process, and asynchronous outbox. Interim Twilio messaging and optionally enabled Groups.io are replaced by protocol-faithful stubs because delivery to real recipients is outside the system boundary, slow, costly, and nondeterministic. Passkey flows use deterministic WebAuthn test authenticators or browser automation. The primary acceptance suite runs with Groups.io disabled; a smaller configuration suite proves both enabled behavior and graceful channel failure. Separate contract tests verify that enabled adapters remain compatible with provider APIs.
 
 ### 15.4 Coverage and traceability
 
@@ -685,7 +697,7 @@ Coverage should include:
 
 ### 15.5 Isolation, time, and asynchronous behavior
 
-Each acceptance scenario owns its initial conditions and unique namespace. It creates only the data it needs and can run in parallel without depending on execution order. Scenarios must not depend on preloaded shared users, seasons, phone numbers, or wall-clock dates.
+Each acceptance scenario owns its initial conditions and unique namespace. It creates only the data it needs and can run in parallel without depending on execution order. Scenarios must not depend on preloaded shared users, seasons, account emails, or wall-clock dates.
 
 Time-dependent behavior uses an injected application clock. In acceptance mode, an authenticated test-control driver can advance that clock; production always uses the system clock. This allows exact checks at 15-minute, 30-minute, 24-hour, expiry, and retry boundaries without waiting.
 
@@ -722,14 +734,15 @@ Run repository and migration tests against real PostgreSQL in containers. These 
 
 ### 15.10 Adapter and provider contract tests
 
-Test HTML handlers with `httptest`. Test Twilio and the optional Groups.io adapter against recorded provider contracts or sandbox accounts without sending to production recipients. Verify webhook signature validation and idempotent callback processing. These tests complement provider stubs, which prove application behavior but cannot prove compatibility with the real provider.
+Test HTML handlers with `httptest`. Test WebAuthn ceremony adapters with deterministic authenticators. Test the interim Twilio messaging adapter and the optional Groups.io adapter against recorded provider contracts or sandbox accounts without sending to production recipients. Verify webhook signature validation and idempotent callback processing. These tests complement provider stubs, which prove application behavior but cannot prove compatibility with the real provider.
 
 ### 15.11 Browser journey tests
 
 Most executable specifications use an HTTP/HTML protocol driver for speed and precise diagnostics. A smaller browser-driven subset verifies JavaScript, HTMX, accessibility, responsive behavior, and critical user journeys:
 
-- Bootstrap and first administrator sign-in
-- Household invitation and agreement-first onboarding
+- Bootstrap and first administrator passkey enrollment
+- Household invitation QR/link enrollment with passkey registration and agreement-first onboarding
+- Passkey sign-in and step-up re-authentication
 - Concurrent signup for a nearly full shift
 - Multi-household scout schedule and cancellation boundaries
 - Attendance plus an audited correction
@@ -744,13 +757,15 @@ Most executable specifications use an HTTP/HTML protocol driver for speed and pr
 - **Redis as a required queue or session store:** PostgreSQL already provides the durability and concurrency needed for this workload.
 - **Calling providers inside database transactions:** This creates long transactions and cannot atomically coordinate provider success with database commit.
 - **Dedicated object storage at initial scale:** S3-compatible storage is technically preferable for binary data, but its operational overhead is not justified by the expected initial volume. The storage port preserves a later migration path.
-- **Building and storing authentication codes:** Twilio Verify already provides code generation, expiry, fraud controls, and attempt management.
+- **SMS one-time codes or magic-link authentication:** Passkeys remove the authentication dependency on Twilio Verify and avoid building a custom OTP store.
+- **Client-side application frameworks:** React, Angular, and similar stacks remain rejected even though browser JavaScript is required for WebAuthn.
 
 ## 17. Decisions required before production launch
 
 The following operational policy choices remain outside the use cases and must be confirmed:
 
-- Render and Twilio account ownership, billing contacts, and administrator continuity
-- SMS consent language, sender registration, opt-out handling, and message-volume budget
+- Render account ownership, billing contacts, and administrator continuity
+- Timing and design of the operational-notification migration from SMS to email and Groups.io
+- While SMS remains enabled: Twilio account ownership, SMS consent language, sender registration, opt-out handling, and message-volume budget
 
 These choices do not change the core domain architecture, but they affect production configuration, operating procedures, and launch readiness.

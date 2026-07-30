@@ -48,7 +48,7 @@ flowchart LR
 ## Cross-epic dependencies
 
 - US-001 supplies the Admin authorized to issue new-household invitations.
-- US-002 supplies secure phone verification and personal sessions for managers.
+- US-002 supplies passkey sign-in and personal sessions for managers.
 - US-004 uses co-manager and manager-to-scout authority established in this epic for assisted recovery.
 - US-010 grants optional Young Adult Scout access to an existing scout profile created here.
 - US-011, US-013, and US-015 configure the agreement, confirm each participant, and unlock participation individually after onboarding.

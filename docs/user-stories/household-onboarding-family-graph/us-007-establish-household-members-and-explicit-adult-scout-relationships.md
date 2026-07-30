@@ -18,7 +18,7 @@ Create one person profile for each adult or scout in the household and record pa
 ## Acceptance criteria
 
 1. **Given** an active manager of the household, **when** they add an adult or scout family member, **then** the system creates or associates a person profile with that household under the manager's authority.
-2. **Given** a scout is added during household onboarding, **when** the profile is established, **then** the scout is a managed profile and does not require a phone number or authenticated login.
+2. **Given** a scout is added during household onboarding, **when** the profile is established, **then** the scout is a managed profile and does not require an authenticated login.
 3. **Given** adult and scout profiles managed by the actor, **when** the manager records a parent, step-parent, or guardian relationship, **then** the system stores an explicit link between those two person profiles rather than inferring it from household membership.
 4. **Given** a relationship is created, corrected, or removed, **when** the change is saved, **then** it is audited and provisional Scout Bucks attribution is recalculated.
 5. **Given** relationship information exists, **when** an unrelated volunteer views a shift roster, **then** those relationship details are not exposed.
@@ -32,7 +32,7 @@ Create one person profile for each adult or scout in the household and record pa
 - Family Managers record relationships for profiles they manage; Admin may correct disputed or duplicate relationships.
 - Explicit person-to-person relationships continue across linked households.
 - Relationship creation, correction, and removal are audited and recalculate provisional Scout Bucks attribution.
-- Managed scouts need neither a phone number nor authenticated access.
+- Managed scouts need no authenticated access.
 
 ## Dependencies
 
