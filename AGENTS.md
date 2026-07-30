@@ -36,9 +36,10 @@ conflict instead of silently choosing new product behavior.
   Agreements, Scheduling, Attendance, Communications, Reporting, and Privacy
   and Audit. Access another context through an explicit policy, query, or
   application interface rather than duplicating its rules.
-- Render semantic HTML on the server with `html/template`. HTMX is progressive
-  enhancement only; core workflows must work with ordinary HTTP requests.
-  Keep browser JavaScript minimal and do not introduce a client-side framework.
+- Render semantic HTML on the server with `html/template`. HTMX progressively
+  enhances the interface. Browser JavaScript is required for passkeys
+  (WebAuthn) and may be used for other browser APIs; do not introduce a
+  client-side application framework such as React or Angular.
 - PostgreSQL is the source of truth and job queue. Profile images initially use
   PostgreSQL `BYTEA` behind a `BlobStore` port.
 - External provider calls never run inside database transactions. Persist
@@ -87,15 +88,22 @@ conflict instead of silently choosing new product behavior.
 - Use one PostgreSQL transaction per state-changing command to protect
   invariants, persist domain changes, append audit facts, and enqueue outbox
   records.
-- Enforce normalized active phone uniqueness system-wide. Store recoverable
-  phone data encrypted and use a keyed blind index for comparisons.
+- Authenticate with passkeys (WebAuthn). Use a claimed email as the unique
+  account identifier; defer mailbox verification until notifications or
+  email-based recovery require it. Enrollment and recovery use authorized
+  invitation links or QR codes, not SMS authentication codes.
+- Enforce normalized active login-email uniqueness system-wide. Store only
+  public passkey credential material; private keys never leave the
+  authenticator. While interim operational SMS remains enabled, store any SMS
+  destinations separately from authentication credentials.
 - Store only hashes of session and single-use tokens. Use secure, HTTP-only,
   same-site cookies and CSRF protection for every state-changing browser request.
-- Avoid identity enumeration. Redact phone numbers, tokens, message bodies, and
-  provider secrets from logs and audit records.
-- Twilio Verify handles authentication codes. Twilio Programmable Messaging
-  handles operational messages. Groups.io is optional and disabled by default;
-  one channel's failure must not roll back another channel or web publication.
+- Avoid identity enumeration. Redact emails, SMS destinations, tokens, message
+  bodies, and provider secrets from logs and audit records.
+- Do not use Twilio Verify or SMS OTPs for authentication. Twilio Programmable
+  Messaging may still send interim operational SMS until notifications migrate
+  to email and Groups.io. Groups.io is optional and disabled by default; one
+  channel's failure must not roll back another channel or web publication.
 - `GET` is side-effect free. Use Post/Redirect/Get for ordinary forms where
   appropriate, and ensure full-page and HTMX paths enforce identical behavior.
 

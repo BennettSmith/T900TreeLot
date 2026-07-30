@@ -18,7 +18,7 @@ Generate, share outside the system, and redeem a cryptographically random code b
 
 ## Acceptance criteria
 
-1. **Given** a Family Manager manages the source household and its scout profile, **when** they request a household link code, **then** the system generates a cryptographically random, expiring, single-use code bound only to that scout profile and purpose.
+1. **Given** a Family Manager manages the source household and its scout profile, **when** they request a household link code, **then** the system generates a cryptographically random, expiring, single-use code bound only to that scout profile and purpose, presentable as text or QR code.
 2. **Given** the source manager regenerates the scout's code, **when** the new code is created, **then** the prior code is invalidated.
 3. **Given** a destination Family Manager has a valid code, **when** they redeem it for their household, **then** the existing scout profile is linked to the destination household and no duplicate person profile is created.
 4. **Given** the scout is linked to both households, **when** either household views the scout's schedule, **then** all of the scout's assignments are visible in both households.

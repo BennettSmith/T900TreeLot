@@ -23,7 +23,7 @@ Editing and validating the actor's first, last, or preferred display name and pr
 
 ## Business rules
 
-- Authentication remains tied to the verified phone identity, not the display name.
+- Authentication remains tied to passkeys and the claimed email identity, not the display name.
 - Name changes do not replace the person profile, identity, roles, memberships, assignments, or history.
 - Server-side authorization does not trust submitted profile IDs.
 

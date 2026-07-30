@@ -2,7 +2,7 @@
 
 ## Goal
 
-Grant an older scout limited personal access through their own verified phone number while retaining the scout's existing profile, household links, single schedule, and Family Manager oversight.
+Grant an older scout limited personal access through their own passkey login while retaining the scout's existing profile, household links, single schedule, and Family Manager oversight.
 
 ## Source use cases
 
@@ -30,8 +30,8 @@ flowchart LR
 
 ## Cross-epic dependencies
 
-- US-002 provides secure phone verification and personal authenticated sessions.
+- US-002 provides passkey sign-in and personal authenticated sessions.
 - US-007 provides the existing scout profile and household membership to which access is linked.
 - US-009 ensures one identity and schedule continue across multiple linked households.
-- US-004 uses Family Manager authority to recover a Young Adult Scout's access when the old number is unavailable.
+- US-004 uses Family Manager authority to recover a Young Adult Scout's access when no passkey remains.
 - US-011, US-013, and US-015 configure the agreement, record confirmation, and enforce participation eligibility; access may be granted before confirmation.

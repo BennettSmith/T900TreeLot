@@ -18,7 +18,7 @@ Verified-request intake, subject resolution, complete compilation, portable expo
 ## Acceptance criteria
 
 1. **Given** no separate identity verification exists, **when** fulfillment is attempted from an authenticated session alone, **then** export is blocked.
-2. **Given** a verified request, **when** the authorized actor compiles it, **then** it includes the subject's profile and retained phone/photo, memberships, assignments, immutable attendance and corrections, walk-ins, messages, account activity, and agreement confirmations.
+2. **Given** a verified request, **when** the authorized actor compiles it, **then** it includes the subject's profile and retained account email/photo, memberships, assignments, immutable attendance and corrections, walk-ins, messages, account activity, and agreement confirmations.
 3. **Given** the subject is linked through multiple households or roles, **when** data is gathered, **then** all matching records are included once without exposing unrelated people's private data.
 4. **Given** compilation succeeds, **when** delivery occurs, **then** JSON or CSV is securely delivered only to the verified requester and fulfillment is audited without logging sensitive contents.
 

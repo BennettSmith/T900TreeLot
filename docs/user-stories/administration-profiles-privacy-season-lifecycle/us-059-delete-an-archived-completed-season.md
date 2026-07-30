@@ -8,7 +8,7 @@
 
 ## Scope
 
-Eligibility checks, destructive-impact review, SMS re-authentication, explicit confirmations, atomic season deletion, and minimal receipt.
+Eligibility checks, destructive-impact review, passkey step-up re-authentication, explicit confirmations, atomic season deletion, and minimal receipt.
 
 ## Preconditions
 
@@ -19,7 +19,7 @@ Eligibility checks, destructive-impact review, SMS re-authentication, explicit c
 
 1. **Given** no current successful archive exists or the season is active, draft, or in progress, **when** deletion is requested, **then** the action remains disabled.
 2. **Given** an eligible archive, **when** the Admin starts deletion, **then** exact categories and counts are shown with the warning that restoration requires both the external archive and passphrase.
-3. **Given** the Admin re-authenticates by SMS, confirms separate archive/passphrase storage, and types the season name, **when** deletion is confirmed, **then** all exclusively season-owned data is removed atomically.
+3. **Given** the Admin re-authenticates with a passkey step-up, confirms separate archive/passphrase storage, and types the season name, **when** deletion is confirmed, **then** all exclusively season-owned data is removed atomically.
 4. **Given** deletion succeeds, **when** shared data is inspected, **then** identities, person profiles, households, family units, reusable templates, and roles remain.
 5. **Given** deletion succeeds, **when** evidence is inspected, **then** only a minimal non-personal receipt remains with actor, deletion time, former season ID, archive checksum, and deleted counts; the season is absent from live views and search.
 6. **Given** the deletion transaction fails, **when** rollback completes, **then** the complete season remains intact.

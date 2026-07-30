@@ -2,13 +2,13 @@
 
 ## Goal
 
-Establish the first administrator and provide secure, personal, passwordless access while preserving identity continuity when a login phone number changes or must be recovered.
+Establish the first administrator and provide secure, personal, passwordless passkey access while preserving identity continuity when credentials or the claimed account email change or must be recovered.
 
 ## Source use cases
 
 - [UC-0: Creating the First Administrator](../../use-cases.md#use-case-0-creating-the-first-administrator)
 - [UC-2: Authenticated Family Member Signs In](../../use-cases.md#use-case-2-authenticated-family-member-signs-in)
-- [UC-2B: Authenticated Person Changes Phone Number](../../use-cases.md#use-case-2b-authenticated-person-changes-phone-number)
+- [UC-2B: Authenticated Person Manages Credentials and Account Email](../../use-cases.md#use-case-2b-authenticated-person-manages-credentials-and-account-email)
 
 ## Actors
 
@@ -24,8 +24,8 @@ Establish the first administrator and provide secure, personal, passwordless acc
 
 1. [US-001: bootstrap first administrator](us-001-bootstrap-first-administrator.md)
 2. [US-002: secure authenticated sign-in](us-002-secure-authenticated-sign-in.md)
-3. [US-003: change own phone number](us-003-change-own-phone-number.md)
-4. [US-004: recover another person's phone access](us-004-recover-another-persons-phone-access.md)
+3. [US-003: manage own passkeys and account email](us-003-change-own-phone-number.md)
+4. [US-004: recover another person's passkey access](us-004-recover-another-persons-phone-access.md)
 
 ## Story dependency view
 

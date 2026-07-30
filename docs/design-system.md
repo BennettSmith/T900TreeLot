@@ -88,9 +88,10 @@ Before adding a component:
 7. Run `make assets`, focused tests, and finally `make ci`.
 
 Do not copy markup into feature templates to create one-off visual variants.
-Do not add a JavaScript framework. Small progressive enhancements are allowed
-only when the ordinary HTTP path remains complete and uses the same
-authorization and application behavior.
+Do not add a JavaScript application framework such as React or Angular. Focused
+browser JavaScript is expected for WebAuthn passkeys and may be used for HTMX
+or other browser APIs, provided server-side authorization and validation remain
+authoritative.
 
 ## Current verification boundary
 
