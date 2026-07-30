@@ -14,6 +14,8 @@ Before changing behavior, read the relevant sections of:
   persistence, security, operations, and testing strategy.
 - `docs/design-system-requirements.md` — UI, accessibility, responsive behavior,
   and reusable visual patterns.
+- `docs/traceability-process.md` — requirement revisions, delivery statuses,
+  executable evidence, and the human/agent change workflow.
 
 Do not infer policy from a mockup or existing implementation when it conflicts
 with the use cases. If requirements conflict or are unclear, identify the
@@ -139,21 +141,52 @@ and completes successfully. Run it after the final changes, even when narrower
 tests have already passed. If `make ci` cannot run or fails, report the blocker
 or failure and do not describe the work as complete.
 
+Product behavior is not verified until its revision-tagged acceptance examples
+also pass against the deployed system. Run the relevant acceptance suite after
+`make ci`; run `make acceptance` when no narrower deployed suite exists.
+
+## Requirement and delivery traceability
+
+- Stable use-case and user-story IDs never change. Refer to exact revisions as
+  `UC-0@r1` and `US-001@r1`.
+- `traceability/manifest.yaml` is the source of truth for revisions, statuses,
+  source relationships, increment membership, and implementation PR evidence.
+  `docs/traceability.md` is generated; never edit it directly.
+- Increment a requirement revision only for semantic behavior or policy
+  changes, not editorial changes.
+- A new accepted revision invalidates prior delivery verification. Set affected
+  delivery to `planned` or `in_progress` and update executable examples before
+  implementation.
+- Agents may propose requirement changes but must not silently invent or accept
+  product policy. Merging the requirements PR represents human acceptance.
+- Open the implementation PR early, record its number before marking a revision
+  `verified`, and regenerate the report with
+  `go run ./cmd/traceability write`.
+- Run `make traceability` before delivery. It validates the manifest, documented
+  IDs, exact acceptance revisions, implementation evidence, and generated
+  report.
+- Follow `docs/traceability-process.md` whenever requirements or delivery
+  status changes.
+
 ## Implementing a use case
 
 1. Locate the use case and all referenced business rules in
    `docs/use-cases.md`; check the permission summary and cross-cutting rules.
-2. Identify the owning bounded context and any policies needed from other
-   contexts.
-3. Add a business-facing executable acceptance example tagged with the stable
-   use-case ID and confirm that it fails for the expected reason.
-4. Implement domain behavior and application orchestration with focused tests,
+2. Identify the accepted UC and US revisions in `docs/traceability.md`, the
+   owning bounded context, and any policies needed from other contexts.
+3. Set affected story and increment delivery statuses to `in_progress`.
+4. Add a business-facing executable acceptance example tagged with the exact
+   use-case and user-story revisions and confirm that it fails for the expected
+   reason.
+5. Implement domain behavior and application orchestration with focused tests,
    then add persistence and adapter behavior.
-5. Exercise the deployed system through public browser/HTTP or provider
+6. Exercise the deployed system through public browser/HTTP or provider
    boundaries. Acceptance tests must not call application services directly,
    mutate private tables, or replace internal repositories.
-6. Verify successful behavior, denials, privacy boundaries, concurrency,
+7. Verify successful behavior, denials, privacy boundaries, concurrency,
    idempotency, time-window edges, and audit/outbox effects that apply.
+8. Record the implementation PR, mark only fully evidenced revisions
+   `verified`, regenerate `docs/traceability.md`, and run the required gates.
 
 Use injected clocks in time-dependent tests. Poll observable asynchronous
 outcomes with deadlines; do not use fixed sleeps or retries that hide flakes.

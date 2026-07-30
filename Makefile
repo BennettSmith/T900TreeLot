@@ -8,7 +8,7 @@ COMPOSE = $(DOCKER) compose
 IMAGE ?= treelot:local
 
 .PHONY: help doctor acceptance-preflight assets assets-watch assets-check showcase format format-check \
-	lint test-db test coverage ci image up down migrate logs ps acceptance
+	lint test-db test coverage traceability ci image up down migrate logs ps acceptance
 
 help: ## List available targets and explain when to use them.
 	@awk 'BEGIN {FS = ":.*## "; printf "Usage: make <target>\n\nTargets:\n"} /^[[:alnum:]_.-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -101,7 +101,10 @@ coverage: ## Run tests and require at least 85% statement coverage.
 		printf "Coverage %.1f%% meets the required %.1f%%.\n", total, minimum; \
 	}'
 
-ci: assets-check format-check lint coverage ## Run fast required checks (no Docker acceptance).
+traceability: ## Validate requirement revisions, evidence, and generated report.
+	@go run ./cmd/traceability check
+
+ci: traceability assets-check format-check lint coverage ## Run fast required checks (no Docker acceptance).
 
 image: ## Build the immutable production image used by Compose and acceptance.
 	@$(DOCKER) build -t "$(IMAGE)" .

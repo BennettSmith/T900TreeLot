@@ -33,7 +33,8 @@ can supply `:5433`.
 ```sh
 make help          # list targets
 make doctor        # diagnose local tools, Docker, networking guidance, and ports
-make ci            # fast checks: assets, format, vet, coverage
+make traceability  # validate requirement revisions, evidence, and generated report
+make ci            # fast checks: traceability, assets, format, vet, coverage
 make test          # unit/component tests
 make up            # production image + postgres + migrate + web + worker
 make migrate       # apply schema via migrate entry point only
@@ -80,3 +81,20 @@ make acceptance-preflight
 
 The preflight reports conflicts but never stops unrelated processes or
 containers. Resolve any named conflict and rerun it.
+
+## Requirements traceability
+
+[`docs/traceability.md`](docs/traceability.md) reports the accepted use-case and
+user-story revisions, delivery status, increment, implementation PR, and merged
+Git SHA. It is generated from `traceability/manifest.yaml`; do not edit the
+report directly.
+
+When requirements or delivery status change, follow
+[`docs/traceability-process.md`](docs/traceability-process.md). Acceptance tests
+identify exact revisions with `// Trace:` metadata so a superseded executable
+example cannot verify a newer requirement revision.
+
+```sh
+go run ./cmd/traceability write
+make traceability
+```
