@@ -10,7 +10,7 @@ import (
 func TestValidateAcceptsRevisionMatchedEvidence(t *testing.T) {
 	root := t.TempDir()
 	writeFixture(t, root, "docs/use-cases.md", "### Use Case 0: Bootstrap\n")
-	writeFixture(t, root, "docs/user-stories/bootstrap/us-001-bootstrap.md", "# US-001: Bootstrap\n")
+	writeFixture(t, root, "docs/user-stories/bootstrap/us-001-bootstrap.md", "# US-001: Bootstrap\n\n- **Source use cases:** UC-0\n")
 	writeFixture(t, root, "docs/user-stories/roadmap.md", "## INC-01 — Foundation\n## INC-02 — Bootstrap\n")
 	writeFixture(t, root, "acceptance/cases/bootstrap_test.go", `package cases
 
@@ -58,7 +58,7 @@ increments:
 func TestValidateRejectsVerifiedStoryWithStaleAcceptanceRevision(t *testing.T) {
 	root := t.TempDir()
 	writeFixture(t, root, "docs/use-cases.md", "### Use Case 0: Bootstrap\n")
-	writeFixture(t, root, "docs/user-stories/bootstrap/us-001-bootstrap.md", "# US-001: Bootstrap\n")
+	writeFixture(t, root, "docs/user-stories/bootstrap/us-001-bootstrap.md", "# US-001: Bootstrap\n\n- **Source use cases:** UC-0\n")
 	writeFixture(t, root, "docs/user-stories/roadmap.md", "## INC-02 — Bootstrap\n")
 	writeFixture(t, root, "acceptance/cases/bootstrap_test.go", "// Trace: UC-0@r1 US-001@r1\n")
 	writeFixture(t, root, "traceability/manifest.yaml", `schema_version: 1
@@ -107,7 +107,7 @@ increments:
 func TestValidateRejectsVerifiedIncrementWithoutAcceptanceTrace(t *testing.T) {
 	root := t.TempDir()
 	writeFixture(t, root, "docs/use-cases.md", "### Use Case 0: Bootstrap\n")
-	writeFixture(t, root, "docs/user-stories/bootstrap/us-001-bootstrap.md", "# US-001: Bootstrap\n")
+	writeFixture(t, root, "docs/user-stories/bootstrap/us-001-bootstrap.md", "# US-001: Bootstrap\n\n- **Source use cases:** UC-0\n")
 	writeFixture(t, root, "docs/user-stories/roadmap.md", "## INC-01 — Foundation\n## INC-02 — Bootstrap\n")
 	writeFixture(t, root, "acceptance/cases/bootstrap_test.go", "// Trace: UC-0@r1 US-001@r1\n")
 	writeFixture(t, root, "traceability/manifest.yaml", `schema_version: 1
@@ -151,8 +151,8 @@ increments:
 func TestValidateRejectsUnknownAndMissingArtifacts(t *testing.T) {
 	root := t.TempDir()
 	writeFixture(t, root, "docs/use-cases.md", "### Use Case 0: Bootstrap\n### Use Case 1: Household\n")
-	writeFixture(t, root, "docs/user-stories/bootstrap/us-001-bootstrap.md", "# US-001: Bootstrap\n")
-	writeFixture(t, root, "docs/user-stories/bootstrap/us-002-sign-in.md", "# US-002: Sign in\n")
+	writeFixture(t, root, "docs/user-stories/bootstrap/us-001-bootstrap.md", "# US-001: Bootstrap\n\n- **Source use cases:** UC-0\n")
+	writeFixture(t, root, "docs/user-stories/bootstrap/us-002-sign-in.md", "# US-002: Sign in\n\n- **Source use cases:** UC-1\n")
 	writeFixture(t, root, "docs/user-stories/roadmap.md", "## INC-02 — Bootstrap\n")
 	writeFixture(t, root, "acceptance/cases/bootstrap_test.go", "// Trace: UC-99@r1 US-001@r1\n")
 	writeFixture(t, root, "traceability/manifest.yaml", `schema_version: 1
@@ -193,6 +193,52 @@ increments:
 		if !strings.Contains(joined, want) {
 			t.Errorf("Validate() problems = %q, want %q", joined, want)
 		}
+	}
+}
+
+func TestValidateRejectsStorySourceMappingDrift(t *testing.T) {
+	root := t.TempDir()
+	writeFixture(t, root, "docs/use-cases.md", "### Use Case 0: Bootstrap\n### Use Case 1: Household\n")
+	writeFixture(t, root, "docs/user-stories/bootstrap/us-001-bootstrap.md", "# US-001: Bootstrap\n\n- **Source use cases:** UC-1\n")
+	writeFixture(t, root, "docs/user-stories/roadmap.md", "## INC-02 — Bootstrap\n")
+	writeFixture(t, root, "acceptance/cases/bootstrap_test.go", "package cases\n")
+	writeFixture(t, root, "traceability/manifest.yaml", `schema_version: 1
+baseline:
+  requirements_commit: c66a77c
+  use_case_document_version: "3.13"
+use_cases:
+  UC-0:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+  UC-1:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+stories:
+  US-001:
+    path: docs/user-stories/bootstrap/us-001-bootstrap.md
+    increment: INC-02
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-0@r1]
+increments:
+  INC-02:
+    delivery_status: planned
+`)
+
+	manifest, err := Load(filepath.Join(root, "traceability/manifest.yaml"))
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	joined := strings.Join(Validate(root, manifest), "\n")
+	if !strings.Contains(joined, "US-001 source use cases in its document are [UC-1], want [UC-0]") {
+		t.Fatalf("Validate() problems = %q, want source mapping drift", joined)
 	}
 }
 
