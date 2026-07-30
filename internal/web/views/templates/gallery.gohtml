@@ -1,0 +1,87 @@
+{{define "gallery"}}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <title>{{.PageTitle}} · Troop 900 Tree Lot</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <div class="app-shell">
+    <aside class="rail">
+      <a class="brand" href="/_dev/components">{{template "icon" (printfIcon "signal")}}<span><strong>Signal</strong><small>Troop 900 · Tree Lot Ops</small></span></a>
+      <nav aria-label="Design system sections">{{range .Navigation}}{{template "link" .}}{{end}}</nav>
+      <div class="rail__footer"><strong>{{.Season}}</strong><span>{{.Context}}</span></div>
+    </aside>
+    <div class="app-main">
+      <header class="mobile-header"><a class="brand" href="/_dev/components">{{template "icon" (printfIcon "signal")}}<strong>Signal</strong></a><span class="badge badge--critical"><span class="badge__mark"></span>3 alerts</span></header>
+      <header class="context-bar"><div><strong>{{.Season}}</strong><span>{{.Context}}</span></div><div><span class="badge badge--warning"><span class="badge__mark"></span>Agreement required</span><span>{{.Actor}}</span></div></header>
+      <main id="main-content" tabindex="-1">
+        <section class="hero" aria-labelledby="gallery-title">
+          <p class="eyebrow">Production foundation · development gallery</p>
+          <h1 id="gallery-title">Clear signals.<br>Calm operations.</h1>
+          <p class="lead">Signal is a light, precise server-rendered system for families coordinating from anywhere and volunteers making confident decisions on the lot.</p>
+          <div class="metric-grid"><div class="metric"><strong>44px</strong><span>Minimum touch target</span></div><div class="metric"><strong>Text + shape</strong><span>Status beyond color</span></div><div class="metric"><strong>390 → 1440</strong><span>Operational at every width</span></div></div>
+        </section>
+
+        <section id="foundations" class="gallery-section" aria-labelledby="foundations-title">
+          <header class="section-heading"><div><p class="eyebrow">Foundations</p><h2 id="foundations-title">Quiet, semantic foundations</h2></div><p>Cool neutral surfaces and restrained teal actions keep operational data clear. Tokens describe meaning, never a literal hue.</p></header>
+          <article class="card">
+            <h3>Semantic color tokens</h3>
+            <div class="token-grid">
+              <div class="token token--canvas"><strong>Canvas</strong><code>--color-canvas</code></div><div class="token token--surface"><strong>Surface</strong><code>--color-surface</code></div><div class="token token--muted"><strong>Muted</strong><code>--color-muted</code></div><div class="token token--text"><strong>Primary text</strong><code>--color-text</code></div><div class="token token--action"><strong>Action</strong><code>--color-action</code></div><div class="token token--focus"><strong>Focus</strong><code>--color-focus</code></div><div class="token token--success"><strong>Complete</strong><code>--color-status-complete</code></div><div class="token token--warning"><strong>Warning</strong><code>--color-status-warning</code></div><div class="token token--critical"><strong>Critical</strong><code>--color-status-critical</code></div><div class="token token--special"><strong>Special</strong><code>--color-status-special</code></div>
+            </div>
+          </article>
+          <div class="two-column">
+            <article class="card type-specimen"><h3>Typography roles</h3><div class="type-page">Page title</div><div class="type-section">Section heading</div><div class="type-subsection">Subsection heading</div><div>Body text for calm, direct instructions.</div><div class="type-emphasis">Emphasized body</div><div class="type-support">Supporting text and metadata</div><div class="type-number">1,248.75</div><code>9fd4-b18a-77c2</code></article>
+            <article class="card"><h3>Space, shape, and motion</h3><dl class="definition-grid"><div><dt>Inline</dt><dd>4 / 8 / 12 / 16px</dd></div><div><dt>Stack</dt><dd>8 / 12 / 16 / 24 / 32 / 48px</dd></div><div><dt>Controls</dt><dd>40px · 44px touch</dd></div><div><dt>Radius</dt><dd>8 / 10 / 14px</dd></div><div><dt>Content</dt><dd>82rem maximum</dd></div><div><dt>Motion</dt><dd>100 / 180 / 220ms</dd></div></dl><p class="supporting">All nonessential animation is suppressed by <code>prefers-reduced-motion</code>. Icons use one inline SVG grammar with rounded 1.8px strokes.</p></article>
+          </div>
+        </section>
+
+        <section id="primitives" class="gallery-section" aria-labelledby="primitives-title">
+          <header class="section-heading"><div><p class="eyebrow">Building blocks</p><h2 id="primitives-title">Primitives in the field</h2></div><p>Native semantics remain the baseline. Components own labels, descriptions, disabled reasons, and status cues.</p></header>
+          <div class="two-column">
+            <article class="card stack"><h3>Buttons and links</h3><div class="control-row">{{range .Buttons}}{{template "button" .}}{{end}}</div><div class="control-row"><a href="#foundations">Inline link</a><a class="link link--standalone" href="#domain-patterns">Standalone action <span aria-hidden="true">→</span></a><a class="link link--external" href="https://docs.google.com/" target="_blank" rel="noreferrer">External link {{template "icon" (printfIcon "external")}}<span class="sr-only">(opens in a new tab)</span></a><a class="link link--destructive" href="#dialog-example">Remove access</a></div></article>
+            <article class="card stack"><h3>Badges</h3><div class="control-row">{{range .Badges}}{{template "badge" .}}{{end}}</div><p class="supporting">Every status combines text with a shape marker; hue is supplemental.</p></article>
+          </div>
+          <article class="card stack"><h3>Fields and errors</h3><div class="field-grid">{{range .Fields}}{{template "field" .}}{{end}}</div><fieldset><legend>Seasonal Agreement confirmation</legend><label class="choice"><input type="checkbox"><span><strong>I have read and agree to the tree-lot rules of conduct.</strong><small>Required before signup, check-in, or walk-in participation.</small></span></label></fieldset></article>
+          <div class="two-column"><article class="card stack"><h3>Alerts</h3>{{range .Alerts}}{{template "alert" .}}{{end}}</article><div class="stack">{{range .Cards}}{{template "card" .}}{{end}}{{template "empty-state" .Empty}}</div></div>
+          <article class="card card--flush"><header class="card__header"><h3>Responsive table and rows</h3></header>{{template "responsive-table" .Table}}<footer class="card__footer">{{template "pagination" .Pagination}}</footer></article>
+          <article id="dialog-example" class="card stack"><h3>Confirmation dialog</h3><p>Native <code>&lt;dialog&gt;</code> markup provides the enhanced surface. Application routes must also provide the same consequence in a complete fallback page.</p>{{template "dialog" .Dialog}}</article>
+        </section>
+
+        <section id="domain-patterns" class="gallery-section" aria-labelledby="domain-title">
+          <header class="section-heading"><div><p class="eyebrow">Reusable operations</p><h2 id="domain-title">Domain display patterns</h2></div><p>These are typed display contracts only. They communicate policy outcomes but do not decide eligibility, authority, timing, or capacity.</p></header>
+          <article class="card stack"><h3>Shift cards</h3>{{range .Shifts}}{{template "shift-card" .}}{{end}}</article>
+          <div class="two-column">
+            <article class="card stack"><h3>Staffing indicator</h3>{{template "staffing" (index .Shifts 2).Staffing}}<p class="supporting">Adult and Scout counts remain separate. FULL, OK, LOW, and CRITICAL are canonical labels.</p></article>
+            <article class="card stack"><h3>Agreement status</h3><div class="list">{{range .Agreements}}{{template "agreement-status" .}}{{end}}</div><a class="link link--external" href="https://docs.google.com/" target="_blank" rel="noreferrer">{{template "icon" (printfIcon "external")}} Open Agreement (Google Docs)<span class="sr-only">(opens in a new tab)</span></a><p class="supporting">The scheduler links to the public document; it does not store or verify its contents.</p></article>
+          </div>
+          <article class="card stack"><h3>Person selector</h3><div class="alert alert--info" role="status">{{template "icon" (printfIcon "info")}}<div><strong>Acting as Morgan Rivera</strong><p>Choose one eligible person in the Rivera household. The selected participant controls eligibility.</p></div></div><fieldset class="person-selector"><legend>Who are you signing up?</legend>{{range .People}}{{template "person-option" .}}{{end}}</fieldset><button class="button button--primary button--mobile-full" type="button">Sign Up Dana</button></article>
+          <article class="card stack"><h3>Attendance row</h3><div class="attendance-list" aria-live="polite">{{range .Attendance}}{{template "attendance-row" .}}{{end}}</div><p class="supporting">Raw server-time events remain visually distinct from approved, reasoned adjustments.</p></article>
+          <article class="card stack"><h3>Announcement and Delivery status</h3>{{template "announcement-delivery" .}}</article>
+          <div class="two-column">{{range .ScoutBucks}}{{template "scout-bucks" .}}{{end}}</div>
+        </section>
+
+        <section id="response-parity" class="gallery-section" aria-labelledby="parity-title">
+          <header class="section-heading"><div><p class="eyebrow">Progressive enhancement</p><h2 id="parity-title">Full-page and fragment parity</h2></div><p>The same POST accepts a standard request or an HTMX request. Only response framing changes.</p></header>
+          <article class="card stack">
+            <form action="/_dev/parity" method="post" hx-post="/_dev/parity" hx-target="#parity-result" hx-swap="outerHTML">
+              <input type="hidden" name="message" value="Signal parity confirmed">
+              <button class="button button--primary" type="submit">{{template "icon" (printfIcon "swap")}} Demonstrate response parity</button>
+            </form>
+            <div id="parity-result" aria-live="polite"><p class="supporting">Without HTMX, the server returns a complete result page. With the <code>HX-Request</code> header, it returns this result region.</p></div>
+          </article>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+</html>{{end}}
+
+{{define "parity-result"}}<div id="parity-result" class="alert alert--complete" role="status" aria-live="polite">{{template "icon" (printfIcon "check")}}<div><strong>{{.ParityMessage}}</strong><p>The result and accessible announcement are identical for full-page and fragment responses.</p></div></div>{{end}}
+
+{{define "parity-page"}}<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Response parity · Signal</title><link rel="stylesheet" href="/static/app.css"></head><body><main id="main-content" class="result-page"><p class="eyebrow">Progressive enhancement</p><h1>Response parity</h1>{{template "parity-result" .}}<a class="button button--secondary" href="/_dev/components#response-parity">Return to component gallery</a></main></body></html>{{end}}

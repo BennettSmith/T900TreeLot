@@ -1,0 +1,109 @@
+{{define "icon"}}
+<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"{{if .Label}} role="img" aria-label="{{.Label}}"{{else}} aria-hidden="true"{{end}}>
+  {{if eq .Name "signal"}}<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/>
+  {{else if eq .Name "components"}}<rect x="3" y="5" width="8" height="8" rx="1.5"/><rect x="13" y="11" width="8" height="8" rx="1.5"/><path d="M11 9h4M9 13v2"/>
+  {{else if eq .Name "calendar"}}<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>
+  {{else if eq .Name "swap"}}<path d="M7 7h13l-3-3M17 17H4l3 3"/>
+  {{else if eq .Name "check"}}<circle cx="12" cy="12" r="9"/><path d="m8 12 2.7 2.7L16.5 9"/>
+  {{else if eq .Name "info"}}<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/>
+  {{else if eq .Name "warning"}}<path d="M10.3 4.2 2.7 18a2 2 0 0 0 1.8 3h15a2 2 0 0 0 1.8-3L13.7 4.2a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/>
+  {{else if eq .Name "critical"}}<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 17h.01"/>
+  {{else if eq .Name "external"}}<path d="M14 5h5v5M19 5l-8 8"/><path d="M18 13v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>
+  {{else}}<circle cx="12" cy="12" r="9"/>{{end}}
+</svg>
+{{end}}
+
+{{define "link"}}
+<a class="link link--{{linkVariant .Variant}}{{if .Current}} is-current{{end}}" href="{{.Href}}"{{if .Current}} aria-current="page"{{end}}{{if .External}} target="_blank" rel="noreferrer"{{end}}>
+  {{if .Icon.Name}}{{template "icon" .Icon}}{{end}}<span>{{.Label}}</span>{{if .BadgeLabel}}<span class="nav-count">{{.BadgeLabel}}</span>{{end}}{{if .External}}{{template "icon" (printfIcon "external")}}{{end}}
+</a>
+{{end}}
+
+{{define "button"}}
+{{$type := .Type}}<button class="button button--{{buttonVariant .Variant}}{{if .FullWidth}} button--full{{end}}{{if .Loading}} is-loading{{end}}" type="{{if $type}}{{$type}}{{else}}button{{end}}"{{if .Disabled}} disabled{{end}}{{if .Loading}} aria-busy="true"{{end}}{{if .DisabledReason}} aria-describedby="reason-{{.ID}}"{{end}}>
+  {{if .Loading}}<span class="spinner" aria-hidden="true"></span>{{else if .Icon.Name}}{{template "icon" .Icon}}{{end}}<span>{{.Label}}</span>
+</button>{{if .DisabledReason}}<span class="control-reason" id="reason-{{.ID}}">{{.DisabledReason}}</span>{{end}}
+{{end}}
+
+{{define "badge"}}<span class="badge badge--{{badgeVariant .Variant}}"><span class="badge__mark" aria-hidden="true"></span>{{.Label}}</span>{{end}}
+
+{{define "alert"}}
+<div class="alert alert--{{alertVariant .Variant}}{{if .Blocking}} alert--blocking{{end}}"{{if .Blocking}} role="alert"{{else}} role="status"{{end}}>
+  {{template "icon" .Icon}}<div><strong>{{.Title}}</strong>{{if .Message}}<p>{{.Message}}</p>{{end}}{{if .Action}}<a href="{{.Action.Href}}">{{.Action.Label}}</a>{{end}}</div>
+</div>
+{{end}}
+
+{{define "field"}}
+<div class="field{{if .Error}} field--error{{end}}">
+  <label for="{{.ID}}">{{.Label}}{{if .Required}} <span class="required">(required)</span>{{end}}</label>
+  <input id="{{.ID}}" name="{{.Name}}" type="{{.Type}}" value="{{.Value}}"{{if .Hint}} aria-describedby="{{.ID}}-hint{{if .Error}} {{.ID}}-error{{end}}"{{else if .Error}} aria-describedby="{{.ID}}-error"{{end}}{{if .Error}} aria-invalid="true"{{end}}{{if .Autocomplete}} autocomplete="{{.Autocomplete}}"{{end}}{{if .InputMode}} inputmode="{{.InputMode}}"{{end}}{{if .Required}} required{{end}}{{if .Disabled}} disabled{{end}}>
+  {{if .Hint}}<span class="field__hint" id="{{.ID}}-hint">{{.Hint}}</span>{{end}}
+  {{if .Error}}<span class="field__error" id="{{.ID}}-error">{{.Error}}</span>{{end}}
+</div>
+{{end}}
+
+{{define "card"}}
+<article class="card">{{if .Badge}}{{template "badge" .Badge}}{{end}}<h3>{{.Title}}</h3><p>{{.Description}}</p>{{if .Action}}<a class="link link--standalone" href="{{.Action.Href}}">{{.Action.Label}} <span aria-hidden="true">→</span></a>{{end}}</article>
+{{end}}
+
+{{define "responsive-table"}}
+<div class="responsive-table">
+  <table><caption>{{.Caption}}</caption><thead><tr>{{range .Columns}}<th scope="col"{{if .Numeric}} class="numeric"{{end}}>{{.Label}}</th>{{end}}</tr></thead>
+    <tbody>{{range .Rows}}<tr>{{range .Cells}}<td{{if .Numeric}} class="numeric"{{end}}>{{if .Badge}}{{template "badge" .Badge}}{{else}}{{.Text}}{{end}}</td>{{end}}</tr>{{end}}</tbody>
+  </table>
+  <div class="responsive-rows" aria-label="{{.Caption}}">{{range .Rows}}<article class="responsive-row"><h4>{{.Label}}</h4><dl>{{range $index, $cell := .Cells}}<div><dt>{{(index $.Columns $index).Label}}</dt><dd>{{if $cell.Badge}}{{template "badge" $cell.Badge}}{{else}}{{$cell.Text}}{{end}}</dd></div>{{end}}</dl></article>{{end}}</div>
+</div>
+{{end}}
+
+{{define "dialog"}}
+<dialog class="dialog" id="{{.ID}}"{{if .Open}} open{{end}} aria-labelledby="{{.ID}}-title"><form method="dialog"><header><h2 id="{{.ID}}-title">{{.Title}}</h2></header><div class="dialog__body"><p>{{.Description}}</p></div><footer><button class="button button--secondary" value="cancel">{{.CancelLabel}}</button>{{template "button" .Action}}</footer></form></dialog>
+<p class="no-script-note">Confirmation dialogs also require a full-page server fallback in application workflows.</p>
+{{end}}
+
+{{define "pagination"}}
+<nav class="pagination" aria-label="Results pages">
+  {{if .PreviousURL}}<a class="button button--secondary" href="{{.PreviousURL}}" rel="prev">Previous</a>{{else}}<span class="button button--secondary is-disabled" aria-disabled="true">Previous</span>{{end}}
+  <span>Page {{.CurrentPage}} of {{.TotalPages}} · {{.ResultCount}} results</span>
+  {{if .NextURL}}<a class="button button--secondary" href="{{.NextURL}}" rel="next">Next</a>{{else}}<span class="button button--secondary is-disabled" aria-disabled="true">Next</span>{{end}}
+</nav>
+{{end}}
+
+{{define "empty-state"}}
+<div class="empty-state">{{template "icon" .Icon}}<h3>{{.Title}}</h3><p>{{.Description}}</p>{{if .Action}}<a class="button button--secondary" href="{{.Action.Href}}">{{.Action.Label}}</a>{{end}}</div>
+{{end}}
+
+{{define "staffing"}}
+<div class="staffing" aria-label="{{.Status.Label}} staffing: {{.AdultsFilled}} of {{.AdultsTarget}} adult slots and {{.ScoutsFilled}} of {{.ScoutsTarget}} scout slots filled">
+  {{template "badge" .Status}}<span>Adults <strong>{{.AdultsFilled}}/{{.AdultsTarget}}</strong></span><span>Scouts <strong>{{.ScoutsFilled}}/{{.ScoutsTarget}}</strong></span>
+</div>
+{{end}}
+
+{{define "shift-card"}}
+<article class="shift-card shift-card--{{.State}}">
+  <div class="shift-card__time"><strong>{{.Date}}</strong><span>{{.Time}}</span></div>
+  <div class="shift-card__body">{{if .Special}}<span class="special-label">{{template "icon" (printfIcon "warning")}} ALL HANDS NEEDED</span>{{end}}<div class="badge-row">{{template "badge" .Lifecycle}}{{template "badge" .Signup}}</div><h3>{{.Name}}</h3><p>{{.Location}}</p></div>
+  {{template "staffing" .Staffing}}
+  <a class="button button--{{if eq .State "critical"}}primary{{else}}secondary{{end}}" href="{{.Action.Href}}">{{.Action.Label}}</a>
+</article>
+{{end}}
+
+{{define "agreement-status"}}
+<div class="list-row"><span class="avatar" aria-hidden="true">{{slice .Person 0 1}}</span><div class="list-row__main"><strong>{{.Person}}</strong><span>{{.Detail}}{{if .ConfirmedAt}} · {{.ConfirmedAt}}{{end}}</span></div>{{template "badge" .Status}}{{if .Action}}<a class="button button--secondary" href="{{.Action.Href}}">{{.Action.Label}}</a>{{end}}</div>
+{{end}}
+
+{{define "person-option"}}
+<label class="person-option{{if .Disabled}} is-disabled{{end}}"><input type="radio" name="gallery-person" value="{{.ID}}"{{if .Selected}} checked{{end}}{{if .Disabled}} disabled{{end}}><span class="person-option__main"><strong>{{.Name}}</strong><span>{{.Detail}}{{if .Explanation}} · {{.Explanation}}{{end}}</span></span>{{template "badge" .Status}}</label>
+{{end}}
+
+{{define "attendance-row"}}
+<article class="attendance-row"><span class="avatar" aria-hidden="true">{{.Initials}}</span><div class="attendance-row__main"><div><strong>{{.Person}}</strong> {{template "badge" .Status}}</div><span>{{.Role}} · {{.Origin}}</span><dl><div><dt>Raw events</dt><dd>{{.RawEvents}}</dd></div>{{if .Adjustment}}<div class="adjustment"><dt>Adjustment</dt><dd>{{.Adjustment}}</dd></div>{{end}}</dl></div>{{if .Action}}<div class="attendance-row__action">{{template "button" .Action}}</div>{{end}}</article>
+{{end}}
+
+{{define "announcement-delivery"}}
+<article class="announcement"><div class="announcement__unread" aria-hidden="true"></div><div><div class="badge-row">{{template "badge" .Announcement.Priority}}<span class="badge badge--info"><span class="badge__mark" aria-hidden="true"></span>{{.Announcement.ReadState}}</span></div><h3>{{.Announcement.Title}}</h3><p>{{.Announcement.Author}} · Published {{.Announcement.PublishedAt}}</p></div></article>
+<div class="delivery-grid">{{range .Delivery}}<div class="metric">{{template "badge" .Status}}<strong>{{.Name}}</strong><span>{{.Detail}}</span></div>{{end}}</div>
+{{end}}
+
+{{define "scout-bucks"}}
+<article class="bucks-summary" data-scout-bucks-state="{{.State}}"><header><div>{{template "badge" .Status}}<h3>Scout Bucks summary</h3></div><strong>{{.Revision}}</strong></header><div class="metric-grid"><div class="metric"><strong>{{.CreditedHours}}</strong><span>{{if eq .State "finalized"}}Finalized{{else}}Provisional{{end}} credited hours</span></div>{{if eq .State "finalized"}}<div class="metric"><strong>{{.Distributable}}</strong><span>Distributable pool</span></div><div class="metric"><strong>{{.EffectiveRate}}</strong><span>Effective rate · informational</span></div><div class="metric"><strong>{{.Rounding}}</strong><span>Rounding remainder allocated</span></div>{{end}}</div>{{if eq .State "finalized"}}<div class="reconciliation">{{template "icon" (printfIcon "check")}} <strong>Exact-pool reconciliation:</strong> {{.Reconciliation}}</div><p>The scheduler records the finalized award revision but does not maintain balances or redemptions.</p>{{else}}<p>Dollar awards are intentionally unavailable before Treasurer finalization.</p>{{end}}</article>
+{{end}}

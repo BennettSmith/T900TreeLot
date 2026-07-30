@@ -1,0 +1,18 @@
+{
+  "name": "troop-900-tree-lot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Build-time assets for the Troop 900 Tree Lot Scheduler",
+  "scripts": {
+    "css:build": "tailwindcss -i ./web/styles/app.css -o ./web/static/app.css --minify",
+    "css:watch": "tailwindcss -i ./web/styles/app.css -o ./web/static/app.css --watch",
+    "css:check": "npm run css:build && git diff --exit-code -- web/static/app.css"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@tailwindcss/cli": "4.3.3",
+    "tailwindcss": "4.3.3"
+  }
+}

@@ -2,11 +2,52 @@
 
 override COVERAGE_MIN := 85
 GO_FILES = $(shell git ls-files --cached --others --exclude-standard '*.go')
+NODE_MODULES_STAMP = node_modules/.package-lock.json
 
-.PHONY: help format format-check lint test coverage ci
+.PHONY: help assets assets-watch assets-check showcase format format-check lint test coverage ci
 
 help: ## List available targets and explain when to use them.
 	@awk 'BEGIN {FS = ":.*## "; printf "Usage: make <target>\n\nTargets:\n"} /^[[:alnum:]_.-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+$(NODE_MODULES_STAMP): package.json package-lock.json
+	@npm ci
+
+assets: $(NODE_MODULES_STAMP) ## Build generated CSS for embedding in the Go binary.
+	@npm run css:build
+
+assets-watch: $(NODE_MODULES_STAMP) ## Rebuild CSS while templates and styles change.
+	@npm run css:watch
+
+assets-check: $(NODE_MODULES_STAMP) ## Verify generated CSS matches its source and templates.
+	@output="$$(mktemp)"; \
+	trap 'rm -f "$$output"' EXIT; \
+	./node_modules/.bin/tailwindcss -i ./web/styles/app.css -o "$$output" --minify; \
+	cmp -s "$$output" ./web/static/app.css || { \
+		echo "web/static/app.css is stale; run 'make assets'." >&2; \
+		exit 1; \
+	}
+
+showcase: assets ## Build, serve, and open the development design-system gallery.
+	@url="http://localhost:$${PORT:-8080}/_dev/components"; \
+	if curl --fail --silent "$$url" >/dev/null 2>&1; then \
+		if command -v open >/dev/null 2>&1; then open "$$url"; \
+		elif command -v xdg-open >/dev/null 2>&1; then xdg-open "$$url"; \
+		else echo "Open $$url in a browser."; fi; \
+		exit 0; \
+	fi; \
+	( deadline="$$(($$(date +%s) + 15))"; \
+	  until curl --fail --silent "$$url" >/dev/null 2>&1; do \
+		if test "$$(date +%s)" -ge "$$deadline"; then \
+			echo "Showcase did not become ready at $$url." >&2; \
+			exit 1; \
+		fi; \
+		sleep 0.1; \
+	  done; \
+	  if command -v open >/dev/null 2>&1; then open "$$url"; \
+	  elif command -v xdg-open >/dev/null 2>&1; then xdg-open "$$url"; \
+	  else echo "Open $$url in a browser."; fi \
+	) & \
+	APP_ENV=development go run ./cmd/web
 
 format: ## Format all Go files; use before committing code.
 	@test -n "$(GO_FILES)" || { echo "No Go files found." >&2; exit 1; }
@@ -41,4 +82,4 @@ coverage: ## Run tests and require at least 85% statement coverage.
 		printf "Coverage %.1f%% meets the required %.1f%%.\n", total, minimum; \
 	}'
 
-ci: format-check lint coverage ## Run all required checks when evaluating whether work is done.
+ci: assets-check format-check lint coverage ## Run all required checks when evaluating whether work is done.
