@@ -11,6 +11,7 @@ import (
 	"github.com/troop900/treelot/internal/platform/clock"
 	"github.com/troop900/treelot/internal/platform/config"
 	"github.com/troop900/treelot/internal/platform/migrate"
+	"github.com/troop900/treelot/internal/platform/outbox"
 	"github.com/troop900/treelot/internal/platform/postgres"
 	"github.com/troop900/treelot/internal/platform/session"
 	"github.com/troop900/treelot/internal/web/handlers"
@@ -71,6 +72,10 @@ func newHTTPServer(cfg config.Config, db *postgres.DB, appClock clock.Clock, con
 		return nil, err
 	}
 	store := session.NewStore(db, appClock, 24*time.Hour)
+	var outboxControl handlers.OutboxControl
+	if cfg.TestControlEnabled {
+		outboxControl = outbox.NewStore(db, appClock)
+	}
 	handler := handlers.New(renderer, handlers.Options{
 		Development:        cfg.AppEnv == config.EnvDevelopment,
 		Logger:             logger,
@@ -81,6 +86,7 @@ func newHTTPServer(cfg config.Config, db *postgres.DB, appClock clock.Clock, con
 		TestControlKey:     cfg.TestControlKey,
 		Clock:              appClock,
 		ControllableClock:  controllable,
+		Outbox:             outboxControl,
 	})
 	return &http.Server{
 		Addr:              cfg.ListenAddress,

@@ -72,18 +72,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    entrypoint: ["/app/web"]
+    entrypoint: ["/app/provider-stubs"]
     environment:
-      APP_ENV: development
       PORT: "8090"
-      DATABASE_URL: postgres://treelot:treelot@postgres:5432/treelot?sslmode=disable
-      TREE_LOT_TIME_ZONE: UTC
-      PUBLIC_BASE_URL: http://provider-stubs:8090
-      SESSION_KEY: 0123456789abcdef0123456789abcdef
-      GROUPS_IO_ENABLED: "false"
-    depends_on:
-      postgres:
-        condition: service_healthy
     profiles: ["acceptance"]
 
   acceptance-web:

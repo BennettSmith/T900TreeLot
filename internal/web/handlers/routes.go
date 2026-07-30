@@ -31,6 +31,7 @@ type Options struct {
 	TestControlKey     string
 	Clock              clock.Clock
 	ControllableClock  *clock.Controllable
+	Outbox             OutboxControl
 }
 
 type Server struct {
@@ -40,6 +41,7 @@ type Server struct {
 	testControlKey    string
 	controllableClock *clock.Controllable
 	clock             clock.Clock
+	outbox            OutboxControl
 }
 
 type renderer interface {
@@ -69,6 +71,7 @@ func New(viewRenderer renderer, options Options) http.Handler {
 		testControlKey:    options.TestControlKey,
 		controllableClock: options.ControllableClock,
 		clock:             clk,
+		outbox:            options.Outbox,
 	}
 
 	mux := http.NewServeMux()
@@ -86,6 +89,8 @@ func New(viewRenderer renderer, options Options) http.Handler {
 	if options.TestControlEnabled {
 		mux.HandleFunc("POST /_test/clock/advance", server.advanceClock)
 		mux.HandleFunc("GET /_test/clock", server.getClock)
+		mux.HandleFunc("POST /_test/outbox", server.enqueueOutbox)
+		mux.HandleFunc("GET /_test/outbox", server.getOutbox)
 	}
 
 	var browserHandler http.Handler = browser

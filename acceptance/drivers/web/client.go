@@ -50,6 +50,27 @@ func (c *Client) Get(path string) (int, string, error) {
 	return response.StatusCode, string(body), nil
 }
 
+// GetWithHeaders performs a GET without a cookie jar so Set-Cookie attributes
+// remain observable even for Secure cookies over plain HTTP.
+func (c *Client) GetWithHeaders(path string) (int, string, http.Header, error) {
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	response, err := client.Get(c.baseURL + path)
+	if err != nil {
+		return 0, "", nil, err
+	}
+	defer response.Body.Close()
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return response.StatusCode, "", response.Header, err
+	}
+	return response.StatusCode, string(body), response.Header.Clone(), nil
+}
+
 // PostForm posts an application/x-www-form-urlencoded body.
 func (c *Client) PostForm(path string, values url.Values) (int, string, http.Header, error) {
 	response, err := c.httpClient.PostForm(c.baseURL+path, values)
@@ -77,4 +98,14 @@ func CSRFToken(body string) (string, error) {
 		return "", fmt.Errorf("csrf token not terminated")
 	}
 	return body[start : start+end], nil
+}
+
+// SessionCookieSecure reports whether Set-Cookie for the session includes Secure.
+func SessionCookieSecure(headers http.Header) (bool, error) {
+	for _, value := range headers.Values("Set-Cookie") {
+		if strings.Contains(value, "treelot_session=") {
+			return strings.Contains(strings.ToLower(value), "secure"), nil
+		}
+	}
+	return false, fmt.Errorf("session cookie not set")
 }

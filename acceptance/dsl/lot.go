@@ -11,16 +11,22 @@ import (
 	"time"
 
 	clockdriver "github.com/troop900/treelot/acceptance/drivers/clock"
+	outboxdriver "github.com/troop900/treelot/acceptance/drivers/outbox"
+	"github.com/troop900/treelot/acceptance/drivers/providers"
 	"github.com/troop900/treelot/acceptance/drivers/web"
 	"github.com/troop900/treelot/acceptance/environment"
 )
 
 // Lot is the acceptance DSL for foundation smoke journeys.
 type Lot struct {
-	t      *testing.T
-	config environment.Config
-	web    *web.Client
-	clock  *clockdriver.Driver
+	t          *testing.T
+	config     environment.Config
+	web        *web.Client
+	production *web.Client
+	clock      *clockdriver.Driver
+	outbox     *outboxdriver.Driver
+	stub       *providers.Stub
+	processes  *environment.ProcessDriver
 }
 
 // NewLot constructs a scenario helper.
@@ -31,11 +37,19 @@ func NewLot(t *testing.T) *Lot {
 	if err != nil {
 		t.Fatalf("web client: %v", err)
 	}
+	production, err := web.NewClient(config.ProductionBaseURL)
+	if err != nil {
+		t.Fatalf("production web client: %v", err)
+	}
 	lot := &Lot{
-		t:      t,
-		config: config,
-		web:    client,
-		clock:  clockdriver.New(config.BaseURL, config.TestControlKey),
+		t:          t,
+		config:     config,
+		web:        client,
+		production: production,
+		clock:      clockdriver.New(config.BaseURL, config.TestControlKey),
+		outbox:     outboxdriver.New(config.BaseURL, config.TestControlKey),
+		stub:       providers.New(config.StubBaseURL),
+		processes:  environment.NewProcessDriver(config),
 	}
 	lot.WaitUntilReady()
 	return lot
@@ -67,19 +81,22 @@ func (l *Lot) WaitUntilReady() {
 }
 
 // Presence observes anonymous visitor-facing pages.
-func (l *Lot) Presence() *Presence {
-	return &Presence{lot: l}
-}
+func (l *Lot) Presence() *Presence { return &Presence{lot: l} }
 
 // Clock exposes test-time control.
-func (l *Lot) Clock() *Clock {
-	return &Clock{lot: l}
-}
+func (l *Lot) Clock() *Clock { return &Clock{lot: l} }
+
+// Platform exposes deployable-foundation operator checks.
+func (l *Lot) Platform() *Platform { return &Platform{lot: l} }
+
+// Worker exposes asynchronous outbox observations.
+func (l *Lot) Worker() *Worker { return &Worker{lot: l} }
+
+// Providers exposes external stub observations.
+func (l *Lot) Providers() *Providers { return &Providers{lot: l} }
 
 // Presence captures anonymous visitor checks.
-type Presence struct {
-	lot *Lot
-}
+type Presence struct{ lot *Lot }
 
 // SeesHealthyFoundation asserts live/ready/static/home navigation.
 func (p *Presence) SeesHealthyFoundation() {
@@ -140,9 +157,7 @@ func (p *Presence) SubmitsSmokeCheck(message string) {
 }
 
 // Clock wraps test-control time operations.
-type Clock struct {
-	lot *Lot
-}
+type Clock struct{ lot *Lot }
 
 // CanBeAdvanced asserts the acceptance clock endpoint works.
 func (c *Clock) CanBeAdvanced(duration time.Duration) {
@@ -166,5 +181,86 @@ func (c *Clock) IsUnavailableWithoutKey() {
 	unauthorized := clockdriver.New(c.lot.config.BaseURL, "wrong-key")
 	if _, err := unauthorized.Now(); err == nil {
 		c.lot.t.Fatal("clock allowed unauthorized access")
+	}
+}
+
+// Platform captures operator/deploy invariants.
+type Platform struct{ lot *Lot }
+
+// RejectsUnmigratedDatabaseWithoutSchemaChange proves migrate-only schema mutation.
+func (p *Platform) RejectsUnmigratedDatabaseWithoutSchemaChange() {
+	p.lot.t.Helper()
+	if err := p.lot.processes.RejectsUnmigratedDatabaseWithoutSchemaChange(); err != nil {
+		p.lot.t.Fatal(err)
+	}
+}
+
+// TestControlIsAbsentOutsideAcceptance proves production-shaped hosts hide test control.
+func (p *Platform) TestControlIsAbsentOutsideAcceptance() {
+	p.lot.t.Helper()
+	status, _, err := p.lot.production.Get("/_test/clock")
+	if err != nil {
+		p.lot.t.Fatalf("production test-control probe: %v", err)
+	}
+	if status != http.StatusNotFound {
+		p.lot.t.Fatalf("production test-control status=%d, want 404", status)
+	}
+}
+
+// IssuesSecureSessionCookiesInProduction proves Secure cookie attribute in production.
+func (p *Platform) IssuesSecureSessionCookiesInProduction() {
+	p.lot.t.Helper()
+	status, _, headers, err := p.lot.production.GetWithHeaders("/")
+	if err != nil || status != http.StatusOK {
+		p.lot.t.Fatalf("production home status=%d err=%v", status, err)
+	}
+	secure, err := web.SessionCookieSecure(headers)
+	if err != nil {
+		p.lot.t.Fatal(err)
+	}
+	if !secure {
+		p.lot.t.Fatal("production session cookie missing Secure attribute")
+	}
+}
+
+// Worker captures asynchronous queue observations.
+type Worker struct{ lot *Lot }
+
+// DeliversEnqueuedOutboxMessage proves the deployed worker processes outbox rows.
+func (w *Worker) DeliversEnqueuedOutboxMessage(idempotencyKey string) {
+	w.lot.t.Helper()
+	if err := w.lot.outbox.Enqueue(idempotencyKey, "groupsio"); err != nil {
+		w.lot.t.Fatalf("enqueue outbox: %v", err)
+	}
+	err := environment.Eventually(w.lot.config.ReadyTimeout, 200*time.Millisecond, func() error {
+		status, err := w.lot.outbox.Status(idempotencyKey)
+		if err != nil {
+			return err
+		}
+		if status != "delivered" {
+			return fmt.Errorf("outbox status=%q, want delivered", status)
+		}
+		return nil
+	})
+	if err != nil {
+		w.lot.t.Fatalf("worker did not deliver outbox message: %v", err)
+	}
+}
+
+// Providers captures external stub observations.
+type Providers struct{ lot *Lot }
+
+// GroupsIOStubAcceptsAuthorizedTraffic proves the stub is protocol-shaped and live.
+func (p *Providers) GroupsIOStubAcceptsAuthorizedTraffic() {
+	p.lot.t.Helper()
+	if err := p.lot.stub.Available(); err != nil {
+		p.lot.t.Fatalf("groups.io stub unavailable: %v", err)
+	}
+	if err := p.lot.stub.PostGroupMessage("troop900", "Foundation stub probe"); err != nil {
+		p.lot.t.Fatalf("groups.io stub post: %v", err)
+	}
+	count, err := p.lot.stub.MessageCount()
+	if err != nil || count < 1 {
+		p.lot.t.Fatalf("groups.io stub message count=%d err=%v", count, err)
 	}
 }
