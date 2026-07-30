@@ -7,11 +7,17 @@ DOCKER ?= $(shell if docker info >/dev/null 2>&1; then echo docker; else echo su
 COMPOSE = $(DOCKER) compose
 IMAGE ?= treelot:local
 
-.PHONY: help assets assets-watch assets-check showcase format format-check lint test-db test coverage ci \
-	image up down migrate logs ps acceptance
+.PHONY: help doctor acceptance-preflight assets assets-watch assets-check showcase format format-check \
+	lint test-db test coverage ci image up down migrate logs ps acceptance
 
 help: ## List available targets and explain when to use them.
 	@awk 'BEGIN {FS = ":.*## "; printf "Usage: make <target>\n\nTargets:\n"} /^[[:alnum:]_.-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+doctor: ## Diagnose local tools, Docker, networking guidance, and required ports.
+	@bash ./scripts/preflight.sh doctor
+
+acceptance-preflight: ## Check acceptance prerequisites and required ports without cleanup.
+	@bash ./scripts/preflight.sh acceptance
 
 $(NODE_MODULES_STAMP): package.json package-lock.json
 	@npm ci

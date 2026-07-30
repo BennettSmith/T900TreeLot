@@ -32,6 +32,7 @@ can supply `:5433`.
 
 ```sh
 make help          # list targets
+make doctor        # diagnose local tools, Docker, networking guidance, and ports
 make ci            # fast checks: assets, format, vet, coverage
 make test          # unit/component tests
 make up            # production image + postgres + migrate + web + worker
@@ -66,3 +67,16 @@ make acceptance
 `make acceptance` builds the image, starts PostgreSQL via Compose, runs migrate/web/worker
 from the production image (host networking), then executes the suite. Set
 `ACCEPTANCE_KEEP=1` to leave containers running after the suite.
+
+The acceptance runner removes its own previous containers and then runs a
+non-destructive preflight before building. The preflight checks required tools
+and ports `5433`, `8080`, `8081`, and `8090`. On macOS it also starts a temporary
+Alpine container to verify Docker Desktop host networking. Run the same focused
+check directly with:
+
+```sh
+make acceptance-preflight
+```
+
+The preflight reports conflicts but never stops unrelated processes or
+containers. Resolve any named conflict and rerun it.

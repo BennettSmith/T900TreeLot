@@ -40,6 +40,8 @@ $DOCKER rm -f \
   treelot-production-web \
   >/dev/null 2>&1 || true
 
+bash ./scripts/preflight.sh acceptance
+
 $DOCKER build -t "$IMAGE" .
 $COMPOSE up -d postgres
 
@@ -50,6 +52,9 @@ until $COMPOSE exec -T postgres pg_isready -U treelot -d treelot >/dev/null 2>&1
     pg_isready -h 127.0.0.1 -p 5433 -U treelot -d treelot >/dev/null 2>&1; do
   if (( SECONDS >= deadline )); then
     echo "PostgreSQL was not ready in time." >&2
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+      echo "Verify Docker Desktop host networking is enabled under Settings > Resources > Network." >&2
+    fi
     $COMPOSE logs postgres || true
     exit 1
   fi
