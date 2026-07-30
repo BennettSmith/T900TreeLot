@@ -26,7 +26,7 @@ Verified-request intake, subject resolution, complete compilation, portable expo
 
 - Current and former authenticated people may request exports; a verified parent/guardian may request one for a managed minor.
 - Export does not alter source records or remove login access.
-- Phone numbers, message bodies, and export contents are redacted from operational logs.
+- Account emails, message bodies, and export contents are redacted from operational logs.
 
 ## Dependencies
 

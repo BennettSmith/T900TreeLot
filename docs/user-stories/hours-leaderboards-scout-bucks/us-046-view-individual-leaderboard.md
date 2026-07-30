@@ -26,7 +26,7 @@ An individual leaderboard showing rank, display name, corrected hours, shift cou
 
 - Reports use approved corrected hours while retaining immutable real-time events.
 - Each person profile appears once even if it has multiple roles or household links.
-- Phone numbers and private relationship details are never displayed.
+- Account emails and private relationship details are never displayed.
 
 ## Dependencies
 

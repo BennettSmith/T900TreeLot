@@ -139,7 +139,7 @@ POCs may explore different navigation models, but they must preserve the followi
 ### Shared destinations
 
 - Schedule / Week View
-- Announcements, with unread count
+- Inbox, with unread count
 - Seasonal Agreement
 - Profile
 - Account security
@@ -161,7 +161,7 @@ POCs may explore different navigation models, but they must preserve the followi
 - Find shifts
 - My statistics
 - Seasonal Agreement
-- Announcements
+- Inbox
 - Profile and account
 
 The Young Adult Scout UI must not reveal private household-member details merely because the scout is linked to those households.
@@ -174,7 +174,7 @@ The Young Adult Scout UI must not reveal private household-member details merely
 - Shift templates
 - Draft schedule
 - Attendance review
-- Announcements
+- Inbox / announcements
 - Season statistics
 - Agreement status
 - Reports
@@ -196,7 +196,7 @@ The page shell must provide a place for:
 
 - Current season
 - Current week or date range
-- Unread announcement count
+- Unread inbox count
 - Agreement-required alert
 - Staffing-alert count for privileged users
 - Selected household when an actor manages more than one
@@ -672,13 +672,14 @@ Contains:
 
 Provides a clear status and optional follow-up note without erasing the original assignment.
 
-### Announcement item
+### Inbox message item
 
 Includes:
 
-- Title
-- Priority
-- Author
+- Title or subject
+- Message type
+- Priority when applicable
+- Author or system source
 - Publication time
 - Read/unread state
 
@@ -691,16 +692,16 @@ Contains:
 - Title
 - Body
 - Priority
-- Recipient counts
-- Required SMS channel
-- Optional Groups.io channel only when enabled
+- Inbox recipient counts
+- Required in-app inbox channel
+- Optional Groups.io channel only when enabled and the message is troop-wide
 - Publish confirmation
 
 ### Delivery status summary
 
-Shows web publication, aggregate SMS outcomes, and optional Groups.io status independently. Authorized users can retry failed delivery without duplicating successful channels.
+Shows in-app inbox publication and optional Groups.io status independently. Authorized users can retry failed external delivery without duplicating successful channels.
 
-It never exposes recipients' phone numbers to ordinary users.
+It never exposes other recipients' personal delivery details to ordinary users.
 
 ### Family member row
 
@@ -825,7 +826,7 @@ The following labels are canonical. POCs may alter visual treatment but not mean
 - Walk-In
 - Adjusted
 
-### Announcement
+### Inbox message
 
 - Unread
 - Read
@@ -882,7 +883,7 @@ Prioritizes:
 - Agreement actions blocking participation
 - Upcoming family shifts
 - Shifts that need help
-- Unread announcements
+- Unread inbox messages
 - Family-hour summary
 
 ### Young Adult Scout home
@@ -921,9 +922,9 @@ Provides a higher-density week view with staffing summaries, alerts, shift manag
 
 Displays the public agreement link and per-person confirmation. It handles self-confirmation and facilitated confirmation without signatures or document uploads.
 
-### Announcements
+### Inbox
 
-Includes list, detail, read-state management, compose, delivery preview, delivery status, and retry.
+Includes list, detail, read-state management, compose for troop announcements, delivery preview, delivery status, and retry for external channels.
 
 ### Attendance review
 
@@ -1110,7 +1111,7 @@ Avoid ambiguous labels such as `Submit`, `OK`, or `Continue` when the actual act
 
 ## 17. Privacy and security presentation
 
-- Do not show account emails or phone numbers on rosters, leaderboards, or unrelated household views
+- Do not show account emails on rosters, leaderboards, or unrelated household views
 - Do not expose per-recipient delivery details to ordinary recipients
 - Do not reveal whether an unknown email has an account
 - Do not display archive passphrases after submission
@@ -1147,7 +1148,7 @@ State:
 - One household member is Not Confirmed
 - Two upcoming assignments
 - One critical shift seeking help
-- Two unread announcements
+- Two unread inbox messages
 
 Demonstrates navigation, hierarchy, alerts, shift cards, and family context.
 
@@ -1205,7 +1206,7 @@ Demonstrates privileged navigation, data density, filters, progress, and priorit
 
 State:
 
-- Required web and SMS delivery
+- Required in-app inbox delivery
 - Groups.io disabled by default
 - Alternate optional-channel-enabled and failed states
 

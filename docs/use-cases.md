@@ -1,7 +1,7 @@
 # Troop 900 Tree Lot Shift Scheduler
 ## Use Cases Document
 
-**Version:** 3.12  
+**Version:** 3.13  
 **Date:** July 2026  
 **Purpose:** This document describes what the Troop 900 Tree Lot Shift Scheduler does from a user's perspective. It covers all functional use cases organized by category.
 
@@ -49,6 +49,8 @@ The Troop 900 Tree Lot Shift Scheduler is a responsive web application designed 
 - Walk-in coverage for handling no-shows
 - Individual and family hours tracking with leaderboards
 - Scout Bucks credited-hour tracking, end-of-season dollar finalization, and award export
+- Per-user in-app message inbox with private read/unread state for announcements, reminders, and operational notices
+- Optional Groups.io posting for troop-wide announcements when that deployment integration is enabled
 
 ### Delivery and Technology Constraints
 
@@ -59,7 +61,11 @@ The Troop 900 Tree Lot Shift Scheduler is a responsive web application designed 
 - The interface is responsive and fully usable on phone, tablet, and desktop form factors
 - Heavy client-side frameworks such as Angular and React are not used
 - Authentication does not use SMS one-time codes, magic links, or social identity providers
-- A later change will move operational notifications from SMS to email and Groups.io; until that change, existing notification use cases may still describe SMS delivery
+- Operational notifications do not use SMS or phone-number delivery
+- Every notification for an authenticated recipient is recorded in that user's in-app inbox with private read/unread state
+- Troop-wide announcements may additionally post to Groups.io when that optional deployment integration is enabled
+- Direct or family-scoped messages remain in-app only until a later verified-email notification channel exists
+- Claimed account email remains unverified at enrollment; a future mailbox-verification workflow may allow opted-in delivery to verified email addresses without replacing the in-app inbox
 
 ### User Base
 
@@ -450,16 +456,18 @@ Approximately 40-50 family members (scouts and parents) from 15-20 families/hous
 **What Happens:**
 1. Committee reviews final summary (total shifts, volunteer slots, special events)
 2. Confirms publication with options to:
-   - Send SMS notification to all active Family Managers and Young Adult Scouts
-   - Highlight special events in the notification
+   - Place one summary notice in every active Family Manager and Young Adult Scout in-app inbox
+   - Highlight special events in the notice
+   - Post the same summary to Groups.io when that optional integration is enabled
 3. System publishes all shifts simultaneously
-4. ONE SMS notification is sent to each active Family Manager and Young Adult Scout phone number with:
+4. ONE in-app inbox message is recorded for each active Family Manager and Young Adult Scout with:
    - Total shift count and date range
    - Highlights of special events (e.g., "Lot Setup Nov 27, Tree Delivery Dec 3 & 10")
-5. All shifts become visible and available for signup
+5. If Groups.io is enabled and the Committee chose that channel, the system posts the same summary to the configured troop group
+6. All shifts become visible and available for signup
 
 **Outcome:** 
-- Family Managers and Young Adult Scouts receive a single comprehensive notification (not individual notifications per shift)
+- Family Managers and Young Adult Scouts receive a single comprehensive in-app notification (not individual notifications per shift)
 - Signup period officially begins
 - Special event shifts are prominently marked in the web app
 
@@ -475,9 +483,10 @@ Approximately 40-50 family members (scouts and parents) from 15-20 families/hous
 1. Unexpected need arises (weather changes, special event, etc.)
 2. Committee member creates a single new shift
 3. Shift is published immediately (not draft)
-4. An SMS notification is sent to eligible Family Managers and Young Adult Scouts
+4. An in-app inbox message is recorded for eligible Family Managers and Young Adult Scouts
+5. Because the recipients are a targeted eligible set rather than the whole troop, Groups.io is not used for this notice
 
-**Outcome:** New shift is added with appropriate notification. This is suitable for unplanned additions during the season.
+**Outcome:** New shift is added with an in-app notification for eligible recipients. This is suitable for unplanned additions during the season.
 
 ---
 
@@ -488,7 +497,7 @@ Approximately 40-50 family members (scouts and parents) from 15-20 families/hous
 **Description:** A family manager discovers and signs up eligible family members for a high-priority special event shift.
 
 **What Happens:**
-1. Family manager receives an SMS notification about schedule publication highlighting special events
+1. Family manager sees an in-app inbox notice about schedule publication highlighting special events
 2. Opens the web app in a browser and browses shifts
 3. Special event shifts display distinctive visual indicators:
    - Star icon
@@ -519,9 +528,10 @@ Approximately 40-50 family members (scouts and parents) from 15-20 families/hous
    - Location
    - Notes or special instructions
 3. Chooses whether to publish immediately or save as draft
-4. If published, an SMS notification is sent to eligible Family Managers and Young Adult Scouts
+4. If published, an in-app inbox message is recorded for eligible Family Managers and Young Adult Scouts
+5. Targeted eligible-recipient notices remain in-app only; Groups.io is not used
 
-**Outcome:** New shift is available in the system. Eligible Family Managers and Young Adult Scouts are notified if the shift is published.
+**Outcome:** New shift is available in the system. Eligible Family Managers and Young Adult Scouts are notified in-app if the shift is published.
 
 ---
 
@@ -529,7 +539,7 @@ Approximately 40-50 family members (scouts and parents) from 15-20 families/hous
 
 **Actors:** Committee Member
 
-**Description:** Committee publishes a troop announcement in the web app and sends it by SMS to every active Family Manager and Young Adult Scout. If the optional Groups.io deployment integration is enabled, the same announcement is also posted there.
+**Description:** Committee publishes a troop announcement into every active Family Manager and Young Adult Scout in-app inbox. If the optional Groups.io deployment integration is enabled, the same announcement is also posted there. Announcements are not sent by SMS.
 
 **What Happens:**
 1. Committee member composes a message with:
@@ -537,49 +547,50 @@ Approximately 40-50 family members (scouts and parents) from 15-20 families/hous
    - Body text
    - Priority level
 2. The committee member reviews the delivery summary showing:
-   - Number of active Family Manager phone numbers
-   - Number of active Young Adult Scout phone numbers
+   - Number of active Family Manager inbox recipients
+   - Number of active Young Adult Scout inbox recipients
    - The configured troop Groups.io destination, only when that integration is enabled
 3. The committee member sends the announcement
-4. The system stores one canonical announcement and publishes it to the web app's Announcements view
-5. Family Managers and Young Adult Scouts can view the announcement in the web app with its title, body, priority, author, and publication time
-6. The system sends the title and message by SMS to every active Family Manager and Young Adult Scout
-7. If Groups.io is enabled, the system posts the same title and message to the configured troop group
-8. The system records delivery status separately for the web app, each SMS recipient, and each enabled optional channel
-9. If one channel fails, the announcement remains visible through successful channels and the committee member can retry only the failed deliveries without duplicating the others
+4. The system stores one canonical announcement and places a copy in each recipient's in-app inbox
+5. Family Managers and Young Adult Scouts can open the announcement from the Inbox view with its title, body, priority, author, and publication time
+6. If Groups.io is enabled, the system posts the same title and message to the configured troop group
+7. The system records delivery status separately for in-app publication, each enabled optional channel, and any future opted-in email channel
+8. If one external channel fails, the announcement remains visible in successful channels and the committee member can retry only the failed deliveries without duplicating the others
 
-**Outcome:** Family Managers and Young Adult Scouts can read the announcement in the web app and receive it by text message. When configured, Groups.io receives it as an additional best-effort channel. The web app retains the canonical copy and delivery status.
+**Outcome:** Family Managers and Young Adult Scouts can read the announcement in their in-app inbox. When configured, Groups.io receives it as an additional best-effort troop-wide channel. The web app retains the canonical copy, per-user read state, and delivery status.
 
 ---
 
-### Use Case 4A: Authenticated User Views Announcements
+### Use Case 4A: Authenticated User Views In-App Inbox
 
 **Actors:** Family Manager, Young Adult Scout, Committee Member, Admin
 
-**Description:** An authenticated user views current and historical troop announcements in the web app and can distinguish unread announcements from those they have already read.
+**Description:** An authenticated user views their personal in-app inbox of troop announcements, reminders, staffing notices, and other operational messages, and can distinguish unread messages from those they have already read.
 
 **What Happens:**
-1. User opens the Announcements view
-2. System lists announcements in reverse chronological order with:
-   - Title
-   - Priority
-   - Author and publication time
+1. User opens the Inbox view
+2. System lists that user's messages in reverse chronological order with:
+   - Title or subject
+   - Message type (for example announcement, reminder, staffing notice, closure notice)
+   - Priority when applicable
+   - Author or system source and publication time
    - Unread/read indicator for the current user
-3. Navigation shows the current user's unread announcement count
-4. User opens an announcement to read its complete body
-5. When the complete announcement is displayed, the system records it as read for that authenticated identity with a server timestamp
-6. User may explicitly mark an announcement unread or mark all announcements read
+3. Navigation shows the current user's unread inbox count
+4. User opens a message to read its complete body
+5. When the complete message is displayed, the system records it as read for that authenticated identity with a server timestamp
+6. User may explicitly mark a message unread or mark all inbox messages read
 7. Read/unread changes made by one Family Manager do not affect a co-manager, Young Adult Scout, or any other user
 
 **Read-State Rules:**
-- Each announcement begins unread for every active authenticated recipient except its author
-- Announcements published before a person received authenticated access remain available as history but do not increase that person's initial unread count
-- SMS delivery, an SMS link click, or delivery through an enabled Groups.io integration does not by itself mark the web announcement read
-- Opening the linked announcement while authenticated marks it read when the complete announcement is displayed
+- Each inbox message begins unread for every active authenticated recipient except its human author
+- Messages published before a person received authenticated access remain available as history when retained for that audience, but do not increase that person's initial unread count
+- Delivery through an enabled Groups.io integration, or a future opted-in email send, does not by itself mark the in-app message read
+- Opening the linked message while authenticated marks it read when the complete body is displayed
 - Read state is private to the authenticated user and is not included in other recipients' views
 - Delivery status and read state are separate: delivered does not mean read
+- Direct or family-scoped messages appear only in the intended recipients' inboxes and are never posted to Groups.io
 
-**Outcome:** Each authenticated user has a personal, synchronized unread count and read history for announcements in the web app.
+**Outcome:** Each authenticated user has a personal in-app inbox with a synchronized unread count and private read history.
 
 ---
 
@@ -614,7 +625,7 @@ Approximately 40-50 family members (scouts and parents) from 15-20 families/hous
 
 **Actors:** System (automated)
 
-**Description:** System automatically sends Family Managers and Young Adult Scouts reminders for upcoming assignments.
+**Description:** System automatically places Family Manager and Young Adult Scout reminders for upcoming assignments into each recipient's in-app inbox. Shift reminders are direct/family-scoped and are not posted to Groups.io.
 
 **What Happens:**
 1. Automated process runs hourly
@@ -625,13 +636,13 @@ Approximately 40-50 family members (scouts and parents) from 15-20 families/hous
    - For a Young Adult Scout-created assignment, finds active Family Managers in every linked household
    - If the volunteer is a Young Adult Scout, includes that scout as a direct recipient
    - Checks each recipient's shift-reminder preference
-   - Sends an SMS reminder to recipients who have reminders enabled
+   - Records an in-app inbox reminder for recipients who have reminders enabled
 4. Reminder includes:
    - Assigned family member's name
    - Shift date and time
    - Link to view shift details in the web app
 
-**Outcome:** Volunteers are reminded of their upcoming shifts, reducing no-shows.
+**Outcome:** Volunteers are reminded in-app of their upcoming shifts, reducing no-shows.
 
 ---
 
@@ -1398,12 +1409,12 @@ Approximately 40-50 family members (scouts and parents) from 15-20 families/hous
    - A warning that the lot will close for that shift if coverage remains unresolved
    - A direct link to the shift signup page
 4. The sender confirms the alert
-5. The system publishes one canonical high-priority in-app announcement and sends SMS to every active Family Manager and Young Adult Scout
+5. The system publishes one canonical high-priority troop-wide announcement into every active Family Manager and Young Adult Scout in-app inbox
 6. If the optional Groups.io integration is enabled, the same alert is posted there
 7. Duplicate sends for the same unresolved condition require explicit confirmation and are recorded in the audit trail
-8. If signup changes make the shift safe to operate, its status updates immediately and the system sends a concise "coverage secured" update to the alert recipients
+8. If signup changes make the shift safe to operate, its status updates immediately and the system places a concise "coverage secured" update in the same recipients' inboxes and, when enabled, posts that update to Groups.io
 
-**Outcome:** Every active Family Manager and Young Adult Scout is informed that urgent signups are needed to prevent a specific shift closure; Committee and Admin can review the alert and delivery status in the web app.
+**Outcome:** Every active Family Manager and Young Adult Scout is informed in-app that urgent signups are needed to prevent a specific shift closure; Committee and Admin can review the alert and delivery status in the web app.
 
 ---
 
@@ -1450,13 +1461,12 @@ Approximately 40-50 family members (scouts and parents) from 15-20 families/hous
    - Disables new signups, check-ins, and walk-in additions
    - Preserves assignments in the audit history and marks them cancelled by shift closure
    - Allows checkout for any existing open attendance records
-   - Publishes an in-app closure notice
-   - Sends SMS to all active Family Managers and Young Adult Scouts, with assigned volunteers clearly identified as affected
+   - Places a troop-wide closure notice in every active Family Manager and Young Adult Scout in-app inbox, with assigned volunteers clearly identified as affected
    - Posts the notice to Groups.io when that optional integration is enabled
-5. A closure made before the shift starts may be reversed by Committee/Admin only after coverage satisfies every rule; reopening is audited and sends an update to the same recipients
+5. A closure made before the shift starts may be reversed by Committee/Admin only after coverage satisfies every rule; reopening is audited and places an update in the same recipients' inboxes and, when enabled, on Groups.io
 6. A shift closed after operations have begun cannot be reopened retroactively
 
-**Outcome:** The closure is explicit, communicated troop-wide, and preserved in schedule and audit history rather than appearing as an unexplained empty shift.
+**Outcome:** The closure is explicit, communicated troop-wide through the in-app inbox and optional Groups.io, and preserved in schedule and audit history rather than appearing as an unexplained empty shift.
 
 ---
 
@@ -1571,7 +1581,7 @@ Approximately 40-50 family members (scouts and parents) from 15-20 families/hous
 4. On confirmation, the system:
    - Revokes all sessions for that manager
    - Removes all registered passkeys and the claimed email from active authentication
-   - Removes the email from notification delivery once notifications use email
+   - Removes the person from future in-app inbox delivery and from any future verified-email notification preference
    - Removes the person's authenticated role and permissions
    - Preserves the family-member profile and historical attendance
    - Returns a Young Adult Scout profile to manager-controlled status
@@ -1662,6 +1672,8 @@ The following use cases support privacy regulation compliance (such as GDPR and 
 | Generate household link codes | ✓ | | ✓ | | |
 | Create/manage shifts | ✓ | ✓ | | | |
 | Send troop announcements | ✓ | ✓ | | | |
+| View own in-app inbox and manage read state | ✓ | ✓ | ✓ | ✓ | |
+| Manage own nonessential notification preferences | ✓ | ✓ | ✓ | ✓ | |
 | Send troop-wide critical coverage alerts | ✓ | ✓ | | | |
 | Close/reopen shifts for insufficient coverage | ✓ | ✓ | | | |
 | Invite/remove family managers | ✓ | | ✓ | | |
@@ -2011,66 +2023,87 @@ This section consolidates the key business rules that govern system behavior acr
 
 ### Notification Rules
 
-**Troop Announcements:**
-- Every announcement is sent by SMS to all active Family Managers and Young Adult Scouts with verified phone numbers
+**Channel Policy:**
+- The system does not send operational notifications by SMS or to phone numbers
+- Every notification for an authenticated recipient is recorded in that recipient's personal in-app inbox
 - Groups.io is an optional deployment integration and is disabled by default
-- When Groups.io is enabled, the same announcement is posted to the configured troop group
-- A canonical copy is published in the web app's Announcements view and retained with the acting committee member, timestamp, content, priority, and per-channel delivery status
-- Active Family Managers and Young Adult Scouts can view current and historical announcements in reverse chronological order
-- Committee and Admin can view the same announcements and their delivery status; recipient users do not see other people's phone numbers or delivery details
-- Web visibility is independent of every external delivery channel
+- When Groups.io is enabled, it may receive troop-wide messages only: troop announcements, season-publication summaries when selected, critical coverage alerts and their resolution updates, and shift-closure or reopening notices
+- Direct messages to an individual authenticated user, and messages scoped to one household or another targeted eligible set, remain in-app only and are never posted to Groups.io
+- A later mailbox-verification workflow may allow a user who opts in to also receive notifications at a verified email address; unverified claimed email must not be used for notification delivery
+- Until that verified-email channel exists, in-app inbox delivery is the required recipient channel and Groups.io remains the only optional external channel for troop-wide messages
+
+**In-App Inbox:**
+- Each authenticated identity has a personal inbox of announcements, reminders, staffing notices, closures, and other operational messages
 - Read/unread state is stored separately for each authenticated identity, including a read timestamp
-- New announcements are unread for each active recipient except the authenticated author
-- Pre-existing announcements do not become unread when a new authenticated identity is granted access
-- Displaying the complete announcement marks it read; users may mark it unread again or mark all announcements read
-- SMS and optional Groups.io delivery do not alter web-app read state
+- New inbox messages are unread for each active recipient except the authenticated human author
+- Pre-existing messages do not become unread when a new authenticated identity is granted access
+- Displaying the complete message marks it read; users may mark it unread again or mark all inbox messages read
+- Optional Groups.io delivery and any future opted-in email delivery do not alter in-app read state
 - Individual read state is private and is not treated as delivery confirmation
+- Recipient users do not see other people's delivery details
+
+**Troop Announcements:**
+- Every announcement is placed in the in-app inbox of all active Family Managers and Young Adult Scouts
+- When Groups.io is enabled, the same announcement is posted to the configured troop group
+- A canonical copy is retained with the acting committee member, timestamp, content, priority, and per-channel delivery status
+- Active Family Managers and Young Adult Scouts can view current and historical inbox messages in reverse chronological order
+- Committee and Admin can view the same announcements and their delivery status
+- In-app visibility is independent of every external delivery channel
 - Every enabled delivery channel is tracked independently
-- Retries are idempotent and target only failed deliveries so recipients do not receive duplicate messages
-- When Groups.io is enabled, its failure does not roll back successful SMS delivery, and an SMS failure does not roll back its post
+- Retries are idempotent and target only failed external deliveries so recipients do not receive duplicate messages
+- When Groups.io is enabled, its failure does not roll back successful in-app publication, and an in-app or Groups.io failure does not roll back the other successful channel
 - Troop announcements are not suppressed by optional shift-reminder preferences
-- Priority is stored and displayed with the announcement but does not change the required SMS recipient set
+- Priority is stored and displayed with the announcement but does not change the required inbox recipient set
 
 **Draft vs Published Shifts:**
 - Draft shifts do NOT generate notifications (prevents spam during bulk creation)
 - Only published shifts are visible to regular users
 
 **Bulk Schedule Publishing:**
-- Publishing an entire season may generate ONE SMS summary notification per active Family Manager and Young Adult Scout phone number, according to the Committee's publish choice
+- Publishing an entire season may generate ONE in-app summary notification per active Family Manager and Young Adult Scout, according to the Committee's publish choice
+- When Groups.io is enabled, Committee may also choose to post that troop-wide summary there
 - The notification highlights special events (Lot Setup, Tree Delivery, etc.)
 - Recipients receive one comprehensive notification, not one message per shift
 
 **Individual Shift Additions:**
-- Shifts added individually after season publication generate an SMS to active Family Managers and Young Adult Scouts eligible to fill the new shift
+- Shifts added individually after season publication generate an in-app inbox message for active Family Managers and Young Adult Scouts eligible to fill the new shift
+- Because recipients are a targeted eligible set, Groups.io is not used
 - This is appropriate for unplanned additions during the season
 
 **Shift Reminders:**
-- Automated SMS reminders are sent approximately 24 hours before shifts
+- Automated in-app reminders are recorded approximately 24 hours before shifts
 - For a household-owned assignment, recipients are active Family Managers in the originating household
 - For an assignment created directly by a Young Adult Scout, recipients are active Family Managers in every linked household
 - A Young Adult Scout receives the reminder directly for their own assignment in addition to the relevant Family Managers
 - The reminder names the family member assigned to the shift and links to the web app
 - Family Managers and Young Adult Scouts can opt out of nonessential shift reminders in notification preferences
-- Invitation and recovery enrollment links are not controlled by notification preferences; when email notifications exist, transactional security notices are likewise independent of optional reminder preferences
+- Shift reminders are direct/family-scoped and are never posted to Groups.io
+- Invitation and recovery enrollment links are not controlled by notification preferences; when verified-email notifications exist, transactional security notices are likewise independent of optional reminder preferences
 
 **Agreement Reminders:**
 - The web app shows an Agreement Center alert while any person in the household is Not Confirmed for the current season
-- The system may send configurable, deduplicated SMS reminders to Family Managers for unconfirmed household members and directly to a Young Adult Scout who has not confirmed
-- Reminders identify the person, link to the Agreement Center, and follow operational-message notification preferences
+- The system may place configurable, deduplicated in-app reminders for Family Managers about unconfirmed household members and directly for a Young Adult Scout who has not confirmed
+- Reminders identify the person, link to the Agreement Center, follow operational-message notification preferences, and remain in-app only
 
 **Targeted Staffing Reminders:**
 - Committee may send a staffing reminder to active Family Managers and Young Adult Scouts eligible for a specific understaffed shift
 - The reminder identifies the shift and links directly to its signup page
-- A targeted staffing reminder is stored and tracked as an operational message; the optional Groups.io integration applies only when Committee separately sends a troop announcement
+- A targeted staffing reminder is stored as an in-app operational message for the eligible recipients only; Groups.io is not used unless Committee separately sends a troop-wide announcement
 
 **Critical Coverage Alerts and Closures:**
 - A critical coverage alert is a troop-wide high-priority announcement, not a targeted staffing reminder
-- SMS and the in-app announcement are sent to every active Family Manager and Young Adult Scout and are not suppressed by optional shift-reminder preferences
+- The in-app announcement is placed for every active Family Manager and Young Adult Scout and is not suppressed by optional shift-reminder preferences
 - The alert identifies the shift, unresolved minimum-headcount or local two-deep rule, response deadline, closure warning, and direct signup link
-- When the condition is resolved, one deduplicated coverage-secured update is sent to the same recipients
-- A recorded shift closure generates a troop-wide in-app and SMS notice
+- When the condition is resolved, one deduplicated coverage-secured update is placed in the same recipients' inboxes
+- A recorded shift closure generates a troop-wide in-app notice
 - The optional Groups.io channel receives the same alert, resolution, and closure messages only when enabled
 - Delivery attempts and per-channel results are audited and idempotent
+
+**Future Verified-Email Notifications:**
+- Claimed account email is an identifier and is not mailbox-verified at enrollment or ordinary sign-in
+- After a future verification workflow proves mailbox ownership, a user may opt in to also receive selected notifications at that verified address
+- Opted-in email delivery supplements the in-app inbox; it does not replace inbox records or private read state
+- Unverified email must not be used for notifications or email-based recovery
 
 ---
 
@@ -2213,7 +2246,7 @@ When an authenticated person removes their login through the web app, the system
 | Active browser sessions | Revoked |
 | Display name | Preserved (for historical reporting) |
 | Profile photo | Preserved on the person profile |
-| Notification destination | Removed |
+| In-app inbox delivery and any future email notification preference | Removed |
 | Future assignments | Preserved as family-member assignments unless separately cancelled |
 | Historical attendance | Preserved (hours, check-in/out times) |
 | Authenticated access status | Set to "removed" |
@@ -2311,6 +2344,7 @@ The manager must take one of these actions:
 | 3.10 | Jul 2026 | Removed the sole-adult family exception so every operating shift requires at least two adults regardless of family relationships or whether scouts are present |
 | 3.11 | Jul 2026 | Explicitly documented Scouting America's national two-deep policy and clarified that local adult counts do not verify registered-leader, age, training, or eligibility requirements |
 | 3.12 | Jul 2026 | Replaced SMS phone authentication with passkeys and claimed email account identifiers; deferred email mailbox verification until notifications or recovery need it; switched enrollment and recovery to invitation links/QR codes; required browser JavaScript for WebAuthn while continuing to forbid heavy client-side frameworks; left operational SMS notification use cases in place pending a later move to email and Groups.io |
+| 3.13 | Jul 2026 | Removed operational SMS/phone notification delivery; made the per-user in-app inbox the required notification channel with private read state; reserved Groups.io for troop-wide messages when enabled; kept direct and family-scoped messages in-app only; documented future opted-in delivery to verified email addresses |
 
 ---
 

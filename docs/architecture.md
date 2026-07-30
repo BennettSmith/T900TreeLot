@@ -29,7 +29,7 @@ The design is driven by the following requirements:
 - Confirmation of the season's linked conduct agreement is person- and season-specific and gates participation.
 - Shift capacity and duplicate-assignment rules must hold under concurrent requests.
 - Attendance events and administrative corrections require a durable audit trail.
-- Announcements and reminders are currently delivered asynchronously through SMS. A planned follow-on migrates operational notifications to email and Groups.io. An optional deployment-time Groups.io integration can already post troop announcements.
+- Operational notifications are recorded in each authenticated user's in-app inbox with private read/unread state. An optional deployment-time Groups.io integration may post troop-wide announcements. Direct and family-scoped messages remain in-app only. A later verified-email channel may optionally supplement the inbox after mailbox verification and user opt-in.
 - Personal data, profile photos, account emails, and agreement confirmations require restricted access and an explicit deletion lifecycle.
 - The expected user base and budget do not justify microservices, Kubernetes, Redis, or a client-side application framework.
 
@@ -57,14 +57,15 @@ The application should prefer Go's standard library and a small number of focuse
 - **System of record:** PostgreSQL
 - **Binary-file persistence:** PostgreSQL `BYTEA` behind a storage port
 - **Authentication:** WebAuthn/passkeys implemented in the Identity module; no SMS authentication provider
-- **Operational SMS (interim):** Twilio Programmable Messaging through a Messaging Service for announcements, reminders, and related notices until notification delivery migrates to email and Groups.io
+- **In-app notifications:** Communications records every recipient-facing notice in a personal inbox with private read state
 - **Optional troop group announcements:** Groups.io API through a dedicated adapter, disabled by default
+- **Future verified email (not initial):** After mailbox verification and user opt-in, selected notifications may also be emailed; unverified claimed email is never used for delivery
 - **Rules-of-conduct document:** Public Google Doc maintained outside the application
 - **Season archive encryption:** Passphrase-based `age` encryption around a checksummed ZIP
 - **Background work:** A Go worker using PostgreSQL-backed jobs and a transactional outbox
 - **Production hosting:** Render
 
-Authentication never depends on Twilio. A later notification-channel change should replace operational SMS with email delivery and broader Groups.io use without changing passkey authentication.
+Authentication never depends on SMS providers. Notification delivery uses the in-app inbox and optional Groups.io without changing passkey authentication.
 
 ## 4. System context
 
@@ -74,20 +75,18 @@ flowchart LR
     Web[Go web application]
     Worker[Go background worker]
     DB[(PostgreSQL including binary files)]
-    Twilio[Twilio Messaging interim SMS]
     Groups[Optional Groups.io]
     Google[Public rules Google Doc]
 
     Browser -->|HTTPS, HTML, WebAuthn| Web
     Browser -->|open public agreement link| Google
+    Browser -->|read in-app inbox| Web
     Web --> DB
     Worker --> DB
-    Worker -->|send operational SMS| Twilio
-    Worker -.->|when enabled, post announcement| Groups
-    Twilio -->|signed delivery callback| Web
+    Worker -.->|when enabled, post troop-wide announcement| Groups
 ```
 
-The browser communicates with the Go web application, performs WebAuthn ceremonies with that origin, and opens the public agreement document directly on Google Docs. It never connects directly to PostgreSQL, Twilio, or Groups.io. The application stores the Google Doc URL but does not fetch its contents.
+The browser communicates with the Go web application, performs WebAuthn ceremonies with that origin, and opens the public agreement document directly on Google Docs. It never connects directly to PostgreSQL or Groups.io. The application stores the Google Doc URL but does not fetch its contents.
 
 ## 5. Software architecture
 
@@ -118,7 +117,6 @@ internal/
       postgres/
       blobstore/
       webauthn/
-      twilio/
       groupsio/
       clock/
   web/
@@ -137,10 +135,10 @@ Package names may evolve, but dependencies must follow the boundaries below.
 
 Each domain module is organized around the following concepts:
 
-- **Domain:** Aggregates, entities, value objects, domain services, policies, and domain events. It contains business behavior and no HTTP, SQL, WebAuthn wire details, Twilio, Groups.io, or Render code.
+- **Domain:** Aggregates, entities, value objects, domain services, policies, and domain events. It contains business behavior and no HTTP, SQL, WebAuthn wire details, Groups.io, or Render code.
 - **Application:** Use-case orchestration, commands, queries, transaction boundaries, authorization context, and ports required by the use case.
 - **Inbound adapters:** HTTP handlers, form decoding, HTMX/full-page response selection, worker job handlers, and administrative commands.
-- **Outbound adapters:** PostgreSQL repositories, binary-file persistence, WebAuthn ceremony support, Twilio messaging, optional Groups.io, clock, ID generation, and structured audit persistence.
+- **Outbound adapters:** PostgreSQL repositories, binary-file persistence, WebAuthn ceremony support, optional Groups.io, clock, ID generation, and structured audit persistence.
 
 Dependency direction points inward:
 
@@ -149,10 +147,10 @@ flowchart LR
     Inbound[HTTP and worker adapters] --> Application[Application use cases]
     Application --> Domain[Domain model]
     Application --> Ports[Outbound port interfaces]
-    Adapters[PostgreSQL, WebAuthn, Twilio messaging, optional Groups.io] --> Ports
+    Adapters[PostgreSQL, WebAuthn, optional Groups.io] --> Ports
 ```
 
-Port interfaces should be declared by the module that consumes them. For example, the Identity application layer defines a `PasskeyCeremony` port, and the communications application layer defines an `SMSDispatcher` port implemented by the Twilio messaging adapter while SMS remains in use.
+Port interfaces should be declared by the module that consumes them. For example, the Identity application layer defines a `PasskeyCeremony` port, and the communications application layer defines an `InboxPublisher` port for in-app messages plus an optional `GroupAnnouncementPoster` port implemented by the Groups.io adapter when enabled.
 
 HTTP handlers must not contain business rules. They:
 
@@ -201,9 +199,9 @@ Raw real-time events are immutable. Corrections are separate records that affect
 
 #### Communications
 
-Owns canonical announcements, recipient resolution, personal read state, delivery records, notification preferences, reminders, channel-specific delivery attempts, and retries.
+Owns canonical announcements, the per-user in-app inbox, recipient resolution, personal read state, delivery records, notification preferences, reminders, channel-specific delivery attempts, and retries.
 
-Identity authenticates locally with WebAuthn/passkeys and does not send authentication SMS. Operational and announcement SMS messages are delivered by Communications through Twilio Programmable Messaging until the planned migration to email and Groups.io.
+Identity authenticates locally with WebAuthn/passkeys and does not send authentication SMS. Communications records every recipient-facing notice in the in-app inbox. Troop-wide announcements may also post through the optional Groups.io adapter. Direct and family-scoped messages stay in-app only. A later verified-email dispatcher may supplement the inbox after mailbox verification and opt-in.
 
 #### Reporting
 
@@ -251,7 +249,7 @@ Use one PostgreSQL transaction for each command that changes domain state. The s
 4. Insert any resulting outbox messages.
 5. Commit before external network calls occur.
 
-Twilio and enabled Groups.io network calls must not run while a database transaction is open.
+Enabled Groups.io network calls, and any future email-provider calls, must not run while a database transaction is open. In-app inbox records are written in the same transaction as the domain change.
 
 ## 6. Persistence
 
@@ -266,7 +264,7 @@ PostgreSQL stores:
 - Seasonal agreement links, per-person confirmation booleans, confirmation timestamps, and acting identities
 - Attendance events, adjustments, no-show status, and calculated/reportable hours
 - Scout Bucks credited-hour snapshots and finalized settlement revisions
-- Announcements, per-user read state, notification preferences, delivery attempts, and provider identifiers
+- Inbox messages, announcements, per-user read state, notification preferences, delivery attempts, and provider identifiers
 - Transactional outbox entries and background jobs
 - Audit entries, privacy requests, and retention state
 
@@ -294,7 +292,7 @@ Browser sessions use opaque, cryptographically random tokens stored in `Secure`,
 
 Invitation, household-link, recovery, bootstrap, and idempotency tokens are also random, expire, are single-use where required, and are stored hashed when the clear value does not need to be recovered.
 
-Account emails are normalized before comparison and stored for account identification and later notification/recovery use. Maintain uniqueness with a normalized unique index or keyed blind index as appropriate. Passkey private keys never leave the authenticator; PostgreSQL stores only public-key credential material, credential IDs, sign-count/metadata, and the owning identity. While interim operational SMS remains enabled, any SMS destination numbers are stored separately from authentication credentials, encrypted with a keyed blind index, and are not used for sign-in.
+Account emails are normalized before comparison and stored for account identification and later notification/recovery use. Maintain uniqueness with a normalized unique index or keyed blind index as appropriate. Passkey private keys never leave the authenticator; PostgreSQL stores only public-key credential material, credential IDs, sign-count/metadata, and the owning identity. The system does not store phone numbers for authentication or operational notification delivery.
 
 ### 6.4 Binary-file persistence
 
@@ -370,25 +368,27 @@ Authorization is evaluated in application services using:
 
 Templates may hide controls for usability, but every command repeats authorization on the server. HTMX headers and client-submitted person or household IDs are never trusted as authority.
 
-## 8. SMS and announcement delivery
+## 8. Notification and announcement delivery
 
 ### 8.1 Channel separation
 
-Authentication is not an SMS concern. While operational SMS remains in the product:
+Authentication is not a notification-delivery concern:
 
 - **Identity / WebAuthn** handles authentication, invitation acceptance, re-authentication step-up, and recovery enrollment.
-- **Twilio Programmable Messaging** sends announcements, shift publication messages, reminders, staffing requests, and similar operational notices.
+- **In-app inbox** is the required channel for every authenticated recipient. It stores announcements, reminders, staffing notices, closures, and other operational messages with private read/unread state.
+- **Optional Groups.io** may receive troop-wide announcements only when enabled.
+- **Future verified email** may optionally supplement the inbox after mailbox verification and user opt-in; it never replaces inbox records or private read state.
 
-Invitation links and QR codes are issued by the application and delivered out of band; they are not sent through Twilio Verify. A later notification migration should replace operational SMS destinations with verified email addresses and Groups.io without reintroducing SMS authentication.
+Invitation links and QR codes are issued by the application and delivered out of band. The system does not use SMS authentication codes or SMS for operational notifications. Direct and family-scoped messages remain in-app only.
 
 ### 8.2 Reliable delivery
 
-Commands that require a message write an outbox record in the same transaction as the domain change. A background worker claims pending records using bounded batches and PostgreSQL `FOR UPDATE SKIP LOCKED`, then calls the relevant provider.
+Commands that create recipient-facing notices write inbox records in the same transaction as the domain change. Commands that also require an external channel write an outbox record in that same transaction. A background worker claims pending outbox records using bounded batches and PostgreSQL `FOR UPDATE SKIP LOCKED`, then calls the relevant provider.
 
-Each delivery record contains:
+Each external delivery record contains:
 
 - Message type and canonical content reference
-- Recipient identity and encrypted destination
+- Recipient identity or group destination as appropriate
 - Channel and provider
 - Stable idempotency key
 - Attempt count and next-attempt time
@@ -396,17 +396,15 @@ Each delivery record contains:
 - Current status and status timestamps
 - Sanitized failure category
 
-Transient failures retry with exponential backoff and jitter. Permanent failures remain visible to authorized committee members. Retrying a failed announcement delivery targets only the failed recipient/channel and reuses the logical idempotency key.
-
-Twilio delivery callbacks update delivery status through a public HTTPS endpoint. The endpoint validates Twilio's request signature, treats callbacks as idempotent, and does not trust status updates for an unknown provider identifier.
+Transient failures retry with exponential backoff and jitter. Permanent failures remain visible to authorized committee members. Retrying a failed external delivery targets only the failed channel and reuses the logical idempotency key.
 
 ### 8.3 Groups.io
 
 Groups.io is a nice-to-have deployment option, not a required system capability. `GROUPS_IO_ENABLED` defaults to `false`. When disabled, no Groups.io credentials are required, no Groups.io controls or delivery status are shown, and no Groups.io network calls or jobs are created.
 
-When enabled, the adapter posts the canonical announcement using a dedicated API credential with only the required group permissions. Startup requires and validates the group identifier and credential only in this mode. The adapter encapsulates the draft-and-post API workflow so Groups.io API changes do not affect the domain or application layers.
+When enabled, the adapter posts troop-wide canonical announcements using a dedicated API credential with only the required group permissions. Startup requires and validates the group identifier and credential only in this mode. The adapter encapsulates the draft-and-post API workflow so Groups.io API changes do not affect the domain or application layers.
 
-Groups.io delivery status is tracked independently from SMS. A Groups.io failure does not roll back the web announcement or successful SMS deliveries.
+Groups.io delivery status is tracked independently from in-app inbox publication. A Groups.io failure does not roll back successful inbox publication, and inbox publication does not depend on Groups.io. Direct and family-scoped messages never create Groups.io jobs.
 
 If API access proves unsuitable during implementation, the same port may be implemented with a Groups.io email-integration address. That fallback provides weaker confirmation of the final group post and must be documented if selected.
 
@@ -480,12 +478,12 @@ Docker Compose provides a reproducible local environment with:
 - `assets`: Tailwind compiler in watch mode for local template and style changes
 - `worker`: The same codebase running the job worker
 - `postgres`: PostgreSQL with a named volume and health check
-- `provider-stubs`: Controllable HTTP substitutes for interim Twilio messaging and, when enabled, Groups.io interactions used by acceptance tests
+- `provider-stubs`: Controllable HTTP substitutes for optional Groups.io interactions used by acceptance tests
 - `acceptance`: A profile-only runner for the executable acceptance-test suite
 
 The required migration entry point is the only process permitted to apply schema migrations. Web and worker startup validate schema compatibility but never mutate the schema. Locally, developers run the migration command explicitly after PostgreSQL becomes healthy and before starting application processes; production invokes the same entry point as its pre-deploy command.
 
-Local messaging adapters do not contact real users. They record operational SMS messages in a development communications inbox exposed only in the local environment. Passkey ceremonies use deterministic WebAuthn test authenticators or browser automation rather than a hosted SMS verification provider. Groups.io remains disabled unless a developer explicitly enables its stub or sandbox configuration. Integration tests can instead run against deterministic in-memory fakes.
+Local messaging adapters do not contact real users. In-app inbox messages are visible through the ordinary Inbox view. Passkey ceremonies use deterministic WebAuthn test authenticators or browser automation. Groups.io remains disabled unless a developer explicitly enables its stub or sandbox configuration. Integration tests can instead run against deterministic in-memory fakes.
 
 Recommended local commands are:
 
@@ -511,14 +509,13 @@ Production targets Render in one region:
 - One Docker **background worker** built from the same image
 - One hourly **cron job** that enqueues scheduled work
 - One paid **Render PostgreSQL** database, including binary-file persistence, with automated backups and point-in-time recovery
-- Twilio Programmable Messaging for interim operational SMS
 - Optional Groups.io API integration, disabled by default
 
 The canonical production origin is **`https://treelot.troop900livermore.org`**. The troop retains ownership of `troop900livermore.org`, and the existing marketing site at `https://www.troop900livermore.org` remains independently hosted and unchanged.
 
 Troop-managed DNS points the `treelot` hostname to the Render web service using the record type and target supplied by Render. Render terminates TLS and automatically manages the certificate for the scheduler hostname. The application redirects any Render-provided hostname to the canonical origin.
 
-Session cookies are host-only for `treelot.troop900livermore.org`; they must not set `Domain=troop900livermore.org`. This prevents scheduler credentials from being sent to the marketing site or future sibling subdomains. The WebAuthn relying-party ID and origin must match this canonical host. Invitation links, outbound announcement links, and Twilio callback URLs are generated from one validated `PUBLIC_BASE_URL` set to the canonical HTTPS origin.
+Session cookies are host-only for `treelot.troop900livermore.org`; they must not set `Domain=troop900livermore.org`. This prevents scheduler credentials from being sent to the marketing site or future sibling subdomains. The WebAuthn relying-party ID and origin must match this canonical host. Invitation links and outbound announcement links are generated from one validated `PUBLIC_BASE_URL` set to the canonical HTTPS origin.
 
 The web service listens on `0.0.0.0:$PORT`. The database and services are colocated in the same Render region.
 
@@ -545,9 +542,7 @@ Secrets include:
 - Database connection string
 - Cookie/session signing or encryption keys
 - Email uniqueness / blind-index keys when used
-- Interim SMS destination encryption and blind-index keys while SMS notifications remain enabled
 - Bootstrap administrator enrollment token
-- Twilio account credentials and Messaging Service SID while operational SMS remains enabled
 - Groups.io API credential and group identifier, only when `GROUPS_IO_ENABLED=true`
 - Break-glass recovery configuration
 
@@ -569,11 +564,11 @@ The baseline controls are:
 - Encryption at rest for sensitive columns and restricted binary records
 - Key rotation support with key identifiers on encrypted records
 - Structured audit records for privileged and sensitive actions
-- Redaction of email addresses, SMS destinations, tokens, message bodies, and provider secrets from logs
+- Redaction of email addresses, tokens, message bodies, and provider secrets from logs
 - Content Security Policy and standard browser security headers compatible with required WebAuthn and HTMX behavior
 - Dependency, container, and static-analysis checks in CI
 
-Audit entries record actor identity, action, target type and identifier, server time, request correlation ID, and relevant before/after facts. They must not copy session tokens, passkey private material, full email addresses, SMS destinations, or message bodies. Agreement-link changes and confirmation changes may be recorded, but the linked Google Doc's contents are never copied into the audit trail.
+Audit entries record actor identity, action, target type and identifier, server time, request correlation ID, and relevant before/after facts. They must not copy session tokens, passkey private material, full email addresses, or message bodies. Agreement-link changes and confirmation changes may be recorded, but the linked Google Doc's contents are never copied into the audit trail.
 
 Agreement confirmation records and privacy-request data follow the same authorization and deletion rules as the associated person and season. No scheduled process deletes completed-season records.
 
@@ -592,14 +587,14 @@ Alerts should cover:
 - Sustained server error rate
 - Database connection exhaustion or backup failure
 - Oldest pending outbox item above threshold
-- Repeated SMS delivery failures, plus Groups.io failures when that integration is enabled
+- Groups.io delivery failures when that integration is enabled
 - Hourly reminder enqueue job not running
 
 Monitoring alerts are sent to a troop-owned email address configured at deployment. Troop leadership designates a primary and backup technical contact who can access that mailbox during the active season. Response is best-effort; the system does not require a formal 24/7 on-call rotation.
 
 No health endpoint returns secrets, personal data, or detailed dependency credentials.
 
-Restore procedures must be tested before each season. At minimum, operators need a documented process for restoring PostgreSQL, validating embedded binary records, rotating compromised provider credentials, revoking sessions, and using the secured break-glass administrator flow.
+Restore procedures must be tested before each season. At minimum, operators need a documented process for restoring PostgreSQL, validating embedded binary records, rotating compromised Groups.io credentials when used, revoking sessions, and using the secured break-glass administrator flow.
 
 During an active tree-lot season, the recovery-point objective is **15 minutes** and the recovery-time objective is **4 hours**. Off-season, the objectives are **24 hours** and **one business day**, respectively. The selected Render PostgreSQL plan, backup configuration, monitoring, and restore runbook must be capable of meeting these targets. Manual season archives supplement but do not replace operational database backups.
 
@@ -637,7 +632,7 @@ acceptance/
   dsl/                 Tree-lot domain vocabulary
   drivers/
     web/               Browser and HTTP interactions
-    providers/         Twilio and optional Groups.io stub controls
+    providers/         Optional Groups.io stub controls
     clock/             Test-time control
   environment/         Deployment and lifecycle support
 ```
@@ -668,15 +663,14 @@ The concrete DSL API can change as examples emerge. Its vocabulary should match 
 
 Acceptance tests exercise the application only through interfaces available to real actors or external integrations:
 
-- Browser-visible HTTP and HTML behavior, including sessions, forms, redirects, HTMX, and WebAuthn ceremonies where relevant
+- Browser-visible HTTP and HTML behavior, including sessions, forms, redirects, HTMX, WebAuthn ceremonies, and in-app inbox read state where relevant
 - Worker processing through observable commands and resulting application behavior
-- Signed Twilio-style callbacks while interim operational SMS remains enabled
-- Operational SMS requests and, in the enabled configuration, Groups.io requests captured by provider stubs
+- In the enabled configuration, Groups.io requests captured by provider stubs
 - Private profile-photo upload/download behavior through application-authorized flows
 
 Tests do not call application services directly, write fixtures directly to application tables, inspect private database state, or replace internal repositories. Setup is performed through public test-supported workflows using the DSL. A narrowly scoped test-control interface may control time and inspect external-provider stubs, but it must be unavailable in production.
 
-The acceptance environment uses the real deployable image, PostgreSQL schema, migrations, web process, worker process, and asynchronous outbox. Interim Twilio messaging and optionally enabled Groups.io are replaced by protocol-faithful stubs because delivery to real recipients is outside the system boundary, slow, costly, and nondeterministic. Passkey flows use deterministic WebAuthn test authenticators or browser automation. The primary acceptance suite runs with Groups.io disabled; a smaller configuration suite proves both enabled behavior and graceful channel failure. Separate contract tests verify that enabled adapters remain compatible with provider APIs.
+The acceptance environment uses the real deployable image, PostgreSQL schema, migrations, web process, worker process, and asynchronous outbox. Optionally enabled Groups.io is replaced by a protocol-faithful stub because delivery to a real group is outside the system boundary, slow, costly, and nondeterministic. Passkey flows use deterministic WebAuthn test authenticators or browser automation. The primary acceptance suite runs with Groups.io disabled; a smaller configuration suite proves both enabled behavior and graceful channel failure. Separate contract tests verify that enabled adapters remain compatible with provider APIs.
 
 ### 15.4 Coverage and traceability
 
@@ -734,7 +728,7 @@ Run repository and migration tests against real PostgreSQL in containers. These 
 
 ### 15.10 Adapter and provider contract tests
 
-Test HTML handlers with `httptest`. Test WebAuthn ceremony adapters with deterministic authenticators. Test the interim Twilio messaging adapter and the optional Groups.io adapter against recorded provider contracts or sandbox accounts without sending to production recipients. Verify webhook signature validation and idempotent callback processing. These tests complement provider stubs, which prove application behavior but cannot prove compatibility with the real provider.
+Test HTML handlers with `httptest`. Test WebAuthn ceremony adapters with deterministic authenticators. Test the optional Groups.io adapter against recorded provider contracts or sandbox accounts without posting to production groups. These tests complement provider stubs, which prove application behavior but cannot prove compatibility with the real provider.
 
 ### 15.11 Browser journey tests
 
@@ -746,7 +740,7 @@ Most executable specifications use an HTTP/HTML protocol driver for speed and pr
 - Concurrent signup for a nearly full shift
 - Multi-household scout schedule and cancellation boundaries
 - Attendance plus an audited correction
-- Announcement fan-out with one failed channel and retry
+- Announcement fan-out with inbox publication, optional Groups.io failure, and retry
 - Access removal and privacy export
 
 ## 16. Explicitly rejected alternatives
@@ -757,7 +751,8 @@ Most executable specifications use an HTTP/HTML protocol driver for speed and pr
 - **Redis as a required queue or session store:** PostgreSQL already provides the durability and concurrency needed for this workload.
 - **Calling providers inside database transactions:** This creates long transactions and cannot atomically coordinate provider success with database commit.
 - **Dedicated object storage at initial scale:** S3-compatible storage is technically preferable for binary data, but its operational overhead is not justified by the expected initial volume. The storage port preserves a later migration path.
-- **SMS one-time codes or magic-link authentication:** Passkeys remove the authentication dependency on Twilio Verify and avoid building a custom OTP store.
+- **SMS one-time codes or magic-link authentication:** Passkeys remove the authentication dependency on SMS providers and avoid building a custom OTP store.
+- **Operational SMS notifications:** Phone-number text delivery is rejected in favor of the in-app inbox, optional Groups.io for troop-wide posts, and a later opted-in verified-email channel.
 - **Client-side application frameworks:** React, Angular, and similar stacks remain rejected even though browser JavaScript is required for WebAuthn.
 
 ## 17. Decisions required before production launch
@@ -765,7 +760,7 @@ Most executable specifications use an HTTP/HTML protocol driver for speed and pr
 The following operational policy choices remain outside the use cases and must be confirmed:
 
 - Render account ownership, billing contacts, and administrator continuity
-- Timing and design of the operational-notification migration from SMS to email and Groups.io
-- While SMS remains enabled: Twilio account ownership, SMS consent language, sender registration, opt-out handling, and message-volume budget
+- Whether Groups.io is enabled for the first production season and which troop group receives posts
+- Timing and design of mailbox verification and opted-in email notification preferences
 
 These choices do not change the core domain architecture, but they affect production configuration, operating procedures, and launch readiness.

@@ -22,13 +22,14 @@ Create and immediately publish an individual shift in an already published seaso
 1. **Given** a published season, **when** the Committee Member creates a shift, **then** they provide date, time, adult and scout targets, minimum operating headcount, location, and optional notes.
 2. **Given** a minimum operating headcount below two, **when** the shift is submitted, **then** the system rejects it without creating the shift.
 3. **Given** valid shift details, **when** the Committee Member confirms creation for the published season, **then** the shift is published immediately and available to eligible users.
-4. **Given** the shift is published, **when** notification delivery is queued, **then** active Family Managers and Young Adult Scouts eligible to fill it are targeted without making publication depend on provider success.
+4. **Given** the shift is published, **when** notification delivery is queued, **then** active Family Managers and Young Adult Scouts eligible to fill it receive an in-app inbox notice without making publication depend on any external provider.
 
 ## Business rules
 
 - The shift defines separate adult and scout targets and a minimum operating headcount of at least two.
 - The local two-deep rule cannot be configured away.
-- This post-publication path publishes immediately and generates the individual-addition notification required by UC-24.
+- This post-publication path publishes immediately and generates the individual-addition in-app notification required by UC-24.
+- Because recipients are a targeted eligible set, Groups.io is not used.
 
 ## Dependencies
 

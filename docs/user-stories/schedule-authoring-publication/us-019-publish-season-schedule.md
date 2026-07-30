@@ -19,16 +19,16 @@ Review the final summary, select publication-notification options, and atomicall
 
 ## Acceptance criteria
 
-1. **Given** the reviewed draft, **when** the Chair starts publication, **then** the system shows total shifts, volunteer slots, and special events plus the option to send an SMS summary.
+1. **Given** the reviewed draft, **when** the Chair starts publication, **then** the system shows total shifts, volunteer slots, and special events plus the option to place one in-app summary and, when Groups.io is enabled, post that troop-wide summary there.
 2. **Given** the Chair confirms publication, **when** the operation succeeds, **then** all season shifts become published simultaneously, visible, and available for signup.
-3. **Given** SMS notification is selected, **when** publication succeeds, **then** each active Family Manager and Young Adult Scout phone number receives one summary containing the shift count, date range, and special-event highlights.
-4. **Given** SMS notification is not selected, **when** publication succeeds, **then** shifts still become visible and no publication SMS is required.
+3. **Given** in-app notification is selected, **when** publication succeeds, **then** each active Family Manager and Young Adult Scout receives one inbox summary containing the shift count, date range, and special-event highlights.
+4. **Given** in-app notification is not selected, **when** publication succeeds, **then** shifts still become visible and no publication inbox message is required.
 
 ## Business rules
 
-- Publication sends at most one comprehensive SMS per active recipient, not one per shift.
+- Publication sends at most one comprehensive in-app summary per active recipient, not one per shift.
 - Special events are prominently marked in the web app and highlighted in the notification.
-- External provider calls do not run inside the publication transaction; delivery failures do not undo web publication.
+- External provider calls do not run inside the publication transaction; Groups.io failures do not undo web publication or inbox records.
 
 ## Dependencies
 
