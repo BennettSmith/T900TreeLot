@@ -10,7 +10,7 @@ Arrows show the recommended increment sequence. Rows group the train into readab
 flowchart TB
     subgraph foundationStage["Foundation and access"]
         direction LR
-        increment1["Increment 1: Deployable foundation — No numbered stories"] --> increment2["Increment 2: Bootstrap and sign-in — US-001–US-003"] --> increment3["Increment 3: Households and access — US-004–US-010, US-053–US-054, US-060"]
+        increment1["Increment 1: Deployable foundation — No numbered stories"] --> increment2["Increment 2: Bootstrap and sign-in — US-001–US-003"] --> ew001["Release gate: EW-001 Render deployment rehearsal"] --> increment3["Increment 3: Households and access — US-004–US-010, US-053–US-054, US-060"]
     end
 
     subgraph participationStage["Participation"]
@@ -44,6 +44,12 @@ relationship-aware authorization is implemented yet. The generated
 revisions and delivery evidence.
 
 Each increment below is intended to be independently deployable. “Exit” means its business-facing executable examples pass against the deployed production image through public browser/HTTP or provider boundaries; focused tests also cover the stated authorization, concurrency, timing, audit, and idempotency risks.
+
+The production-shaped local acceptance environment is sufficient to develop and
+verify INC-02. After INC-02, the release train pauses for EW-001 to prove the
+same application can be operated on Render at its canonical HTTPS origin.
+EW-001 is a technical release gate, not a numbered user story or product
+requirement.
 
 ## INC-01 — Deployable application foundation and acceptance harness
 
@@ -84,6 +90,19 @@ Each increment below is intended to be independently deployable. “Exit” mean
 
 - UC-0, UC-2, and the self-service path of UC-2B pass for success, failed/cancelled WebAuthn ceremonies, identity-enumeration resistance, rate limiting, secure session revocation, bootstrap closure, passkey management, and atomic email replacement.
 - The same identity, profile reference, roles, and history survive credential and email changes.
+
+## Release gate after INC-02 — EW-001 Render production deployment rehearsal
+
+Complete
+[EW-001](../engineering-work-items/ew-001-render-production-deployment-rehearsal.md)
+after INC-02 is verified and before INC-03 begins. The rehearsal provisions the
+production topology, deploys the exact acceptance-tested image, applies
+migrations through the migration entry point, and validates the real HTTPS
+origin, passkeys, health checks, rollback, and database recovery procedure.
+
+EW-001 carries its own operational completion evidence. It does not change any
+UC or US acceptance criteria, receive requirement revisions, or appear in the
+requirements traceability manifest.
 
 ## INC-03 — Household onboarding and Young Adult Scout access
 
