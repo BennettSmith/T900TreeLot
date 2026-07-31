@@ -1,7 +1,7 @@
 # Troop 900 Tree Lot Shift Scheduler
 ## Use Cases Document
 
-**Version:** 3.13  
+**Version:** 3.14  
 **Date:** July 2026  
 **Purpose:** This document describes what the Troop 900 Tree Lot Shift Scheduler does from a user's perspective. It covers all functional use cases organized by category.
 
@@ -99,7 +99,6 @@ Approximately 40-50 family members (scouts and parents) from 15-20 families/hous
 3. The person claims an email address as their account identifier, completes their profile, and registers a passkey
 4. The system creates the first Admin identity, links the passkey, and establishes a secure session
 5. The bootstrap mechanism is disabled—no additional accounts can be created this way
-6. The admin can now generate invitation links or QR codes for households and assign committee roles to other users
 
 **Security Considerations:**
 - The bootstrap enrollment token must be configured before the system goes live and is single-use
@@ -107,12 +106,48 @@ Approximately 40-50 family members (scouts and parents) from 15-20 families/hous
 - Once the first admin exists, all subsequent users must use an authorized invitation
 - The claimed email is stored as the account identifier but is not mailbox-verified during bootstrap
 - Passkey registration requires a supported browser with JavaScript and WebAuthn
-- The first admin can promote other users to admin or committee roles as needed
+- Household invitations and Admin/Committee role grants are separate later workflows; this use case only establishes the first Admin and closes bootstrap
 
-**Outcome:** 
-- The system has its first administrator who can begin onboarding families
+**Outcome:**
+- The system has its first administrator identity and an active secure session
 - The bootstrap path is closed; all future accounts require authorized invitations
-- The admin can delegate by creating additional admins or committee members
+- Downstream Admin actions such as inviting households (Use Case 1) and granting privileged roles (Use Case 60) become possible after later authenticated identities exist
+
+---
+
+### Use Case 60: Admin Manages Privileged Roles
+
+**Actors:** Admin
+
+**Description:** An authenticated Admin grants or revokes Admin or Committee roles on an existing adult login identity so administrative authority can be delegated or reduced without creating a second person profile. The target must already have a login identity on file; they do not need to be signed in during the change.
+
+**Preconditions:**
+- The first Admin has been established and bootstrap is closed
+- The acting Admin is signed in and active
+- The target is an adult person profile that already has a login identity (claimed email and at least one registered passkey), typically a Family Manager, established through an authorized invitation path
+- The target is not a Young Adult Scout identity and is not a managed scout without login access
+
+**What Happens:**
+1. The Admin opens the privileged-role management view for an eligible adult login identity
+2. The Admin selects grant or revoke for the Admin role, the Committee role, or both
+3. The Admin re-authenticates with a recent passkey step-up and confirms the change
+4. The system updates the target identity's roles without creating a new person profile, reclaiming email, or changing passkeys
+5. The system appends an audit record with the acting Admin, target identity, roles granted or revoked, and server timestamp
+6. Any existing sessions for the target identity continue only with the resulting authorized roles; revoked privileged permissions no longer authorize privileged actions
+
+**Security Considerations:**
+- Only an Admin may grant or revoke Admin and Committee roles
+- Role changes require a recent passkey step-up by the acting Admin
+- The target need not be signed in; eligibility is based on an existing adult login identity, not an active session
+- Young Adult Scout identities and managed scout profiles without login cannot receive Admin or Committee roles
+- The last active Admin cannot revoke their own Admin role, or otherwise leave the system with no active Admin, without first appointing another Admin or using the separately secured break-glass procedure
+- This workflow does not enroll a new identity, create a household invitation, or replace Young Adult Scout access grants
+- Responses and audit records do not expose secrets, passkey material, or unrelated private account details
+
+**Outcome:**
+- Privileged roles on the eligible adult login identity match the Admin's confirmed grant or revoke decision
+- Identity continuity is preserved: the same person profile, claimed email, passkeys, memberships, and history remain
+- The change is auditable, and last-Admin continuity is preserved
 
 ---
 
@@ -1675,6 +1710,7 @@ The following use cases support privacy regulation compliance (such as GDPR and 
 | Action | Admin | Committee | Family Manager | Young Adult Scout | Managed Scout |
 |--------|-------|-----------|----------------|-------------------|---------------|
 | Create new-household invitations | ✓ | | | | |
+| Grant/revoke Admin and Committee roles | ✓ | | | | |
 | Invite a household co-manager | ✓ | | ✓ | | |
 | Generate household link codes | ✓ | | ✓ | | |
 | Create/manage shifts | ✓ | ✓ | | | |
@@ -1818,8 +1854,12 @@ This section consolidates the key business rules that govern system behavior acr
 - Exactly one first Admin may be created through the configured bootstrap enrollment token and passkey registration
 - Bootstrap is permanently disabled after the first Admin is established
 - All later authenticated access requires an authorized invitation or role assignment
-- Only Admin may grant or revoke Committee and Admin roles
+- Only Admin may grant or revoke Committee and Admin roles on an existing adult login identity (Use Case 60)
+- The target must already have a login identity for an adult person profile, typically a Family Manager; they need not be signed in during the change
+- Young Adult Scout identities and managed scouts without login cannot receive Admin or Committee roles
+- Granting or revoking privileged roles requires a recent passkey step-up by the acting Admin and is audited
 - The last active Admin cannot remove or lose the Admin role without first appointing another Admin or using the separately secured break-glass procedure
+- Household invitations and privileged-role grants are separate from bootstrap; bootstrap creates only the first Admin
 
 **Family Accounts:**
 - A household account contains one or more Family Managers and profiles for parents, guardians, managed scouts, and Young Adult Scouts
@@ -2356,6 +2396,7 @@ per-use-case and user-story revisions in `traceability/manifest.yaml`.
 | 3.11 | Jul 2026 | Explicitly documented Scouting America's national two-deep policy and clarified that local adult counts do not verify registered-leader, age, training, or eligibility requirements |
 | 3.12 | Jul 2026 | Replaced SMS phone authentication with passkeys and claimed email account identifiers; deferred email mailbox verification until notifications or recovery need it; switched enrollment and recovery to invitation links/QR codes; required browser JavaScript for WebAuthn while continuing to forbid heavy client-side frameworks; left operational SMS notification use cases in place pending a later move to email and Groups.io |
 | 3.13 | Jul 2026 | Removed operational SMS/phone notification delivery; made the per-user in-app inbox the required notification channel with private read state; reserved Groups.io for troop-wide messages when enabled; kept direct and family-scoped messages in-app only; documented future opted-in delivery to verified email addresses |
+| 3.14 | Jul 2026 | Narrowed Use Case 0 to first-Admin bootstrap and permanent bootstrap closure; added Use Case 60 for Admin grant/revoke of Admin and Committee roles on an existing adult login identity (not Young Adult Scout), with passkey step-up, audit, and last-Admin continuity |
 
 ---
 

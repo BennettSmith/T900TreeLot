@@ -80,6 +80,7 @@ Mermaid links are intentionally disabled. Use these links outside the diagram. E
 
 ## Cross-cutting policy notes
 
+- **Bootstrap versus delegation:** US-001 creates exactly one first Admin and permanently closes bootstrap. Household invitations remain US-005. Granting or revoking Admin and Committee roles on an existing adult login identity is US-060 and requires a later adult Family Manager identity from US-006; Young Adult Scout identities are not eligible, and the target need not be signed in.
 - **Seasonal agreement:** US-015 is the single participation-eligibility policy consumed by signup, assignment, check-in, and walk-in commands. Eligibility is for the selected person, season, and current link; replacing the link resets confirmations, and Committee/Admin cannot override the gate.
 - **Multi-household behavior:** One person profile and one schedule span linked households. Household origin controls manager cancellation, except that Young Adult Scout-created assignments can be managed by the scout and managers of any linked household. Reporting deduplicates people through explicit family units and person-level adult-to-scout relationships.
 - **Projected versus actual coverage:** US-029 and US-030 derive projected status from active assignments. US-031 derives actual operating safety from open attendance records. A safe projection never proves the lot may operate, and the local adult classification does not prove national-policy leader eligibility.
@@ -91,5 +92,7 @@ Mermaid links are intentionally disabled. Use these links outside the diagram. E
 ## Dependency boundary decisions
 
 - US-002 defines reusable sign-in and session behavior. US-006 uses that capability while redeeming the first Family Manager's invitation, so the dependency runs from US-002 to US-006.
+- US-005's precondition that the first Admin exists remains a dependency on US-001, not on privileged-role management.
+- US-060 depends on US-001, US-002, and a later adult Family Manager login identity from US-006; it does not reopen bootstrap, create household invitations, or grant privileged roles to Young Adult Scouts.
 - US-027 presents projected staffing but does not calculate it, so US-029's projected staffing read model is a hard prerequisite. The overview separates need-oriented discovery from Epic 6's assignment workflows, avoiding a misleading epic-level cycle while preserving both dependency directions at story level.
 - US-039 uses Committee roster authority from US-036 and may mark the retained assignment No Show only after the check-in window closes. Post-shift review in US-037 is not a prerequisite.

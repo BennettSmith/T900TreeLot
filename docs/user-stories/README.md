@@ -4,7 +4,7 @@
 
 [`docs/use-cases.md`](../use-cases.md) remains the authoritative source for user workflows, permissions, and business rules. These user stories are product-slice decompositions of that source: each story packages a small, testable outcome that can be delivered through the real application boundary. A story must not invent policy or override a use case; any conflict is resolved in favor of the use case and documented before behavior changes.
 
-Story identifiers (`US-001` through `US-059`) are stable traceability keys. They remain attached to the same product outcome even if titles, implementation boundaries, or delivery order evolve. Story numbering is organizational, not a statement that stories must be implemented strictly in numeric order.
+Story identifiers (`US-001` through `US-060`) are stable traceability keys. They remain attached to the same product outcome even if titles, implementation boundaries, or delivery order evolve. Story numbering is organizational, not a statement that stories must be implemented strictly in numeric order.
 
 See [hard story dependencies](dependencies.md) and the [recommended incremental roadmap](roadmap.md).
 
