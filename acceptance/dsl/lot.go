@@ -3,6 +3,7 @@
 package dsl
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -10,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/descope/virtualwebauthn"
 	clockdriver "github.com/troop900/treelot/acceptance/drivers/clock"
 	outboxdriver "github.com/troop900/treelot/acceptance/drivers/outbox"
 	"github.com/troop900/treelot/acceptance/drivers/providers"
@@ -94,6 +96,9 @@ func (l *Lot) Worker() *Worker { return &Worker{lot: l} }
 
 // Providers exposes external stub observations.
 func (l *Lot) Providers() *Providers { return &Providers{lot: l} }
+
+// Bootstrap exposes first-Admin enrollment checks.
+func (l *Lot) Bootstrap() *Bootstrap { return &Bootstrap{lot: l} }
 
 // Presence captures anonymous visitor checks.
 type Presence struct{ lot *Lot }
@@ -262,5 +267,116 @@ func (p *Providers) GroupsIOStubAcceptsAuthorizedTraffic() {
 	count, err := p.lot.stub.MessageCount()
 	if err != nil || count < 1 {
 		p.lot.t.Fatalf("groups.io stub message count=%d err=%v", count, err)
+	}
+}
+
+// Bootstrap captures the browser-visible first Admin enrollment flow.
+type Bootstrap struct{ lot *Lot }
+
+// CreatesFirstAdminAndClosesBootstrap proves the full HTTP/WebAuthn bootstrap journey.
+func (b *Bootstrap) CreatesFirstAdminAndClosesBootstrap(token, email string) {
+	b.lot.t.Helper()
+	b.reset()
+
+	status, body, err := b.lot.web.Get("/bootstrap")
+	if err != nil || status != http.StatusOK {
+		b.lot.t.Fatalf("bootstrap entry status=%d err=%v", status, err)
+	}
+	csrf, err := web.CSRFToken(body)
+	if err != nil {
+		b.lot.t.Fatalf("bootstrap csrf: %v", err)
+	}
+	if !strings.Contains(body, `data-bootstrap-entry`) || strings.Contains(body, "token="+token) {
+		b.lot.t.Fatalf("bootstrap entry missing form or leaked token")
+	}
+
+	values := url.Values{
+		"csrf_token":      {csrf},
+		"bootstrap_token": {token},
+	}
+	status, body, _, err = b.lot.web.PostForm("/bootstrap/start", values)
+	if err != nil || status != http.StatusOK || !strings.Contains(body, `action="/bootstrap/claim"`) {
+		b.lot.t.Fatalf("bootstrap start status=%d err=%v body=%q", status, err, body)
+	}
+
+	values.Set("email", email)
+	values.Set("first_name", "First")
+	values.Set("last_name", "Admin")
+	values.Set("preferred_display_name", "First Admin")
+	status, body, _, err = b.lot.web.PostForm("/bootstrap/claim", values)
+	if err != nil || status != http.StatusOK || !strings.Contains(body, `data-bootstrap-passkey`) {
+		b.lot.t.Fatalf("bootstrap claim status=%d err=%v body=%q", status, err, body)
+	}
+
+	beginBody, err := json.Marshal(map[string]string{
+		"token":                  token,
+		"email":                  email,
+		"first_name":             "First",
+		"last_name":              "Admin",
+		"preferred_display_name": "First Admin",
+	})
+	if err != nil {
+		b.lot.t.Fatal(err)
+	}
+	status, body, _, err = b.lot.web.PostJSON("/bootstrap/passkey/begin", string(beginBody), map[string]string{"X-CSRF-Token": csrf})
+	if err != nil || status != http.StatusOK {
+		b.lot.t.Fatalf("passkey begin status=%d err=%v body=%q", status, err, body)
+	}
+	var begin struct {
+		CeremonyID string          `json:"ceremonyId"`
+		PublicKey  json.RawMessage `json:"publicKey"`
+	}
+	if err := json.Unmarshal([]byte(body), &begin); err != nil {
+		b.lot.t.Fatalf("decode begin: %v", err)
+	}
+	if begin.CeremonyID == "" || len(begin.PublicKey) == 0 {
+		b.lot.t.Fatalf("begin payload missing ceremony or publicKey: %s", body)
+	}
+	attestationOptions, err := virtualwebauthn.ParseAttestationOptions(string(begin.PublicKey))
+	if err != nil {
+		b.lot.t.Fatalf("parse passkey options: %v payload=%s", err, string(begin.PublicKey))
+	}
+	if attestationOptions.RelyingPartyID != "treelot.test" {
+		b.lot.t.Fatalf("rp id = %q", attestationOptions.RelyingPartyID)
+	}
+	authenticator := virtualwebauthn.NewAuthenticator()
+	credential := virtualwebauthn.NewCredential(virtualwebauthn.KeyTypeEC2)
+	attestationResponse := virtualwebauthn.CreateAttestationResponse(virtualwebauthn.RelyingParty{
+		Name:   "Troop 900 Tree Lot",
+		ID:     "treelot.test",
+		Origin: "https://treelot.test",
+	}, authenticator, credential, *attestationOptions)
+
+	finishBody := fmt.Sprintf(`{"token":%q,"email":%q,"first_name":"First","last_name":"Admin","preferred_display_name":"First Admin","ceremonyId":%q,"credential":%s}`, token, email, begin.CeremonyID, attestationResponse)
+	status, _, headers, err := b.lot.web.PostJSON("/bootstrap/passkey/finish", finishBody, map[string]string{"X-CSRF-Token": csrf})
+	if err != nil || status != http.StatusSeeOther || headers.Get("Location") != "/account" {
+		b.lot.t.Fatalf("passkey finish status=%d location=%q err=%v", status, headers.Get("Location"), err)
+	}
+
+	status, body, err = b.lot.web.Get("/account")
+	if err != nil || status != http.StatusOK || !strings.Contains(body, "Welcome, First Admin") {
+		b.lot.t.Fatalf("account status=%d err=%v body=%q", status, err, body)
+	}
+
+	status, body, err = b.lot.web.Get("/bootstrap")
+	if err != nil || status != http.StatusOK {
+		b.lot.t.Fatalf("closed bootstrap page status=%d err=%v", status, err)
+	}
+	csrf, err = web.CSRFToken(body)
+	if err != nil {
+		b.lot.t.Fatalf("closed csrf: %v", err)
+	}
+	closed := url.Values{"csrf_token": {csrf}, "bootstrap_token": {token}}
+	status, body, _, err = b.lot.web.PostForm("/bootstrap/start", closed)
+	if err != nil || status != http.StatusOK || !strings.Contains(body, "Bootstrap enrollment is unavailable") {
+		b.lot.t.Fatalf("closed bootstrap status=%d err=%v body=%q", status, err, body)
+	}
+}
+
+func (b *Bootstrap) reset() {
+	b.lot.t.Helper()
+	status, body, _, err := b.lot.web.PostJSON("/_test/bootstrap/reset", `{}`, map[string]string{"X-Test-Control-Key": b.lot.config.TestControlKey})
+	if err != nil || status != http.StatusOK || !strings.Contains(body, "reset") {
+		b.lot.t.Fatalf("bootstrap reset status=%d err=%v body=%q", status, err, body)
 	}
 }

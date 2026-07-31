@@ -20,6 +20,9 @@ func NewRenderer() (*Renderer, error) {
 		"printfIcon": func(name string) Icon {
 			return Icon{Name: name}
 		},
+		"dictButton": func(label, variant, buttonType string) Button {
+			return Button{Label: label, Variant: variant, Type: buttonType}
+		},
 		"buttonVariant": func(variant string) string {
 			switch variant {
 			case "primary", "secondary", "quiet", "destructive":
@@ -66,6 +69,26 @@ func (r *Renderer) Home(ctx context.Context, output io.Writer, data Home) error 
 	}
 	if err := r.templates.ExecuteTemplate(output, "home", data); err != nil {
 		return fmt.Errorf("render home: %w", err)
+	}
+	return nil
+}
+
+func (r *Renderer) Bootstrap(ctx context.Context, output io.Writer, data BootstrapPage) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := r.templates.ExecuteTemplate(output, "bootstrap", data); err != nil {
+		return fmt.Errorf("render bootstrap: %w", err)
+	}
+	return nil
+}
+
+func (r *Renderer) Account(ctx context.Context, output io.Writer, data AccountPage) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := r.templates.ExecuteTemplate(output, "account", data); err != nil {
+		return fmt.Errorf("render account: %w", err)
 	}
 	return nil
 }

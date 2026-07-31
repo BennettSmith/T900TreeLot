@@ -208,6 +208,37 @@ type Home struct {
 	SmokeInput   string
 }
 
+type BootstrapStage string
+
+const (
+	BootstrapStageEntry   BootstrapStage = "entry"
+	BootstrapStageEnroll  BootstrapStage = "enroll"
+	BootstrapStagePasskey BootstrapStage = "passkey"
+)
+
+type BootstrapPage struct {
+	PageTitle            string
+	Brand                string
+	Stage                BootstrapStage
+	Navigation           []Link
+	CSRFToken            string
+	Token                string
+	Email                string
+	FirstName            string
+	LastName             string
+	PreferredDisplayName string
+	Alert                *Alert
+	Fields               []Field
+}
+
+type AccountPage struct {
+	PageTitle    string
+	Brand        string
+	DisplayName  string
+	PrimaryEmail string
+	Navigation   []Link
+}
+
 type Gallery struct {
 	PageTitle      string
 	Season         string

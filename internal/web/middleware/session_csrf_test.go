@@ -23,7 +23,8 @@ func TestSessionCSRFProtectsStateChangingRequests(t *testing.T) {
 			t.Fatal("missing session in context")
 		}
 		sawSession = true
-		_, _ = io.WriteString(response, current.CSRFToken)
+		body, _ := io.ReadAll(request.Body)
+		_, _ = io.WriteString(response, current.CSRFToken+string(body))
 	}))
 
 	getResponse := httptest.NewRecorder()
@@ -63,6 +64,18 @@ func TestSessionCSRFProtectsStateChangingRequests(t *testing.T) {
 	handler.ServeHTTP(goodPost, goodRequest)
 	if goodPost.Code != http.StatusOK {
 		t.Fatalf("POST with CSRF status = %d, want 200", goodPost.Code)
+	}
+
+	jsonPost := httptest.NewRecorder()
+	jsonRequest := httptest.NewRequest(http.MethodPost, "/json", strings.NewReader(`{"csrf_token":"`+csrfToken+`","message":"hi"}`))
+	jsonRequest.Header.Set("Content-Type", "application/json")
+	jsonRequest.AddCookie(cookie)
+	handler.ServeHTTP(jsonPost, jsonRequest)
+	if jsonPost.Code != http.StatusOK {
+		t.Fatalf("POST with JSON CSRF status = %d, want 200", jsonPost.Code)
+	}
+	if !strings.Contains(jsonPost.Body.String(), csrfToken) {
+		t.Fatal("handler could not read body after JSON CSRF validation")
 	}
 }
 

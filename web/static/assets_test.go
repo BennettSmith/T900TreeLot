@@ -31,6 +31,25 @@ func TestHandlerServesEmbeddedGeneratedStylesheet(t *testing.T) {
 	}
 }
 
+func TestHandlerServesEmbeddedPasskeyScript(t *testing.T) {
+	t.Parallel()
+
+	request := httptest.NewRequest(http.MethodGet, "/static/passkeys.js", nil)
+	response := httptest.NewRecorder()
+
+	static.Handler().ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusOK)
+	}
+	if got := response.Header().Get("Content-Type"); !strings.HasPrefix(got, "text/javascript") && !strings.HasPrefix(got, "application/javascript") {
+		t.Errorf("Content-Type = %q, want JavaScript", got)
+	}
+	if body := response.Body.String(); !strings.Contains(body, "navigator.credentials.create") || !strings.Contains(body, "bootstrap_token") {
+		t.Errorf("passkey script missing bootstrap flow behavior: %s", body)
+	}
+}
+
 func TestScoutBucksMetricsAdaptToTheirContainer(t *testing.T) {
 	t.Parallel()
 

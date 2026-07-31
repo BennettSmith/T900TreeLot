@@ -10,6 +10,7 @@ require (
 )
 
 require (
+	github.com/descope/virtualwebauthn v1.0.5 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/go-webauthn/x v0.2.6 // indirect

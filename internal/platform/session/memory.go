@@ -38,6 +38,20 @@ func NewMemoryStore(clk clock.Clock, ttl time.Duration) *MemoryStore {
 // Create inserts a new in-memory session.
 func (s *MemoryStore) Create(ctx context.Context) (Session, string, error) {
 	_ = ctx
+	return s.create("", nil)
+}
+
+// CreateForIdentity inserts a new authenticated in-memory session.
+func (s *MemoryStore) CreateForIdentity(ctx context.Context, identityID string) (Session, string, error) {
+	_ = ctx
+	if identityID == "" {
+		return Session{}, "", ErrNotFound
+	}
+	now := s.clock.Now()
+	return s.create(identityID, &now)
+}
+
+func (s *MemoryStore) create(identityID string, authenticatedAt *time.Time) (Session, string, error) {
 	rawToken, err := randomToken(32)
 	if err != nil {
 		return Session{}, "", err
@@ -49,7 +63,7 @@ func (s *MemoryStore) Create(ctx context.Context) (Session, string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.nextID++
-	session := Session{ID: s.nextID, CSRFToken: csrfToken, ExpiresAt: s.clock.Now().Add(s.ttl)}
+	session := Session{ID: s.nextID, CSRFToken: csrfToken, ExpiresAt: s.clock.Now().Add(s.ttl), IdentityID: identityID, AuthenticatedAt: authenticatedAt}
 	s.byToken[rawToken] = memorySession{Session: session, hashToken: rawToken}
 	return session, rawToken, nil
 }
