@@ -14,6 +14,7 @@ func TestLoadRequiresValidatedSettings(t *testing.T) {
 	t.Setenv("TREE_LOT_TIME_ZONE", "America/Los_Angeles")
 	t.Setenv("PUBLIC_BASE_URL", "https://treelot.troop900livermore.org")
 	t.Setenv("SESSION_KEY", "0123456789abcdef0123456789abcdef")
+	t.Setenv("BOOTSTRAP_ENROLLMENT_TOKEN", "bootstrap-enrollment-token-0001")
 	t.Setenv("GROUPS_IO_ENABLED", "false")
 
 	cfg, err := config.Load()
@@ -32,6 +33,24 @@ func TestLoadRequiresValidatedSettings(t *testing.T) {
 	if cfg.PublicBaseURL.String() != "https://treelot.troop900livermore.org" {
 		t.Errorf("PublicBaseURL = %q", cfg.PublicBaseURL)
 	}
+	if cfg.BootstrapEnrollmentToken != "bootstrap-enrollment-token-0001" {
+		t.Error("BootstrapEnrollmentToken was not loaded")
+	}
+	if cfg.BootstrapTokenExpiry != 72*60*60*1_000_000_000 {
+		t.Errorf("BootstrapTokenExpiry = %v, want 72h", cfg.BootstrapTokenExpiry)
+	}
+	if cfg.WebAuthnRPID != "treelot.troop900livermore.org" {
+		t.Errorf("WebAuthnRPID = %q", cfg.WebAuthnRPID)
+	}
+	if len(cfg.WebAuthnOrigins) != 1 || cfg.WebAuthnOrigins[0] != "https://treelot.troop900livermore.org" {
+		t.Errorf("WebAuthnOrigins = %#v", cfg.WebAuthnOrigins)
+	}
+	if cfg.AuthRateLimitMax != 10 {
+		t.Errorf("AuthRateLimitMax = %d, want 10", cfg.AuthRateLimitMax)
+	}
+	if cfg.AuthRateLimitWindow != 15*60*1_000_000_000 {
+		t.Errorf("AuthRateLimitWindow = %v, want 15m", cfg.AuthRateLimitWindow)
+	}
 	if cfg.GroupsIOEnabled {
 		t.Error("GroupsIOEnabled = true, want false")
 	}
@@ -47,6 +66,7 @@ func TestAcceptanceDisablesSecureCookiesForHTTPDrivers(t *testing.T) {
 	t.Setenv("TREE_LOT_TIME_ZONE", "UTC")
 	t.Setenv("PUBLIC_BASE_URL", "https://treelot.test")
 	t.Setenv("SESSION_KEY", "0123456789abcdef0123456789abcdef")
+	t.Setenv("BOOTSTRAP_ENROLLMENT_TOKEN", "bootstrap-enrollment-token-0001")
 	t.Setenv("TEST_CONTROL_KEY", "test-control-secret")
 
 	cfg, err := config.Load()
@@ -68,6 +88,7 @@ func TestLoadRejectsMissingRequiredValues(t *testing.T) {
 	t.Setenv("TREE_LOT_TIME_ZONE", "America/Los_Angeles")
 	t.Setenv("PUBLIC_BASE_URL", "https://treelot.troop900livermore.org")
 	t.Setenv("SESSION_KEY", "0123456789abcdef0123456789abcdef")
+	t.Setenv("BOOTSTRAP_ENROLLMENT_TOKEN", "bootstrap-enrollment-token-0001")
 
 	_, err := config.Load()
 	if err == nil {
@@ -85,6 +106,7 @@ func TestLoadRejectsInvalidTimeZone(t *testing.T) {
 	t.Setenv("TREE_LOT_TIME_ZONE", "Not/A_Zone")
 	t.Setenv("PUBLIC_BASE_URL", "http://localhost:8080")
 	t.Setenv("SESSION_KEY", "0123456789abcdef0123456789abcdef")
+	t.Setenv("BOOTSTRAP_ENROLLMENT_TOKEN", "bootstrap-enrollment-token-0001")
 
 	_, err := config.Load()
 	if err == nil {
@@ -99,6 +121,7 @@ func TestLoadRequiresHTTPSOutsideDevelopment(t *testing.T) {
 	t.Setenv("TREE_LOT_TIME_ZONE", "UTC")
 	t.Setenv("PUBLIC_BASE_URL", "http://localhost:8080")
 	t.Setenv("SESSION_KEY", "0123456789abcdef0123456789abcdef")
+	t.Setenv("BOOTSTRAP_ENROLLMENT_TOKEN", "bootstrap-enrollment-token-0001")
 	t.Setenv("TEST_CONTROL_KEY", "test-control-secret")
 
 	_, err := config.Load()
@@ -114,6 +137,7 @@ func TestDevelopmentAllowsHTTPAndDefaults(t *testing.T) {
 	t.Setenv("TREE_LOT_TIME_ZONE", "UTC")
 	t.Setenv("PUBLIC_BASE_URL", "http://localhost:8080")
 	t.Setenv("SESSION_KEY", "0123456789abcdef0123456789abcdef")
+	t.Setenv("BOOTSTRAP_ENROLLMENT_TOKEN", "bootstrap-enrollment-token-0001")
 	t.Setenv("GROUPS_IO_ENABLED", "")
 
 	cfg, err := config.Load()
@@ -129,6 +153,9 @@ func TestDevelopmentAllowsHTTPAndDefaults(t *testing.T) {
 	if cfg.TestControlEnabled {
 		t.Error("TestControlEnabled = true in development")
 	}
+	if cfg.WebAuthnRPID != "localhost" {
+		t.Errorf("WebAuthnRPID = %q, want localhost", cfg.WebAuthnRPID)
+	}
 }
 
 func TestAcceptanceRequiresTestControlKey(t *testing.T) {
@@ -138,10 +165,43 @@ func TestAcceptanceRequiresTestControlKey(t *testing.T) {
 	t.Setenv("TREE_LOT_TIME_ZONE", "UTC")
 	t.Setenv("PUBLIC_BASE_URL", "https://treelot.test")
 	t.Setenv("SESSION_KEY", "0123456789abcdef0123456789abcdef")
+	t.Setenv("BOOTSTRAP_ENROLLMENT_TOKEN", "bootstrap-enrollment-token-0001")
 	t.Setenv("TEST_CONTROL_KEY", "")
 
 	_, err := config.Load()
 	if err == nil {
 		t.Fatal("Load succeeded without TEST_CONTROL_KEY in acceptance")
+	}
+}
+
+func TestLoadValidatesBootstrapAndAuthSettings(t *testing.T) {
+	t.Setenv("APP_ENV", "development")
+	t.Setenv("PORT", "8080")
+	t.Setenv("DATABASE_URL", "postgres://localhost/treelot")
+	t.Setenv("TREE_LOT_TIME_ZONE", "UTC")
+	t.Setenv("PUBLIC_BASE_URL", "http://localhost:8080")
+	t.Setenv("SESSION_KEY", "0123456789abcdef0123456789abcdef")
+	t.Setenv("BOOTSTRAP_ENROLLMENT_TOKEN", "short")
+	if _, err := config.Load(); err == nil || !strings.Contains(err.Error(), "BOOTSTRAP_ENROLLMENT_TOKEN") {
+		t.Fatalf("expected BOOTSTRAP_ENROLLMENT_TOKEN error, got %v", err)
+	}
+
+	t.Setenv("BOOTSTRAP_ENROLLMENT_TOKEN", "bootstrap-enrollment-token-0001")
+	t.Setenv("BOOTSTRAP_TOKEN_EXPIRY", "48h")
+	t.Setenv("WEBAUTHN_RP_ID", "example.test")
+	t.Setenv("AUTH_RATE_LIMIT_MAX", "7")
+	t.Setenv("AUTH_RATE_LIMIT_WINDOW", "5m")
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.BootstrapTokenExpiry != 48*60*60*1_000_000_000 {
+		t.Errorf("BootstrapTokenExpiry = %v, want 48h", cfg.BootstrapTokenExpiry)
+	}
+	if cfg.WebAuthnRPID != "example.test" {
+		t.Errorf("WebAuthnRPID = %q, want example.test", cfg.WebAuthnRPID)
+	}
+	if cfg.AuthRateLimitMax != 7 || cfg.AuthRateLimitWindow != 5*60*1_000_000_000 {
+		t.Errorf("rate limit = %d/%v, want 7/5m", cfg.AuthRateLimitMax, cfg.AuthRateLimitWindow)
 	}
 }

@@ -72,6 +72,7 @@ SQL
 common_env=(
   -e TREE_LOT_TIME_ZONE=America/Los_Angeles
   -e SESSION_KEY=0123456789abcdef0123456789abcdef
+  -e BOOTSTRAP_ENROLLMENT_TOKEN=acceptance-bootstrap-token-0001
   -e GROUPS_IO_ENABLED=false
 )
 

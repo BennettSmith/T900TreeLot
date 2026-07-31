@@ -25,18 +25,18 @@ func TestUpAppliesFoundationMigrationOnce(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CurrentVersion: %v", err)
 	}
-	if version != 1 {
-		t.Fatalf("version = %d, want 1", version)
+	if version != 2 {
+		t.Fatalf("version = %d, want 2", version)
 	}
 }
 
 func TestEnsureCompatibleRejectsMismatch(t *testing.T) {
 	db := testdb.OpenMigrated(t)
 
-	if err := migrate.EnsureCompatible(context.Background(), db, 1); err != nil {
-		t.Fatalf("EnsureCompatible(1): %v", err)
+	if err := migrate.EnsureCompatible(context.Background(), db, 2); err != nil {
+		t.Fatalf("EnsureCompatible(2): %v", err)
 	}
-	if err := migrate.EnsureCompatible(context.Background(), db, 2); err == nil {
-		t.Fatal("EnsureCompatible(2) succeeded")
+	if err := migrate.EnsureCompatible(context.Background(), db, 1); err == nil {
+		t.Fatal("EnsureCompatible(1) succeeded")
 	}
 }

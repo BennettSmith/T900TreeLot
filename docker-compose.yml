@@ -3,6 +3,7 @@ x-app-env: &app-env
   TREE_LOT_TIME_ZONE: ${TREE_LOT_TIME_ZONE:-America/Los_Angeles}
   PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
   SESSION_KEY: ${SESSION_KEY:-0123456789abcdef0123456789abcdef}
+  BOOTSTRAP_ENROLLMENT_TOKEN: ${BOOTSTRAP_ENROLLMENT_TOKEN:-local-bootstrap-token-0001}
   GROUPS_IO_ENABLED: "false"
 
 services:
@@ -91,6 +92,7 @@ services:
       TREE_LOT_TIME_ZONE: America/Los_Angeles
       PUBLIC_BASE_URL: https://treelot.test
       SESSION_KEY: 0123456789abcdef0123456789abcdef
+      BOOTSTRAP_ENROLLMENT_TOKEN: acceptance-bootstrap-token-0001
       GROUPS_IO_ENABLED: "false"
       TEST_CONTROL_KEY: acceptance-test-control-key
     ports:
@@ -112,6 +114,7 @@ services:
       TREE_LOT_TIME_ZONE: America/Los_Angeles
       PUBLIC_BASE_URL: https://treelot.test
       SESSION_KEY: 0123456789abcdef0123456789abcdef
+      BOOTSTRAP_ENROLLMENT_TOKEN: acceptance-bootstrap-token-0001
       GROUPS_IO_ENABLED: "false"
       TEST_CONTROL_KEY: acceptance-test-control-key
     depends_on:

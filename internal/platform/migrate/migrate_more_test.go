@@ -16,8 +16,8 @@ func TestLatestAvailableVersionAndDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LatestAvailableVersion: %v", err)
 	}
-	if version != 1 {
-		t.Fatalf("version = %d, want 1", version)
+	if version != 2 {
+		t.Fatalf("version = %d, want 2", version)
 	}
 
 	found, err := migrate.Directory(dir)

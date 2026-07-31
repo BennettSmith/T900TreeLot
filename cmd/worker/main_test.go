@@ -47,4 +47,5 @@ func configureWorkerEnv(t *testing.T) {
 	t.Setenv("TREE_LOT_TIME_ZONE", "UTC")
 	t.Setenv("PUBLIC_BASE_URL", "http://localhost:8080")
 	t.Setenv("SESSION_KEY", "0123456789abcdef0123456789abcdef")
+	t.Setenv("BOOTSTRAP_ENROLLMENT_TOKEN", "bootstrap-enrollment-token-0001")
 }
