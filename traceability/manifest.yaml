@@ -5,11 +5,14 @@ baseline:
   requirements_description: Initial per-artifact traceability baseline
 use_cases:
   UC-0:
-    current_revision: 1
+    current_revision: 2
     revisions:
       - revision: 1
-        requirements_status: accepted
+        requirements_status: superseded
         change: Baseline adopted from use-case document version 3.13
+      - revision: 2
+        requirements_status: accepted
+        change: Narrowed bootstrap to first-Admin creation and permanent bootstrap closure; moved household invitation and privileged-role delegation to UC-1 and UC-60
   UC-1:
     current_revision: 1
     revisions:
@@ -376,6 +379,12 @@ use_cases:
       - revision: 1
         requirements_status: accepted
         change: Baseline adopted from use-case document version 3.13
+  UC-60:
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        change: Added Admin grant/revoke of Admin and Committee roles on an existing adult login identity; Young Adult Scout identities are ineligible
 stories:
   US-052:
     path: docs/user-stories/administration-profiles-privacy-season-lifecycle/us-052-deactivate-a-household.md
@@ -660,13 +669,18 @@ stories:
   US-001:
     path: docs/user-stories/platform-bootstrap-identity/us-001-bootstrap-first-administrator.md
     increment: INC-02
-    current_revision: 1
+    current_revision: 2
     revisions:
       - revision: 1
-        requirements_status: accepted
+        requirements_status: superseded
         delivery_status: planned
         source_use_cases: [UC-0@r1]
         change: Initial user-story traceability baseline
+      - revision: 2
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-0@r2]
+        change: Removed household-invitation and privileged-role acceptance from bootstrap; deferred those outcomes to US-005 and US-060
   US-002:
     path: docs/user-stories/platform-bootstrap-identity/us-002-secure-authenticated-sign-in.md
     increment: INC-02
@@ -697,6 +711,16 @@ stories:
         delivery_status: planned
         source_use_cases: [UC-2B@r1]
         change: Initial user-story traceability baseline
+  US-060:
+    path: docs/user-stories/platform-bootstrap-identity/us-060-manage-admin-and-committee-roles.md
+    increment: INC-03
+    current_revision: 1
+    revisions:
+      - revision: 1
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-60@r1]
+        change: Initial story for Admin grant/revoke of Admin and Committee roles on an existing adult login identity
   US-016:
     path: docs/user-stories/schedule-authoring-publication/us-016-create-shift-templates.md
     increment: INC-05

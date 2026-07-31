@@ -10,7 +10,7 @@ Arrows show the recommended increment sequence. Rows group the train into readab
 flowchart TB
     subgraph foundationStage["Foundation and access"]
         direction LR
-        increment1["Increment 1: Deployable foundation — No numbered stories"] --> increment2["Increment 2: Bootstrap and sign-in — US-001–US-003"] --> increment3["Increment 3: Households and access — US-004–US-010, US-053–US-054"]
+        increment1["Increment 1: Deployable foundation — No numbered stories"] --> increment2["Increment 2: Bootstrap and sign-in — US-001–US-003"] --> increment3["Increment 3: Households and access — US-004–US-010, US-053–US-054, US-060"]
     end
 
     subgraph participationStage["Participation"]
@@ -87,23 +87,24 @@ Each increment below is intended to be independently deployable. “Exit” mean
 
 ## INC-03 — Household onboarding and Young Adult Scout access
 
-**User-visible outcome:** Admin can invite a household by link or QR code; its first manager can establish people and explicit relationships, add a co-manager, link one scout across households, grant limited Young Adult Scout access, perform authorized assisted passkey recovery, and let authenticated people maintain basic profile details.
+**User-visible outcome:** Admin can invite a household by link or QR code; its first manager can establish people and explicit relationships, add a co-manager, link one scout across households, grant limited Young Adult Scout access, perform authorized assisted passkey recovery, grant or revoke Admin and Committee roles on existing adult login identities, and let authenticated people maintain basic profile details.
 
-**Included stories:** US-004, US-005, US-006, US-007, US-008, US-009, US-010, US-053, US-054.
+**Included stories:** US-004, US-005, US-006, US-007, US-008, US-009, US-010, US-053, US-054, US-060.
 
 **Prerequisites:** US-001 and the reusable authentication/session capability from US-002.
 
 **Operational and migration needs:**
 
 - Add people, households, memberships, manager authority, family units, explicit adult-to-scout relationships, purpose-bound hashed invitation/link tokens, and Young Adult Scout identity links.
+- Add Admin/Committee role-grant and revoke commands with passkey step-up, audit facts, and last-active-Admin continuity checks.
 - Add PostgreSQL `BYTEA` profile blobs behind `BlobStore`, including image validation, re-encoding, size limits, and lifecycle metadata.
 - Support out-of-band invitation link and QR presentation; add expiry and idempotency cleanup policies.
 - Define and secure the operator-only break-glass recovery procedure before relying on the no-active-Admin branch.
 
 **Acceptance-based exit:**
 
-- UC-1, UC-2A, UC-2B assisted recovery, UC-7, UC-26, UC-45, and UC-46 pass through invitation and browser flows.
-- Tests prove no open registration, global claimed-email uniqueness, no duplicate scout profile, no scout search, independent household authority, one cross-household schedule identity, self-only Young Adult Scout permissions, and audited recovery.
+- UC-1, UC-2A, UC-2B assisted recovery, UC-7, UC-26, UC-45, UC-46, and UC-60 pass through invitation and browser flows.
+- Tests prove no open registration, global claimed-email uniqueness, no duplicate scout profile, no scout search, independent household authority, one cross-household schedule identity, self-only Young Adult Scout permissions, audited recovery, and audited privileged-role changes with last-Admin continuity.
 - Relationship and invitation authorization is identical for full-page and HTMX-enhanced requests.
 
 ## INC-04 — Seasonal agreement
@@ -252,4 +253,4 @@ Each increment below is intended to be independently deployable. “Exit” mean
 
 ## Story coverage check
 
-The increments include every stable story exactly once: US-001–US-003 in increment 2; US-004–US-010 and US-053–US-054 in 3; US-011–US-015 in 4; US-016–US-021 in 5; US-022–US-026, US-028, and US-052 in 6; US-027, US-029, US-030, US-032, and US-042–US-044 in 7; US-031 and US-033–US-041 in 8; US-045–US-051 in 9; and US-055–US-059 in 10.
+The increments include every stable story exactly once: US-001–US-003 in increment 2; US-004–US-010, US-053–US-054, and US-060 in 3; US-011–US-015 in 4; US-016–US-021 in 5; US-022–US-026, US-028, and US-052 in 6; US-027, US-029, US-030, US-032, and US-042–US-044 in 7; US-031 and US-033–US-041 in 8; US-045–US-051 in 9; and US-055–US-059 in 10.
