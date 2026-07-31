@@ -72,7 +72,7 @@ from the production image (host networking), then executes the suite. Set
 The acceptance runner removes its own previous containers and then runs a
 non-destructive preflight before building. The preflight checks required tools
 and ports `5433`, `8080`, `8081`, and `8090`. On macOS it also starts a temporary
-Alpine container to verify Docker Desktop host networking. Run the same focused
+BusyBox container to verify Docker Desktop host networking. Run the same focused
 check directly with:
 
 ```sh

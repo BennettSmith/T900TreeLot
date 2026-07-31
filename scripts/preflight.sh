@@ -98,7 +98,7 @@ check_docker_desktop_host_network() {
   HOST_CHECK_CONTAINER="treelot-host-network-check-$$"
 
   if ! docker run -d --rm --network host --name "$HOST_CHECK_CONTAINER" \
-    alpine:3.20 sh -c \
+    busybox:1.36 sh -c \
     "mkdir -p /tmp/preflight && printf ok >/tmp/preflight/index.html && exec httpd -f -p $port -h /tmp/preflight" \
     >/dev/null 2>&1; then
     fail "Docker Desktop could not start a host-networked container. Enable host networking under Settings > Resources > Network."
