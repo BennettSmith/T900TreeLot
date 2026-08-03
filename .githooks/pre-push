@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+remote_name="${1:-origin}"
+root="$(git rev-parse --show-toplevel)"
+checker="${root}/scripts/check-commit-messages.sh"
+
+while read -r local_ref local_oid remote_ref remote_oid; do
+  if [[ "$local_ref" != refs/heads/* || "$local_oid" =~ ^0+$ ]]; then
+    continue
+  fi
+
+  if [[ "$remote_oid" =~ ^0+$ ]]; then
+    remote_main="refs/remotes/${remote_name}/main"
+    if ! git rev-parse --verify --quiet "${remote_main}^{commit}" >/dev/null; then
+      echo "Cannot determine the commit-message base for new branch ${remote_ref}." >&2
+      echo "Fetch ${remote_name}/main and try again." >&2
+      exit 2
+    fi
+    base="$(git merge-base "$local_oid" "$remote_main")"
+  else
+    base="$remote_oid"
+  fi
+
+  bash "$checker" "$base" "$local_oid"
+done

@@ -45,6 +45,27 @@ require_command() {
   fi
 }
 
+check_git_hooks() {
+  local hooks_path
+  hooks_path="$(git config --local --get core.hooksPath 2>/dev/null || true)"
+  if [[ "$hooks_path" != ".githooks" ]]; then
+    fail "Tracked Git hooks are not installed; run make install-hooks"
+    return
+  fi
+
+  local root
+  if ! root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+    fail "Cannot locate the Git repository to inspect tracked hooks"
+    return
+  fi
+  if [[ ! -x "$root/$hooks_path/pre-push" ]]; then
+    fail "Tracked pre-push hook is missing or not executable; run make install-hooks"
+    return
+  fi
+
+  pass "Tracked Git hooks are installed"
+}
+
 port_listener() {
   local port="$1"
   if command -v lsof >/dev/null 2>&1; then
@@ -58,15 +79,18 @@ port_listener() {
   return 2
 }
 
-project_postgres_owns_5433() {
+project_service_owns_port() {
+  local service="$1"
+  local container_port="$2"
+  local host_port="$3"
   local container
-  container="$(docker compose ps -q postgres 2>/dev/null)"
+  container="$(docker compose ps -q "$service" 2>/dev/null)"
   if [[ -z "$container" ]]; then
     return 1
   fi
   local published
-  published="$(docker port "$container" 5432/tcp 2>/dev/null)"
-  [[ "$published" == *":5433" ]]
+  published="$(docker port "$container" "$container_port/tcp" 2>/dev/null)"
+  [[ "$published" == *":$host_port" ]]
 }
 
 check_port() {
@@ -76,8 +100,10 @@ check_port() {
   local status=$?
   case "$status" in
     0)
-      if [[ "$MODE" == "doctor" && "$port" == "5433" ]] && project_postgres_owns_5433; then
+      if [[ "$MODE" == "doctor" && "$port" == "5433" ]] && project_service_owns_port postgres 5432 5433; then
         pass "Port 5433 is in use by project PostgreSQL"
+      elif [[ "$MODE" == "doctor" && "$port" == "8080" ]] && project_service_owns_port web 8080 8080; then
+        pass "Port 8080 is in use by project web"
       else
         fail "Port $port is in use"
         printf '%s\n' "$output" >&2
@@ -124,6 +150,13 @@ require_command go "Go is available"
 require_command node "Node.js is available"
 require_command curl "curl is available"
 require_command docker "Docker CLI is available"
+
+if [[ "$MODE" == "doctor" ]]; then
+  require_command git "Git is available"
+  if command -v git >/dev/null 2>&1; then
+    check_git_hooks
+  fi
+fi
 
 if command -v docker >/dev/null 2>&1; then
   if docker info >/dev/null 2>&1; then

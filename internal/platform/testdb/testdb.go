@@ -35,6 +35,14 @@ func OpenEmpty(t *testing.T) *postgres.DB {
 	t.Cleanup(func() { _ = db.Close() })
 
 	_, err = db.Exec(context.Background(), `
+		DROP TABLE IF EXISTS rate_limit_buckets CASCADE;
+		DROP TABLE IF EXISTS bootstrap_state CASCADE;
+		DROP TABLE IF EXISTS webauthn_ceremonies CASCADE;
+		DROP TABLE IF EXISTS passkey_credentials CASCADE;
+		DROP TABLE IF EXISTS identity_roles CASCADE;
+		DROP TABLE IF EXISTS identity_emails CASCADE;
+		DROP TABLE IF EXISTS identities CASCADE;
+		DROP TABLE IF EXISTS people CASCADE;
 		DROP TABLE IF EXISTS sessions CASCADE;
 		DROP TABLE IF EXISTS background_jobs CASCADE;
 		DROP TABLE IF EXISTS outbox_messages CASCADE;
@@ -52,14 +60,29 @@ func OpenMigrated(t *testing.T) *postgres.DB {
 	t.Helper()
 	db := OpenEmpty(t)
 
-	migrationsDir := filepath.Join("..", "..", "..", "migrations")
-	if _, err := os.Stat(migrationsDir); err != nil {
-		migrationsDir = filepath.Join("..", "..", "migrations")
-	}
+	migrationsDir := migrationsDir(t)
 	if _, err := migrate.Up(context.Background(), db, migrationsDir); err != nil {
 		t.Fatalf("migrate test database: %v", err)
 	}
 	return db
+}
+
+func migrationsDir(t *testing.T) string {
+	t.Helper()
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("resolve working directory: %v", err)
+	}
+	for dir := wd; ; dir = filepath.Dir(dir) {
+		candidate := filepath.Join(dir, "migrations")
+		if info, err := os.Stat(candidate); err == nil && info.IsDir() {
+			return candidate
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			t.Fatalf("migrations directory not found from %s", wd)
+		}
+	}
 }
 
 func flock(t *testing.T) func() {

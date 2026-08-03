@@ -3,6 +3,7 @@
 package web
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -74,6 +75,50 @@ func (c *Client) GetWithHeaders(path string) (int, string, http.Header, error) {
 // PostForm posts an application/x-www-form-urlencoded body.
 func (c *Client) PostForm(path string, values url.Values) (int, string, http.Header, error) {
 	response, err := c.httpClient.PostForm(c.baseURL+path, values)
+	if err != nil {
+		return 0, "", nil, err
+	}
+	defer response.Body.Close()
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return response.StatusCode, "", response.Header, err
+	}
+	return response.StatusCode, string(body), response.Header.Clone(), nil
+}
+
+// PostJSON posts a JSON body with optional request headers.
+func (c *Client) PostJSON(path, body string, headers map[string]string) (int, string, http.Header, error) {
+	request, err := http.NewRequest(http.MethodPost, c.baseURL+path, bytes.NewBufferString(body))
+	if err != nil {
+		return 0, "", nil, err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	for name, value := range headers {
+		request.Header.Set(name, value)
+	}
+	response, err := c.httpClient.Do(request)
+	if err != nil {
+		return 0, "", nil, err
+	}
+	defer response.Body.Close()
+	responseBody, err := io.ReadAll(response.Body)
+	if err != nil {
+		return response.StatusCode, "", response.Header, err
+	}
+	return response.StatusCode, string(responseBody), response.Header.Clone(), nil
+}
+
+// PostFormWithHeaders posts an application/x-www-form-urlencoded body with extra headers.
+func (c *Client) PostFormWithHeaders(path string, values url.Values, headers map[string]string) (int, string, http.Header, error) {
+	request, err := http.NewRequest(http.MethodPost, c.baseURL+path, strings.NewReader(values.Encode()))
+	if err != nil {
+		return 0, "", nil, err
+	}
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	for name, value := range headers {
+		request.Header.Set(name, value)
+	}
+	response, err := c.httpClient.Do(request)
 	if err != nil {
 		return 0, "", nil, err
 	}

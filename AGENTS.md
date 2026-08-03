@@ -111,6 +111,15 @@ conflict instead of silently choosing new product behavior.
 - `GET` is side-effect free. Use Post/Redirect/Get for ordinary forms where
   appropriate, and ensure full-page and HTMX paths enforce identical behavior.
 
+## Commit messages
+
+- Use Conventional Commit subjects in the form
+  `<type>[optional scope][!]: <description>`.
+- Allowed types are `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`,
+  `refactor`, `revert`, `style`, and `test`.
+- Install the tracked local hooks with `make install-hooks`. Do not bypass the
+  pre-push commit-message check.
+
 ## Test-driven development
 
 Always develop production behavior in short red-green-refactor cycles:

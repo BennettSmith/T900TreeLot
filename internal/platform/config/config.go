@@ -19,17 +19,23 @@ const (
 
 // Config holds validated runtime settings.
 type Config struct {
-	AppEnv             string
-	ListenAddress      string
-	DatabaseURL        string
-	TimeZone           *time.Location
-	PublicBaseURL      *url.URL
-	SessionKey         []byte
-	GroupsIOEnabled    bool
-	SecureCookies      bool
-	TestControlEnabled bool
-	TestControlKey     string
-	ExpectedSchema     int
+	AppEnv                   string
+	ListenAddress            string
+	DatabaseURL              string
+	TimeZone                 *time.Location
+	PublicBaseURL            *url.URL
+	SessionKey               []byte
+	BootstrapEnrollmentToken string
+	BootstrapTokenExpiresAt  time.Time
+	WebAuthnRPID             string
+	WebAuthnOrigins          []string
+	AuthRateLimitMax         int
+	AuthRateLimitWindow      time.Duration
+	GroupsIOEnabled          bool
+	SecureCookies            bool
+	TestControlEnabled       bool
+	TestControlKey           string
+	ExpectedSchema           int
 }
 
 // Load reads configuration from the process environment and validates it.
@@ -83,6 +89,44 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("SESSION_KEY must be at least 32 characters")
 	}
 
+	bootstrapEnrollmentToken := strings.TrimSpace(os.Getenv("BOOTSTRAP_ENROLLMENT_TOKEN"))
+	if len(bootstrapEnrollmentToken) < 24 {
+		return Config{}, fmt.Errorf("BOOTSTRAP_ENROLLMENT_TOKEN must be at least 24 characters")
+	}
+
+	bootstrapTokenExpiresAtRaw := strings.TrimSpace(os.Getenv("BOOTSTRAP_TOKEN_EXPIRES_AT"))
+	if bootstrapTokenExpiresAtRaw == "" {
+		return Config{}, fmt.Errorf("BOOTSTRAP_TOKEN_EXPIRES_AT is required")
+	}
+	bootstrapTokenExpiresAt, err := time.Parse(time.RFC3339, bootstrapTokenExpiresAtRaw)
+	if err != nil {
+		return Config{}, fmt.Errorf("BOOTSTRAP_TOKEN_EXPIRES_AT must be RFC3339: %w", err)
+	}
+
+	webAuthnRPID := strings.TrimSpace(os.Getenv("WEBAUTHN_RP_ID"))
+	if webAuthnRPID == "" {
+		webAuthnRPID = baseURL.Hostname()
+	}
+	if webAuthnRPID == "" {
+		return Config{}, fmt.Errorf("WEBAUTHN_RP_ID is required when PUBLIC_BASE_URL has no host name")
+	}
+	webAuthnOrigin := baseURL.Scheme + "://" + baseURL.Host
+
+	authRateLimitMax, err := intEnv("AUTH_RATE_LIMIT_MAX", 10)
+	if err != nil {
+		return Config{}, err
+	}
+	if authRateLimitMax <= 0 {
+		return Config{}, fmt.Errorf("AUTH_RATE_LIMIT_MAX must be positive")
+	}
+	authRateLimitWindow, err := durationEnv("AUTH_RATE_LIMIT_WINDOW", 15*time.Minute)
+	if err != nil {
+		return Config{}, err
+	}
+	if authRateLimitWindow <= 0 {
+		return Config{}, fmt.Errorf("AUTH_RATE_LIMIT_WINDOW must be positive")
+	}
+
 	groupsIOEnabled := false
 	if raw := strings.TrimSpace(os.Getenv("GROUPS_IO_ENABLED")); raw != "" {
 		groupsIOEnabled, err = strconv.ParseBool(raw)
@@ -98,16 +142,46 @@ func Load() (Config, error) {
 	}
 
 	return Config{
-		AppEnv:             appEnv,
-		ListenAddress:      "0.0.0.0:" + port,
-		DatabaseURL:        databaseURL,
-		TimeZone:           location,
-		PublicBaseURL:      baseURL,
-		SessionKey:         []byte(sessionKey),
-		GroupsIOEnabled:    groupsIOEnabled,
-		SecureCookies:      appEnv == EnvProduction,
-		TestControlEnabled: testControlEnabled,
-		TestControlKey:     testControlKey,
-		ExpectedSchema:     1,
+		AppEnv:                   appEnv,
+		ListenAddress:            "0.0.0.0:" + port,
+		DatabaseURL:              databaseURL,
+		TimeZone:                 location,
+		PublicBaseURL:            baseURL,
+		SessionKey:               []byte(sessionKey),
+		BootstrapEnrollmentToken: bootstrapEnrollmentToken,
+		BootstrapTokenExpiresAt:  bootstrapTokenExpiresAt.UTC(),
+		WebAuthnRPID:             webAuthnRPID,
+		WebAuthnOrigins:          []string{webAuthnOrigin},
+		AuthRateLimitMax:         authRateLimitMax,
+		AuthRateLimitWindow:      authRateLimitWindow,
+		GroupsIOEnabled:          groupsIOEnabled,
+		SecureCookies:            appEnv == EnvProduction,
+		TestControlEnabled:       testControlEnabled,
+		TestControlKey:           testControlKey,
+		ExpectedSchema:           3,
 	}, nil
+}
+
+func durationEnv(name string, fallback time.Duration) (time.Duration, error) {
+	raw := strings.TrimSpace(os.Getenv(name))
+	if raw == "" {
+		return fallback, nil
+	}
+	duration, err := time.ParseDuration(raw)
+	if err != nil {
+		return 0, fmt.Errorf("%s must be a duration: %w", name, err)
+	}
+	return duration, nil
+}
+
+func intEnv(name string, fallback int) (int, error) {
+	raw := strings.TrimSpace(os.Getenv(name))
+	if raw == "" {
+		return fallback, nil
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0, fmt.Errorf("%s must be numeric: %w", name, err)
+	}
+	return value, nil
 }

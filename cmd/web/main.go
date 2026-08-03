@@ -8,12 +8,18 @@ import (
 	"os"
 	"time"
 
+	identitypostgres "github.com/troop900/treelot/internal/identity/adapters/postgres"
+	"github.com/troop900/treelot/internal/identity/adapters/token"
+	identityapp "github.com/troop900/treelot/internal/identity/application"
 	"github.com/troop900/treelot/internal/platform/clock"
 	"github.com/troop900/treelot/internal/platform/config"
+	"github.com/troop900/treelot/internal/platform/ids"
 	"github.com/troop900/treelot/internal/platform/migrate"
 	"github.com/troop900/treelot/internal/platform/outbox"
 	"github.com/troop900/treelot/internal/platform/postgres"
+	"github.com/troop900/treelot/internal/platform/ratelimit"
 	"github.com/troop900/treelot/internal/platform/session"
+	platformwebauthn "github.com/troop900/treelot/internal/platform/webauthn"
 	"github.com/troop900/treelot/internal/web/handlers"
 	"github.com/troop900/treelot/internal/web/views"
 )
@@ -72,9 +78,25 @@ func newHTTPServer(cfg config.Config, db *postgres.DB, appClock clock.Clock, con
 		return nil, err
 	}
 	store := session.NewStore(db, appClock, 24*time.Hour)
+	passkeys, err := platformwebauthn.NewRegistrationCeremony(db, appClock, cfg.WebAuthnRPID, cfg.WebAuthnOrigins)
+	if err != nil {
+		return nil, err
+	}
+	bootstrapService := &identityapp.BootstrapService{
+		UnitOfWork:          identitypostgres.NewUnitOfWork(db, appClock),
+		Tokens:              token.NewBootstrapValidator(cfg.BootstrapEnrollmentToken, cfg.BootstrapTokenExpiresAt),
+		RateLimiter:         ratelimit.NewBuckets(db, appClock),
+		Passkeys:            passkeys,
+		Clock:               appClock,
+		IDs:                 ids.NewGenerator(),
+		AuthRateLimitMax:    cfg.AuthRateLimitMax,
+		AuthRateLimitWindow: cfg.AuthRateLimitWindow,
+	}
 	var outboxControl handlers.OutboxControl
+	var bootstrapReset handlers.BootstrapResetControl
 	if cfg.TestControlEnabled {
 		outboxControl = outbox.NewStore(db, appClock)
+		bootstrapReset = identitypostgres.NewTestControl(db)
 	}
 	handler := handlers.New(renderer, handlers.Options{
 		Development:        cfg.AppEnv == config.EnvDevelopment,
@@ -87,6 +109,9 @@ func newHTTPServer(cfg config.Config, db *postgres.DB, appClock clock.Clock, con
 		Clock:              appClock,
 		ControllableClock:  controllable,
 		Outbox:             outboxControl,
+		Bootstrap:          bootstrapService,
+		Accounts:           identitypostgres.NewAccountQueries(db),
+		BootstrapReset:     bootstrapReset,
 	})
 	return &http.Server{
 		Addr:              cfg.ListenAddress,

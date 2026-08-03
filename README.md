@@ -10,7 +10,17 @@ and [`docs/user-stories/roadmap.md`](docs/user-stories/roadmap.md).
 - Node.js 22+ (Tailwind asset build only)
 - Docker and Docker Compose (local stack, acceptance, and local `make ci` fallback)
 
-Copy [`.env.example`](.env.example) to `.env` for local overrides.
+Copy [`.env.example`](.env.example) to `.env` for local overrides, then set
+`BOOTSTRAP_TOKEN_EXPIRES_AT` to a fixed, future RFC3339 instant.
+
+Install the tracked Git hooks once per clone:
+
+```sh
+make install-hooks
+```
+
+The pre-push hook checks every commit being introduced to the remote. CI runs
+the same check against the exact pull-request or push range.
 
 `make ci` / `make test` need a disposable Postgres database whose name ends with
 `_test` (default `treelot_test`). Helpers drop foundation tables there, so the
@@ -32,7 +42,8 @@ can supply `:5433`.
 
 ```sh
 make help          # list targets
-make doctor        # diagnose local tools, Docker, networking guidance, and ports
+make doctor        # diagnose local tools, Git hooks, Docker, networking, and ports
+make install-hooks # activate the tracked pre-push checks for this clone
 make traceability  # validate requirement revisions, evidence, and generated report
 make ci            # fast checks: traceability, assets, format, vet, coverage
 make test          # unit/component tests
@@ -45,6 +56,21 @@ make ps            # Compose status
 make showcase      # design-system gallery (development)
 ```
 
+## Commit messages
+
+Every commit subject must use this Conventional Commits form:
+
+```text
+<type>[optional scope][!]: <description>
+```
+
+Allowed types are `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`,
+`refactor`, `revert`, `style`, and `test`. Scopes, when present, use small ASCII
+letters, digits, `.`, `_`, `/`, or `-`. The description must be non-empty.
+Examples include `feat: add household invitations`,
+`fix(identity): reject expired tokens`, and
+`refactor!: remove the legacy API`.
+
 ## Local Docker flow
 
 ```sh
@@ -55,6 +81,53 @@ make down
 
 Migrations are applied only by `cmd/migrate`. Web and worker validate schema
 compatibility and refuse to start on mismatch.
+
+The local `migrate`, `web`, and `worker` Compose services all receive the same
+required `BOOTSTRAP_TOKEN_EXPIRES_AT` value from `.env` or the shell. Compose
+stops with an actionable error when it is absent, and application configuration
+rejects a value that is not RFC3339.
+
+`make acceptance` generates one deadline 24 hours in the future and supplies it
+to its migrate, web, worker, production-mode web, and Compose startup paths. Set
+`ACCEPTANCE_BOOTSTRAP_TOKEN_EXPIRES_AT` only when a deterministic acceptance
+deadline is needed.
+
+Production deployment must inject its own absolute
+`BOOTSTRAP_TOKEN_EXPIRES_AT`; neither Compose nor the application supplies a
+production fallback. Choose the shortest operational window that permits the
+designated first Admin to enroll. Restarting a process does not extend it.
+
+## Inspecting the database
+
+With `make up`, Compose Postgres is published on host port **5433**
+(`treelot` / `treelot` / database `treelot`). Do not point inspection tools at
+`treelot_test`; that database is reset by unit and component tests.
+
+```sh
+psql "postgres://treelot:treelot@127.0.0.1:5433/treelot?sslmode=disable"
+# or
+docker compose exec -T postgres psql -U treelot -d treelot
+```
+
+Useful starter queries after first-Admin bootstrap:
+
+```sql
+\dt
+SELECT * FROM bootstrap_state;
+SELECT id, person_id FROM identities;
+SELECT identity_id, email, email_normalized, active, verified_at IS NOT NULL AS verified
+  FROM identity_emails;
+SELECT identity_id, role FROM identity_roles;
+SELECT id, first_name, last_name, preferred_display_name FROM people;
+SELECT id, identity_id, attestation_type, sign_count FROM passkey_credentials;
+SELECT id, identity_id, expires_at, revoked_at, authenticated_at
+  FROM sessions
+ ORDER BY id;
+```
+
+Exact DDL lives in versioned SQL under [`migrations/`](migrations/). Conceptual
+persistence and WebAuthn behavior are described in
+[`docs/architecture.md`](docs/architecture.md).
 
 ## Acceptance tests
 
