@@ -96,7 +96,7 @@ services:
       SESSION_KEY: 0123456789abcdef0123456789abcdef
       BOOTSTRAP_ENROLLMENT_TOKEN: acceptance-bootstrap-token-0001
       BOOTSTRAP_TOKEN_EXPIRES_AT: "2099-01-01T00:00:00Z"
-      AUTH_RATE_LIMIT_MAX: "5"
+      AUTH_RATE_LIMIT_MAX: "20"
       GROUPS_IO_ENABLED: "false"
       TEST_CONTROL_KEY: acceptance-test-control-key
     ports:
@@ -120,7 +120,7 @@ services:
       SESSION_KEY: 0123456789abcdef0123456789abcdef
       BOOTSTRAP_ENROLLMENT_TOKEN: acceptance-bootstrap-token-0001
       BOOTSTRAP_TOKEN_EXPIRES_AT: "2099-01-01T00:00:00Z"
-      AUTH_RATE_LIMIT_MAX: "5"
+      AUTH_RATE_LIMIT_MAX: "20"
       GROUPS_IO_ENABLED: "false"
       TEST_CONTROL_KEY: acceptance-test-control-key
     depends_on:
