@@ -36,6 +36,9 @@ func TestFinishBootstrapCreatesFirstAdminAndRotatesSessionAtomically(t *testing.
 	if !fx.store.closed || fx.store.closedBy != "id-2" {
 		t.Fatalf("bootstrap not closed by new identity: %#v", fx.store)
 	}
+	if !fx.store.ceremonyConsumed {
+		t.Fatal("registration ceremony was not consumed")
+	}
 	if got := fx.store.roles["id-2"]; len(got) != 1 || got[0] != domain.RoleAdmin {
 		t.Fatalf("roles = %#v", got)
 	}
@@ -68,7 +71,7 @@ func TestFinishBootstrapRollsBackWhenCredentialPersistenceFails(t *testing.T) {
 	if err == nil {
 		t.Fatal("FinishBootstrap succeeded")
 	}
-	if len(fx.store.people) != 0 || len(fx.store.identities) != 0 || fx.store.closed {
+	if len(fx.store.people) != 0 || len(fx.store.identities) != 0 || fx.store.closed || fx.store.ceremonyConsumed {
 		t.Fatalf("state was not rolled back: %#v", fx.store)
 	}
 }
@@ -201,6 +204,28 @@ func TestFinishBootstrapMapsPasskeyFailure(t *testing.T) {
 	}
 }
 
+func TestFinishBootstrapRejectsExpiredRegistrationCeremony(t *testing.T) {
+	fx := newBootstrapFixture()
+	fx.store.ceremonyExpiresAt = time.Date(2026, 7, 31, 21, 59, 0, 0, time.UTC)
+
+	_, err := fx.service().FinishBootstrap(context.Background(), application.FinishBootstrapCommand{
+		Token:             "valid-token",
+		RateLimitKey:      "ip",
+		SessionID:         1,
+		Email:             "first.admin@example.org",
+		FirstName:         "First",
+		LastName:          "Admin",
+		PasskeyCeremonyID: "ceremony-1",
+		PasskeyResponse:   []byte(`{}`),
+	})
+	if !errors.Is(err, domain.ErrCeremonyFailed) {
+		t.Fatalf("expired ceremony error = %v, want ErrCeremonyFailed", err)
+	}
+	if fx.store.ceremonyConsumed {
+		t.Fatal("expired registration ceremony was consumed")
+	}
+}
+
 func TestStartBootstrapUsesDefaultTimingAndRateLimitSettings(t *testing.T) {
 	fx := newBootstrapFixture()
 	service := fx.service()
@@ -256,6 +281,8 @@ func (f *bootstrapFixture) service() *application.BootstrapService {
 type fakeStore struct {
 	closed              bool
 	adminExists         bool
+	ceremonyConsumed    bool
+	ceremonyExpiresAt   time.Time
 	closedBy            string
 	failStoreCredential error
 	people              map[string]application.PersonalProfile
@@ -268,11 +295,12 @@ type fakeStore struct {
 
 func newFakeStore() *fakeStore {
 	return &fakeStore{
-		people:      map[string]application.PersonalProfile{},
-		identities:  map[string]application.IdentityRecord{},
-		emails:      map[string]string{},
-		roles:       map[string][]domain.Role{},
-		credentials: map[string]application.PasskeyCredential{},
+		people:            map[string]application.PersonalProfile{},
+		identities:        map[string]application.IdentityRecord{},
+		emails:            map[string]string{},
+		roles:             map[string][]domain.Role{},
+		credentials:       map[string]application.PasskeyCredential{},
+		ceremonyExpiresAt: time.Date(2026, 7, 31, 22, 15, 0, 0, time.UTC),
 	}
 }
 
@@ -302,6 +330,22 @@ func (s *fakeStore) LockBootstrap(context.Context) (application.BootstrapState, 
 func (s *fakeStore) EmailTaken(_ context.Context, normalized string) (bool, error) {
 	_, ok := s.emails[normalized]
 	return ok, nil
+}
+
+func (s *fakeStore) LockRegistrationCeremony(context.Context, string) (application.RegistrationCeremony, error) {
+	if s.ceremonyConsumed {
+		return application.RegistrationCeremony{}, errors.New("webauthn ceremony not found")
+	}
+	return application.RegistrationCeremony{
+		Challenge:  []byte("challenge"),
+		UserHandle: []byte("user-handle"),
+		ExpiresAt:  s.ceremonyExpiresAt,
+	}, nil
+}
+
+func (s *fakeStore) ConsumeRegistrationCeremony(context.Context, string, time.Time) error {
+	s.ceremonyConsumed = true
+	return nil
 }
 
 func (s *fakeStore) CreatePersonalProfile(_ context.Context, profile application.PersonalProfile) error {
@@ -380,7 +424,7 @@ func (p *fakePasskeys) BeginRegistration(_ context.Context, start application.Re
 	return application.RegistrationOptions{CeremonyID: start.CeremonyID, UserHandle: start.UserHandle, ExpiresAt: start.ExpiresAt}, nil
 }
 
-func (p *fakePasskeys) FinishRegistration(context.Context, application.RegistrationFinish) (application.PasskeyCredential, error) {
+func (p *fakePasskeys) VerifyRegistration(context.Context, application.RegistrationVerification) (application.PasskeyCredential, error) {
 	if p.finishErr != nil {
 		return application.PasskeyCredential{}, p.finishErr
 	}

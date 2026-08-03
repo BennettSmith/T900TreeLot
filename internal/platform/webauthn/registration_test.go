@@ -52,7 +52,7 @@ func TestRegistrationCeremonyBeginsAndStoresChallenge(t *testing.T) {
 	}
 }
 
-func TestRegistrationCeremonyRejectsInvalidConfigAndMissingFinish(t *testing.T) {
+func TestRegistrationCeremonyRejectsInvalidConfigAndInvalidVerification(t *testing.T) {
 	db := testdb.OpenMigrated(t)
 	clk := clock.NewControllable(time.Date(2026, 7, 31, 23, 15, 0, 0, time.UTC))
 	if _, err := platformwebauthn.NewRegistrationCeremony(db, clk, "not a host", []string{"http://localhost:8080"}); err == nil {
@@ -62,38 +62,27 @@ func TestRegistrationCeremonyRejectsInvalidConfigAndMissingFinish(t *testing.T) 
 	if err != nil {
 		t.Fatalf("NewRegistrationCeremony: %v", err)
 	}
-	if _, err := ceremony.FinishRegistration(context.Background(), application.RegistrationFinish{
-		CeremonyID: "missing",
+	if _, err := ceremony.VerifyRegistration(context.Background(), application.RegistrationVerification{
+		Challenge:  []byte("challenge-1234567890"),
+		UserHandle: []byte("user-handle"),
 		Response:   []byte(`{}`),
 	}); err == nil {
-		t.Fatal("FinishRegistration succeeded for missing ceremony")
+		t.Fatal("VerifyRegistration succeeded for invalid response")
 	}
 }
 
-func TestRegistrationCeremonyFinishRejectsExpiredAndInvalidResponses(t *testing.T) {
+func TestRegistrationCeremonyVerificationRejectsMalformedResponse(t *testing.T) {
 	db := testdb.OpenMigrated(t)
 	clk := clock.NewControllable(time.Date(2026, 7, 31, 23, 15, 0, 0, time.UTC))
 	ceremony, err := platformwebauthn.NewRegistrationCeremony(db, clk, "localhost", []string{"http://localhost:8080"})
 	if err != nil {
 		t.Fatalf("NewRegistrationCeremony: %v", err)
 	}
-	if _, err := db.Exec(context.Background(), `
-		INSERT INTO webauthn_ceremonies (id, purpose, challenge, user_handle, expires_at, created_at)
-		VALUES ('expired', 'bootstrap_registration', $4, $5, $1, $2),
-		       ('invalid-response', 'bootstrap_registration', $4, $5, $3, $2)
-	`, clk.Now().Add(-time.Minute), clk.Now(), clk.Now().Add(time.Minute), []byte("challenge-1234567890"), []byte("user-handle")); err != nil {
-		t.Fatalf("seed ceremonies: %v", err)
-	}
-	if _, err := ceremony.FinishRegistration(context.Background(), application.RegistrationFinish{
-		CeremonyID: "expired",
-		Response:   []byte(`{}`),
-	}); err == nil {
-		t.Fatal("FinishRegistration succeeded for expired ceremony")
-	}
-	if _, err := ceremony.FinishRegistration(context.Background(), application.RegistrationFinish{
-		CeremonyID: "invalid-response",
+	if _, err := ceremony.VerifyRegistration(context.Background(), application.RegistrationVerification{
+		Challenge:  []byte("challenge-1234567890"),
+		UserHandle: []byte("user-handle"),
 		Response:   []byte(`not-json`),
 	}); err == nil {
-		t.Fatal("FinishRegistration succeeded for invalid response")
+		t.Fatal("VerifyRegistration succeeded for malformed response")
 	}
 }

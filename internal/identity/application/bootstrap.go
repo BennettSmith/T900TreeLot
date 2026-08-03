@@ -19,6 +19,8 @@ type Repositories interface {
 	AdminExists(context.Context) (bool, error)
 	LockBootstrap(context.Context) (BootstrapState, error)
 	EmailTaken(context.Context, string) (bool, error)
+	LockRegistrationCeremony(context.Context, string) (RegistrationCeremony, error)
+	ConsumeRegistrationCeremony(context.Context, string, time.Time) error
 	CreatePersonalProfile(context.Context, PersonalProfile) error
 	CreateIdentity(context.Context, IdentityRecord) error
 	AddEmail(context.Context, IdentityEmail) error
@@ -39,7 +41,7 @@ type RateLimiter interface {
 
 type PasskeyCeremony interface {
 	BeginRegistration(context.Context, RegistrationStart) (RegistrationOptions, error)
-	FinishRegistration(context.Context, RegistrationFinish) (PasskeyCredential, error)
+	VerifyRegistration(context.Context, RegistrationVerification) (PasskeyCredential, error)
 }
 
 type Clock interface {
@@ -157,8 +159,15 @@ type IdentityEmail struct {
 	UpdatedAt  time.Time
 }
 
-type RegistrationFinish struct {
-	CeremonyID string
+type RegistrationCeremony struct {
+	Challenge  []byte
+	UserHandle []byte
+	ExpiresAt  time.Time
+}
+
+type RegistrationVerification struct {
+	Challenge  []byte
+	UserHandle []byte
 	Response   []byte
 }
 
@@ -285,15 +294,26 @@ func (s *BootstrapService) FinishBootstrap(ctx context.Context, command FinishBo
 			return domain.ErrEmailTaken
 		}
 
-		credential, err := s.Passkeys.FinishRegistration(txCtx, RegistrationFinish{
-			CeremonyID: command.PasskeyCeremonyID,
+		ceremony, err := repos.LockRegistrationCeremony(txCtx, command.PasskeyCeremonyID)
+		if err != nil {
+			return fmt.Errorf("%w: %v", domain.ErrCeremonyFailed, err)
+		}
+		now := s.now()
+		if !ceremony.ExpiresAt.After(now) {
+			return fmt.Errorf("%w: webauthn ceremony expired", domain.ErrCeremonyFailed)
+		}
+		credential, err := s.Passkeys.VerifyRegistration(txCtx, RegistrationVerification{
+			Challenge:  ceremony.Challenge,
+			UserHandle: ceremony.UserHandle,
 			Response:   command.PasskeyResponse,
 		})
 		if err != nil {
 			return fmt.Errorf("%w: %v", domain.ErrCeremonyFailed, err)
 		}
+		if err := repos.ConsumeRegistrationCeremony(txCtx, command.PasskeyCeremonyID, now); err != nil {
+			return fmt.Errorf("%w: %v", domain.ErrCeremonyFailed, err)
+		}
 
-		now := s.now()
 		personID, identityID, credentialID, err := s.bootstrapIDs()
 		if err != nil {
 			return err

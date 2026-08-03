@@ -86,6 +86,42 @@ func (r *txRepositories) EmailTaken(ctx context.Context, normalized string) (boo
 	return exists, err
 }
 
+func (r *txRepositories) LockRegistrationCeremony(ctx context.Context, ceremonyID string) (application.RegistrationCeremony, error) {
+	var ceremony application.RegistrationCeremony
+	err := r.tx.QueryRow(ctx, `
+		SELECT challenge, user_handle, expires_at
+		FROM webauthn_ceremonies
+		WHERE id = $1
+		  AND purpose = 'bootstrap_registration'
+		  AND consumed_at IS NULL
+		FOR UPDATE
+	`, ceremonyID).Scan(&ceremony.Challenge, &ceremony.UserHandle, &ceremony.ExpiresAt)
+	if err == pgx.ErrNoRows {
+		return application.RegistrationCeremony{}, fmt.Errorf("webauthn ceremony not found")
+	}
+	if err != nil {
+		return application.RegistrationCeremony{}, fmt.Errorf("load webauthn ceremony: %w", err)
+	}
+	return ceremony, nil
+}
+
+func (r *txRepositories) ConsumeRegistrationCeremony(ctx context.Context, ceremonyID string, consumedAt time.Time) error {
+	tag, err := r.tx.Exec(ctx, `
+		UPDATE webauthn_ceremonies
+		SET consumed_at = $2
+		WHERE id = $1
+		  AND purpose = 'bootstrap_registration'
+		  AND consumed_at IS NULL
+	`, ceremonyID, consumedAt)
+	if err != nil {
+		return fmt.Errorf("consume webauthn ceremony: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("webauthn ceremony not found")
+	}
+	return nil
+}
+
 func (r *txRepositories) CreatePersonalProfile(ctx context.Context, profile application.PersonalProfile) error {
 	return familypostgres.NewTxProfileCreator(r.tx).CreatePersonalProfile(ctx, families.PersonalProfile{
 		ID:                   profile.ID,
