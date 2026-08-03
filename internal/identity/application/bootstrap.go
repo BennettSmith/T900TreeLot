@@ -96,12 +96,15 @@ type BeginPasskeyRegistrationCommand struct {
 }
 
 type RegistrationStart struct {
-	SessionID   int64
-	CeremonyID  string
-	Email       domain.Email
-	DisplayName string
-	UserHandle  []byte
-	ExpiresAt   time.Time
+	SessionID            int64
+	CeremonyID           string
+	Email                domain.Email
+	FirstName            string
+	LastName             string
+	PreferredDisplayName string
+	DisplayName          string
+	UserHandle           []byte
+	ExpiresAt            time.Time
 }
 
 type RegistrationOptions struct {
@@ -163,6 +166,8 @@ type RegistrationCeremony struct {
 	Challenge  []byte
 	UserHandle []byte
 	ExpiresAt  time.Time
+	Email      domain.Email
+	Name       domain.ProfileName
 }
 
 type RegistrationVerification struct {
@@ -258,12 +263,15 @@ func (s *BootstrapService) BeginPasskeyRegistration(ctx context.Context, command
 		return RegistrationOptions{}, fmt.Errorf("create user handle: %w", err)
 	}
 	start := RegistrationStart{
-		SessionID:   command.SessionID,
-		CeremonyID:  ceremonyID,
-		Email:       command.Pending.Email,
-		DisplayName: command.Pending.Name.DisplayName(),
-		UserHandle:  []byte(userHandleID),
-		ExpiresAt:   s.now().Add(15 * time.Minute),
+		SessionID:            command.SessionID,
+		CeremonyID:           ceremonyID,
+		Email:                command.Pending.Email,
+		FirstName:            command.Pending.Name.FirstName,
+		LastName:             command.Pending.Name.LastName,
+		PreferredDisplayName: command.Pending.Name.PreferredDisplayName,
+		DisplayName:          command.Pending.Name.DisplayName(),
+		UserHandle:           []byte(userHandleID),
+		ExpiresAt:            s.now().Add(15 * time.Minute),
 	}
 	options, err := s.Passkeys.BeginRegistration(ctx, start)
 	if err != nil {
@@ -276,27 +284,33 @@ func (s *BootstrapService) FinishBootstrap(ctx context.Context, command FinishBo
 	if err := s.preflight(ctx, command.Token, command.RateLimitKey); err != nil {
 		return BootstrapResult{}, err
 	}
-	email, name, err := validateClaim(command.Email, command.FirstName, command.LastName, command.PreferredDisplayName)
-	if err != nil {
-		return BootstrapResult{}, err
-	}
 
 	var result BootstrapResult
-	err = s.UnitOfWork.WithinTx(ctx, func(txCtx context.Context, repos Repositories) error {
+	err := s.UnitOfWork.WithinTx(ctx, func(txCtx context.Context, repos Repositories) error {
 		if err := checkBootstrapOpen(txCtx, repos); err != nil {
 			return err
 		}
+		ceremony, err := repos.LockRegistrationCeremony(txCtx, command.PasskeyCeremonyID)
+		if err != nil {
+			return fmt.Errorf("%w: %v", domain.ErrCeremonyFailed, err)
+		}
+		submittedEmail, submittedName, err := validateClaim(
+			command.Email,
+			command.FirstName,
+			command.LastName,
+			command.PreferredDisplayName,
+		)
+		if err != nil || !sameRegistrationClaim(ceremony, submittedEmail, submittedName) {
+			return fmt.Errorf("%w: registration claim mismatch", domain.ErrCeremonyFailed)
+		}
+		email, name := ceremony.Email, ceremony.Name
+
 		taken, err := repos.EmailTaken(txCtx, email.Normalized())
 		if err != nil {
 			return err
 		}
 		if taken {
 			return domain.ErrEmailTaken
-		}
-
-		ceremony, err := repos.LockRegistrationCeremony(txCtx, command.PasskeyCeremonyID)
-		if err != nil {
-			return fmt.Errorf("%w: %v", domain.ErrCeremonyFailed, err)
 		}
 		now := s.now()
 		if !ceremony.ExpiresAt.After(now) {
@@ -365,6 +379,13 @@ func (s *BootstrapService) FinishBootstrap(ctx context.Context, command FinishBo
 		return nil
 	})
 	return result, err
+}
+
+func sameRegistrationClaim(ceremony RegistrationCeremony, email domain.Email, name domain.ProfileName) bool {
+	return ceremony.Email.Normalized() == email.Normalized() &&
+		ceremony.Name.FirstName == name.FirstName &&
+		ceremony.Name.LastName == name.LastName &&
+		ceremony.Name.PreferredDisplayName == name.PreferredDisplayName
 }
 
 func (s *BootstrapService) preflight(ctx context.Context, token, rateLimitKey string) error {

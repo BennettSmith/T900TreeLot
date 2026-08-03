@@ -25,12 +25,15 @@ func TestRegistrationCeremonyBeginsAndStoresChallenge(t *testing.T) {
 	}
 
 	options, err := ceremony.BeginRegistration(context.Background(), application.RegistrationStart{
-		SessionID:   0,
-		CeremonyID:  "ceremony-1",
-		Email:       email,
-		DisplayName: "First Admin",
-		UserHandle:  []byte("user-handle-1"),
-		ExpiresAt:   clk.Now().Add(15 * time.Minute),
+		SessionID:            0,
+		CeremonyID:           "ceremony-1",
+		Email:                email,
+		FirstName:            "First",
+		LastName:             "Admin",
+		PreferredDisplayName: "First Admin",
+		DisplayName:          "First Admin",
+		UserHandle:           []byte("user-handle-1"),
+		ExpiresAt:            clk.Now().Add(15 * time.Minute),
 	})
 	if err != nil {
 		t.Fatalf("BeginRegistration: %v", err)
@@ -40,15 +43,28 @@ func TestRegistrationCeremonyBeginsAndStoresChallenge(t *testing.T) {
 	}
 
 	var storedChallenge []byte
+	var storedEmail, storedFirstName, storedLastName, storedPreferredDisplayName string
 	if err := db.QueryRow(context.Background(), `
-		SELECT challenge
+		SELECT challenge, bootstrap_email, bootstrap_first_name, bootstrap_last_name, bootstrap_preferred_display_name
 		FROM webauthn_ceremonies
 		WHERE id = 'ceremony-1'
-	`).Scan(&storedChallenge); err != nil {
+	`).Scan(&storedChallenge, &storedEmail, &storedFirstName, &storedLastName, &storedPreferredDisplayName); err != nil {
 		t.Fatalf("read ceremony: %v", err)
 	}
 	if len(storedChallenge) < 16 {
 		t.Fatalf("stored challenge too short: %d", len(storedChallenge))
+	}
+	if storedEmail != "first@example.org" ||
+		storedFirstName != "First" ||
+		storedLastName != "Admin" ||
+		storedPreferredDisplayName != "First Admin" {
+		t.Fatalf(
+			"stored bootstrap profile = %q/%q/%q/%q",
+			storedEmail,
+			storedFirstName,
+			storedLastName,
+			storedPreferredDisplayName,
+		)
 	}
 }
 

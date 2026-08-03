@@ -39,6 +39,13 @@ func TestFailedPasskeyCeremonyCreatesNoAdministrator(t *testing.T) {
 }
 
 // Trace: UC-0@r2 US-001@r2
+func TestBootstrapRejectsProfileChangesAfterPasskeyRegistrationBegins(t *testing.T) {
+	lot := dsl.NewLot(t)
+	email := fmt.Sprintf("bound-ceremony-%d@example.org", time.Now().UTC().UnixNano())
+	lot.Bootstrap().RejectsChangedProfileAfterPasskeyRegistrationBegins(acceptanceBootstrapToken, email)
+}
+
+// Trace: UC-0@r2 US-001@r2
 func TestOnlyOneConcurrentBootstrapAttemptSucceeds(t *testing.T) {
 	lot := dsl.NewLot(t)
 	lot.Bootstrap().OnlyOneConcurrentBootstrapSucceeds(acceptanceBootstrapToken)

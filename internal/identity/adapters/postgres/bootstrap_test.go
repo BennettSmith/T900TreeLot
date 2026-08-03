@@ -26,9 +26,20 @@ func TestBootstrapUnitOfWorkPersistsFirstAdmin(t *testing.T) {
 		t.Fatalf("create old session: %v", err)
 	}
 	if _, err := db.Exec(context.Background(), `
-		INSERT INTO webauthn_ceremonies (id, purpose, challenge, user_handle, expires_at, created_at)
-		VALUES ('ceremony-1', 'bootstrap_registration', $1, $2, $3, $4)
-	`, []byte("challenge"), []byte("user-handle"), clk.Now().Add(15*time.Minute), clk.Now()); err != nil {
+		INSERT INTO webauthn_ceremonies (
+			id, purpose, challenge, user_handle, expires_at, created_at,
+			bootstrap_email, bootstrap_first_name, bootstrap_last_name
+		)
+		VALUES ('ceremony-1', 'bootstrap_registration', $1, $2, $3, $4, $5, $6, $7)
+	`,
+		[]byte("challenge"),
+		[]byte("user-handle"),
+		clk.Now().Add(15*time.Minute),
+		clk.Now(),
+		"First.Admin@Example.org",
+		"First",
+		"Admin",
+	); err != nil {
 		t.Fatalf("seed registration ceremony: %v", err)
 	}
 
@@ -96,6 +107,8 @@ func TestBootstrapUnitOfWorkRollsBackVerifiedRegistrationWhenSessionRotationFail
 	options, err := passkeys.BeginRegistration(ctx, application.RegistrationStart{
 		CeremonyID:  "ceremony-rollback",
 		Email:       email,
+		FirstName:   "First",
+		LastName:    "Admin",
 		DisplayName: "First Admin",
 		UserHandle:  []byte("user-handle-rollback"),
 		ExpiresAt:   clk.Now().Add(15 * time.Minute),
@@ -169,14 +182,100 @@ func TestBootstrapUnitOfWorkRollsBackVerifiedRegistrationWhenSessionRotationFail
 	}
 }
 
+func TestBootstrapUnitOfWorkRejectsFinishProfileDifferentFromPersistedCeremony(t *testing.T) {
+	db := testdb.OpenMigrated(t)
+	ctx := context.Background()
+	clk := clock.NewControllable(time.Date(2026, 7, 31, 23, 7, 0, 0, time.UTC))
+	passkeys, err := platformwebauthn.NewRegistrationCeremony(db, clk, "localhost", []string{"http://localhost:8080"})
+	if err != nil {
+		t.Fatalf("NewRegistrationCeremony: %v", err)
+	}
+	email, err := domain.NewEmail("first.admin@example.org")
+	if err != nil {
+		t.Fatalf("NewEmail: %v", err)
+	}
+	if _, err := passkeys.BeginRegistration(ctx, application.RegistrationStart{
+		CeremonyID:           "ceremony-bound-profile",
+		Email:                email,
+		FirstName:            "First",
+		LastName:             "Admin",
+		PreferredDisplayName: "First Admin",
+		DisplayName:          "First Admin",
+		UserHandle:           []byte("user-handle-bound-profile"),
+		ExpiresAt:            clk.Now().Add(15 * time.Minute),
+	}); err != nil {
+		t.Fatalf("BeginRegistration: %v", err)
+	}
+
+	service := &application.BootstrapService{
+		UnitOfWork:          identitypostgres.NewUnitOfWork(db, clk),
+		Tokens:              validToken{},
+		RateLimiter:         allowAll{},
+		Passkeys:            passkeys,
+		Clock:               clk,
+		IDs:                 &sequenceIDs{values: []string{"unused"}},
+		AuthRateLimitMax:    10,
+		AuthRateLimitWindow: 15 * time.Minute,
+	}
+	_, err = service.FinishBootstrap(ctx, application.FinishBootstrapCommand{
+		Token:                "valid-token",
+		RateLimitKey:         "ip:127.0.0.1",
+		Email:                "changed@example.org",
+		FirstName:            "Changed",
+		LastName:             "Person",
+		PreferredDisplayName: "Changed Person",
+		PasskeyCeremonyID:    "ceremony-bound-profile",
+		PasskeyResponse:      []byte(`{"unused":true}`),
+	})
+	if !errors.Is(err, domain.ErrCeremonyFailed) {
+		t.Fatalf("FinishBootstrap error = %v, want generic ErrCeremonyFailed", err)
+	}
+
+	var consumedAt, closedAt *time.Time
+	var people, identities, emails, roles, credentials, sessions int
+	if err := db.QueryRow(ctx, `
+		SELECT c.consumed_at,
+		       b.closed_at,
+		       (SELECT count(*) FROM people),
+		       (SELECT count(*) FROM identities),
+		       (SELECT count(*) FROM identity_emails),
+		       (SELECT count(*) FROM identity_roles),
+		       (SELECT count(*) FROM passkey_credentials),
+		       (SELECT count(*) FROM sessions)
+		FROM webauthn_ceremonies c
+		CROSS JOIN bootstrap_state b
+		WHERE c.id = 'ceremony-bound-profile' AND b.id = 1
+	`).Scan(&consumedAt, &closedAt, &people, &identities, &emails, &roles, &credentials, &sessions); err != nil {
+		t.Fatalf("read bootstrap state: %v", err)
+	}
+	if consumedAt != nil || closedAt != nil || people != 0 || identities != 0 || emails != 0 ||
+		roles != 0 || credentials != 0 || sessions != 0 {
+		t.Fatalf(
+			"changed finish persisted state: consumed=%v closed=%v people=%d identities=%d emails=%d roles=%d credentials=%d sessions=%d",
+			consumedAt, closedAt, people, identities, emails, roles, credentials, sessions,
+		)
+	}
+}
+
 func TestBootstrapUnitOfWorkRejectsConsumedRegistrationCeremonyReplay(t *testing.T) {
 	db := testdb.OpenMigrated(t)
 	ctx := context.Background()
 	now := time.Date(2026, 7, 31, 23, 8, 0, 0, time.UTC)
 	if _, err := db.Exec(ctx, `
-		INSERT INTO webauthn_ceremonies (id, purpose, challenge, user_handle, expires_at, created_at)
-		VALUES ('ceremony-replay', 'bootstrap_registration', $1, $2, $3, $4)
-	`, []byte("challenge"), []byte("user-handle"), now.Add(15*time.Minute), now); err != nil {
+		INSERT INTO webauthn_ceremonies (
+			id, purpose, challenge, user_handle, expires_at, created_at,
+			bootstrap_email, bootstrap_first_name, bootstrap_last_name
+		)
+		VALUES ('ceremony-replay', 'bootstrap_registration', $1, $2, $3, $4, $5, $6, $7)
+	`,
+		[]byte("challenge"),
+		[]byte("user-handle"),
+		now.Add(15*time.Minute),
+		now,
+		"first.admin@example.org",
+		"First",
+		"Admin",
+	); err != nil {
 		t.Fatalf("seed registration ceremony: %v", err)
 	}
 	uow := identitypostgres.NewUnitOfWork(db, clock.NewControllable(now))

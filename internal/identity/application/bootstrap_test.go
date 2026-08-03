@@ -125,6 +125,73 @@ func TestClaimBootstrapProfileAndBeginPasskeyRegistration(t *testing.T) {
 	}
 }
 
+func TestFinishBootstrapRejectsProfileChangedAfterRegistrationBegan(t *testing.T) {
+	fx := newBootstrapFixture()
+	fx.ids.values = []string{"ceremony-1", "user-handle-1", "person-1", "identity-1", "passkey-1"}
+	service := fx.service()
+
+	pending, err := service.ClaimBootstrapProfile(context.Background(), application.ClaimBootstrapProfileCommand{
+		Token:                "valid-token",
+		RateLimitKey:         "ip:127.0.0.1",
+		Email:                "first.admin@example.org",
+		FirstName:            "First",
+		LastName:             "Admin",
+		PreferredDisplayName: "First Admin",
+	})
+	if err != nil {
+		t.Fatalf("ClaimBootstrapProfile: %v", err)
+	}
+	if _, err := service.BeginPasskeyRegistration(context.Background(), application.BeginPasskeyRegistrationCommand{
+		Pending:   pending,
+		SessionID: 41,
+	}); err != nil {
+		t.Fatalf("BeginPasskeyRegistration: %v", err)
+	}
+
+	_, err = service.FinishBootstrap(context.Background(), application.FinishBootstrapCommand{
+		Token:                "valid-token",
+		RateLimitKey:         "ip:127.0.0.1",
+		SessionID:            41,
+		Email:                "attacker@example.org",
+		FirstName:            "Changed",
+		LastName:             "Person",
+		PreferredDisplayName: "Changed Person",
+		PasskeyCeremonyID:    "ceremony-1",
+		PasskeyResponse:      []byte(`{"ok":true}`),
+	})
+	if !errors.Is(err, domain.ErrCeremonyFailed) {
+		t.Fatalf("FinishBootstrap error = %v, want generic ErrCeremonyFailed", err)
+	}
+	if len(fx.store.people) != 0 ||
+		len(fx.store.identities) != 0 ||
+		len(fx.store.emails) != 0 ||
+		len(fx.store.roles) != 0 ||
+		len(fx.store.credentials) != 0 ||
+		fx.store.sessionRotations != 0 ||
+		fx.store.closed ||
+		fx.store.ceremonyConsumed {
+		t.Fatalf("mismatched finish modified state: %#v", fx.store)
+	}
+
+	result, err := service.FinishBootstrap(context.Background(), application.FinishBootstrapCommand{
+		Token:                "valid-token",
+		RateLimitKey:         "ip:127.0.0.1",
+		SessionID:            41,
+		Email:                "FIRST.ADMIN@example.org",
+		FirstName:            "First",
+		LastName:             "Admin",
+		PreferredDisplayName: "First Admin",
+		PasskeyCeremonyID:    "ceremony-1",
+		PasskeyResponse:      []byte(`{"ok":true}`),
+	})
+	if err != nil {
+		t.Fatalf("FinishBootstrap retry with original claim: %v", err)
+	}
+	if result.IdentityID != "identity-1" || fx.store.people["person-1"].PreferredDisplayName != "First Admin" {
+		t.Fatalf("retry did not use ceremony-bound profile: result=%#v store=%#v", result, fx.store)
+	}
+}
+
 func TestBootstrapPreflightRejectsRateLimitAndInvalidToken(t *testing.T) {
 	fx := newBootstrapFixture()
 	fx.rateLimits.allowed = false
@@ -255,11 +322,12 @@ type bootstrapFixture struct {
 }
 
 func newBootstrapFixture() *bootstrapFixture {
+	store := newFakeStore()
 	return &bootstrapFixture{
-		store:      newFakeStore(),
+		store:      store,
 		tokens:     &fakeTokenValidator{valid: "valid-token"},
 		rateLimits: &fakeRateLimiter{allowed: true},
-		passkeys:   &fakePasskeys{},
+		passkeys:   &fakePasskeys{store: store},
 		ids:        &fakeIDs{values: []string{"id-1", "id-2", "id-3"}},
 	}
 }
@@ -283,6 +351,8 @@ type fakeStore struct {
 	adminExists         bool
 	ceremonyConsumed    bool
 	ceremonyExpiresAt   time.Time
+	ceremonyEmail       domain.Email
+	ceremonyName        domain.ProfileName
 	closedBy            string
 	failStoreCredential error
 	people              map[string]application.PersonalProfile
@@ -291,9 +361,12 @@ type fakeStore struct {
 	roles               map[string][]domain.Role
 	credentials         map[string]application.PasskeyCredential
 	audit               []application.AuditEvent
+	sessionRotations    int
 }
 
 func newFakeStore() *fakeStore {
+	email, _ := domain.NewEmail("first.admin@example.org")
+	name, _ := domain.ValidateProfile("First", "Admin", "")
 	return &fakeStore{
 		people:            map[string]application.PersonalProfile{},
 		identities:        map[string]application.IdentityRecord{},
@@ -301,6 +374,8 @@ func newFakeStore() *fakeStore {
 		roles:             map[string][]domain.Role{},
 		credentials:       map[string]application.PasskeyCredential{},
 		ceremonyExpiresAt: time.Date(2026, 7, 31, 22, 15, 0, 0, time.UTC),
+		ceremonyEmail:     email,
+		ceremonyName:      name,
 	}
 }
 
@@ -340,6 +415,8 @@ func (s *fakeStore) LockRegistrationCeremony(context.Context, string) (applicati
 		Challenge:  []byte("challenge"),
 		UserHandle: []byte("user-handle"),
 		ExpiresAt:  s.ceremonyExpiresAt,
+		Email:      s.ceremonyEmail,
+		Name:       s.ceremonyName,
 	}, nil
 }
 
@@ -388,6 +465,7 @@ func (s *fakeStore) WriteAudit(_ context.Context, event application.AuditEvent) 
 }
 
 func (s *fakeStore) RotateForIdentity(_ context.Context, oldSessionID int64, identityID string, now time.Time) (application.IssuedSession, error) {
+	s.sessionRotations++
 	return application.IssuedSession{ID: oldSessionID + 1, IdentityID: identityID, RawToken: "rotated-token", AuthenticatedAt: now}, nil
 }
 
@@ -417,10 +495,20 @@ func (r *fakeRateLimiter) Allow(_ context.Context, _ string, max int, window tim
 type fakePasskeys struct {
 	lastStart application.RegistrationStart
 	finishErr error
+	store     *fakeStore
 }
 
 func (p *fakePasskeys) BeginRegistration(_ context.Context, start application.RegistrationStart) (application.RegistrationOptions, error) {
 	p.lastStart = start
+	if p.store != nil {
+		p.store.ceremonyEmail = start.Email
+		p.store.ceremonyName = domain.ProfileName{
+			FirstName:            start.FirstName,
+			LastName:             start.LastName,
+			PreferredDisplayName: start.PreferredDisplayName,
+		}
+		p.store.ceremonyExpiresAt = start.ExpiresAt
+	}
 	return application.RegistrationOptions{CeremonyID: start.CeremonyID, UserHandle: start.UserHandle, ExpiresAt: start.ExpiresAt}, nil
 }
 

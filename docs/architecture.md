@@ -258,7 +258,7 @@ Enabled Groups.io network calls, and any future email-provider calls, must not r
 PostgreSQL stores:
 
 - Identities, claimed email identifiers, email verification state, passkey public-key credential records, roles, and sessions
-- Bootstrap closure state, expiring WebAuthn ceremony challenges, and authentication rate-limit buckets
+- Bootstrap closure state, expiring WebAuthn ceremony challenges with their trusted enrollment identity/profile claims, and authentication rate-limit buckets
 - Invitations, recovery enrollment tokens, and household link tokens
 - Person profiles, households, memberships, and family units
 - Seasons, templates, shifts, assignments, and assignment ownership

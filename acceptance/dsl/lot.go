@@ -409,6 +409,73 @@ func (b *Bootstrap) FailedPasskeyCeremonyLeavesBootstrapOpen(token, email string
 	b.completeEnrollment(b.lot.web, token, email, "First Admin")
 }
 
+// RejectsChangedProfileAfterPasskeyRegistrationBegins proves the attested claim cannot be replaced at finish.
+func (b *Bootstrap) RejectsChangedProfileAfterPasskeyRegistrationBegins(token, email string) {
+	b.lot.t.Helper()
+	b.reset()
+	csrf := b.startAndClaim(b.lot.web, token, email, "First Admin")
+	beginBody, err := json.Marshal(map[string]string{
+		"token":                  token,
+		"email":                  email,
+		"first_name":             "First",
+		"last_name":              "Admin",
+		"preferred_display_name": "First Admin",
+	})
+	if err != nil {
+		b.lot.t.Fatal(err)
+	}
+	status, body, _, err := b.lot.web.PostJSON("/bootstrap/passkey/begin", string(beginBody), map[string]string{"X-CSRF-Token": csrf})
+	if err != nil || status != http.StatusOK {
+		b.lot.t.Fatalf("passkey begin status=%d err=%v body=%q", status, err, body)
+	}
+	begin, err := webauthndriver.ParseBeginPayload(body)
+	if err != nil {
+		b.lot.t.Fatal(err)
+	}
+	attestation, err := webauthndriver.CreateAttestationResponse(webauthndriver.RelyingParty{
+		Name:   "Troop 900 Tree Lot",
+		ID:     "treelot.test",
+		Origin: "https://treelot.test",
+	}, begin.PublicKey)
+	if err != nil {
+		b.lot.t.Fatalf("create attestation: %v", err)
+	}
+
+	changedFinish := fmt.Sprintf(
+		`{"token":%q,"email":"changed@example.org","first_name":"Changed","last_name":"Person","preferred_display_name":"Changed Person","ceremonyId":%q,"credential":%s}`,
+		token,
+		begin.CeremonyID,
+		attestation,
+	)
+	status, body, _, err = b.lot.web.PostJSON("/bootstrap/passkey/finish", changedFinish, map[string]string{"X-CSRF-Token": csrf})
+	if err != nil || status != http.StatusBadRequest || !strings.Contains(body, "Passkey registration could not be completed") {
+		b.lot.t.Fatalf("changed profile finish status=%d err=%v body=%q", status, err, body)
+	}
+	if strings.Contains(body, email) || strings.Contains(body, "changed@example.org") {
+		b.lot.t.Fatalf("changed profile failure exposed identity fields: %q", body)
+	}
+	status, accountBody, err := b.lot.web.Get("/account")
+	if err != nil || status != http.StatusSeeOther {
+		b.lot.t.Fatalf("account after changed profile status=%d err=%v body=%q", status, err, accountBody)
+	}
+
+	originalFinish := fmt.Sprintf(
+		`{"token":%q,"email":%q,"first_name":"First","last_name":"Admin","preferred_display_name":"First Admin","ceremonyId":%q,"credential":%s}`,
+		token,
+		email,
+		begin.CeremonyID,
+		attestation,
+	)
+	status, body, _, err = b.lot.web.PostJSON("/bootstrap/passkey/finish", originalFinish, map[string]string{"X-CSRF-Token": csrf})
+	if err != nil || status != http.StatusOK {
+		b.lot.t.Fatalf("original profile retry status=%d err=%v body=%q", status, err, body)
+	}
+	status, accountBody, err = b.lot.web.Get("/account")
+	if err != nil || status != http.StatusOK || !strings.Contains(accountBody, "Welcome, First Admin") {
+		b.lot.t.Fatalf("account after original retry status=%d err=%v body=%q", status, err, accountBody)
+	}
+}
+
 // OnlyOneConcurrentBootstrapSucceeds proves transactional one-Admin closure under concurrency.
 func (b *Bootstrap) OnlyOneConcurrentBootstrapSucceeds(token string) {
 	b.lot.t.Helper()
@@ -466,7 +533,15 @@ func (b *Bootstrap) OnlyOneConcurrentBootstrapSucceeds(token string) {
 				results[i] = -1
 				return
 			}
-			finishBody := fmt.Sprintf(`{"token":%q,"email":%q,"first_name":"Concurrent","last_name":"Admin","preferred_display_name":"Concurrent","ceremonyId":%q,"credential":%s}`, token, state.email, state.begin.CeremonyID, attestation)
+			finishBody := fmt.Sprintf(
+				`{"token":%q,"email":%q,"first_name":"Concurrent","last_name":%q,"preferred_display_name":%q,"ceremonyId":%q,"credential":%s}`,
+				token,
+				state.email,
+				fmt.Sprintf("Admin%d", i),
+				fmt.Sprintf("Concurrent %d", i),
+				state.begin.CeremonyID,
+				attestation,
+			)
 			status, _, _, err := state.client.PostJSON("/bootstrap/passkey/finish", finishBody, map[string]string{"X-CSRF-Token": state.csrf})
 			if err != nil {
 				results[i] = -1

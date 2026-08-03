@@ -57,10 +57,23 @@ func (c *RegistrationCeremony) BeginRegistration(ctx context.Context, start appl
 	_, err = c.db.Exec(ctx, `
 		INSERT INTO webauthn_ceremonies (
 			id, session_id, purpose, challenge, identity_id, user_handle,
-			expires_at, consumed_at, created_at
+			expires_at, consumed_at, created_at, bootstrap_email,
+			bootstrap_first_name, bootstrap_last_name, bootstrap_preferred_display_name
 		)
-		VALUES ($1, NULLIF($2, 0), $3, $4, NULL, $5, $6, NULL, $7)
-	`, start.CeremonyID, start.SessionID, purposeBootstrapRegistration, []byte(sessionData.Challenge), start.UserHandle, expiresAt, c.clock.Now())
+		VALUES ($1, NULLIF($2, 0), $3, $4, NULL, $5, $6, NULL, $7, $8, $9, $10, NULLIF($11, ''))
+	`,
+		start.CeremonyID,
+		start.SessionID,
+		purposeBootstrapRegistration,
+		[]byte(sessionData.Challenge),
+		start.UserHandle,
+		expiresAt,
+		c.clock.Now(),
+		start.Email.String(),
+		start.FirstName,
+		start.LastName,
+		start.PreferredDisplayName,
+	)
 	if err != nil {
 		return application.RegistrationOptions{}, fmt.Errorf("store webauthn ceremony: %w", err)
 	}

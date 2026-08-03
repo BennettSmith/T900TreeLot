@@ -88,19 +88,38 @@ func (r *txRepositories) EmailTaken(ctx context.Context, normalized string) (boo
 
 func (r *txRepositories) LockRegistrationCeremony(ctx context.Context, ceremonyID string) (application.RegistrationCeremony, error) {
 	var ceremony application.RegistrationCeremony
+	var email, firstName, lastName, preferredDisplayName string
 	err := r.tx.QueryRow(ctx, `
-		SELECT challenge, user_handle, expires_at
+		SELECT challenge, user_handle, expires_at, bootstrap_email,
+		       bootstrap_first_name, bootstrap_last_name,
+		       COALESCE(bootstrap_preferred_display_name, '')
 		FROM webauthn_ceremonies
 		WHERE id = $1
 		  AND purpose = 'bootstrap_registration'
 		  AND consumed_at IS NULL
 		FOR UPDATE
-	`, ceremonyID).Scan(&ceremony.Challenge, &ceremony.UserHandle, &ceremony.ExpiresAt)
+	`, ceremonyID).Scan(
+		&ceremony.Challenge,
+		&ceremony.UserHandle,
+		&ceremony.ExpiresAt,
+		&email,
+		&firstName,
+		&lastName,
+		&preferredDisplayName,
+	)
 	if err == pgx.ErrNoRows {
 		return application.RegistrationCeremony{}, fmt.Errorf("webauthn ceremony not found")
 	}
 	if err != nil {
 		return application.RegistrationCeremony{}, fmt.Errorf("load webauthn ceremony: %w", err)
+	}
+	ceremony.Email, err = domain.NewEmail(email)
+	if err != nil {
+		return application.RegistrationCeremony{}, fmt.Errorf("load webauthn ceremony email: %w", err)
+	}
+	ceremony.Name, err = domain.ValidateProfile(firstName, lastName, preferredDisplayName)
+	if err != nil {
+		return application.RegistrationCeremony{}, fmt.Errorf("load webauthn ceremony profile: %w", err)
 	}
 	return ceremony, nil
 }
