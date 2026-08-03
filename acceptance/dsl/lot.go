@@ -393,7 +393,7 @@ func (b *Bootstrap) FailedPasskeyCeremonyLeavesBootstrapOpen(token, email string
 	}
 	finishBody := fmt.Sprintf(`{"token":%q,"email":%q,"first_name":"First","last_name":"Admin","preferred_display_name":"First Admin","ceremonyId":%q,"credential":{"id":"bad","rawId":"bad","type":"public-key","response":{"clientDataJSON":"e30","attestationObject":"e30"}}}`, token, email, begin.CeremonyID)
 	status, body, _, err = b.lot.web.PostJSON("/bootstrap/passkey/finish", finishBody, map[string]string{"X-CSRF-Token": csrf})
-	if err != nil || status == http.StatusSeeOther {
+	if err != nil || status == http.StatusOK {
 		b.lot.t.Fatalf("failed ceremony unexpectedly succeeded: status=%d err=%v body=%q", status, err, body)
 	}
 	if !strings.Contains(body, "Passkey registration could not be completed") {
@@ -479,7 +479,7 @@ func (b *Bootstrap) OnlyOneConcurrentBootstrapSucceeds(token string) {
 
 	successes := 0
 	for _, status := range results {
-		if status == http.StatusSeeOther {
+		if status == http.StatusOK {
 			successes++
 		}
 	}
@@ -519,11 +519,20 @@ func (b *Bootstrap) completeEnrollment(client *web.Client, token, email, display
 		b.lot.t.Fatalf("create attestation: %v", err)
 	}
 	finishBody := fmt.Sprintf(`{"token":%q,"email":%q,"first_name":"First","last_name":"Admin","preferred_display_name":%q,"ceremonyId":%q,"credential":%s}`, token, email, displayName, begin.CeremonyID, attestationResponse)
-	status, _, headers, err := client.PostJSON("/bootstrap/passkey/finish", finishBody, map[string]string{"X-CSRF-Token": csrf})
-	if err != nil || status != http.StatusSeeOther || headers.Get("Location") != "/account" {
-		b.lot.t.Fatalf("passkey finish status=%d location=%q err=%v", status, headers.Get("Location"), err)
+	status, body, _, err = client.PostJSON("/bootstrap/passkey/finish", finishBody, map[string]string{"X-CSRF-Token": csrf})
+	if err != nil || status != http.StatusOK {
+		b.lot.t.Fatalf("passkey finish status=%d err=%v body=%q", status, err, body)
 	}
-	status, body, err = client.Get("/account")
+	var finish struct {
+		RedirectTo string `json:"redirectTo"`
+	}
+	if err := json.Unmarshal([]byte(body), &finish); err != nil {
+		b.lot.t.Fatalf("decode finish body: %v body=%q", err, body)
+	}
+	if finish.RedirectTo != "/account" {
+		b.lot.t.Fatalf("finish redirectTo=%q body=%q", finish.RedirectTo, body)
+	}
+	status, body, err = client.Get(finish.RedirectTo)
 	if err != nil || status != http.StatusOK || !strings.Contains(body, "Welcome, "+displayName) {
 		b.lot.t.Fatalf("account status=%d err=%v body=%q", status, err, body)
 	}

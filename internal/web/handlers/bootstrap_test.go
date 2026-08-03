@@ -89,11 +89,20 @@ func TestBootstrapEntryStartClaimAndFinishFlow(t *testing.T) {
 		"Content-Type":        "application/json",
 		middleware.CSRFHeader: csrf,
 	}, cookie)
-	if finish.Code != http.StatusSeeOther {
+	if finish.Code != http.StatusOK {
 		t.Fatalf("finish status=%d body=%s", finish.Code, finish.Body.String())
 	}
-	if location := finish.Header().Get("Location"); location != "/account" {
-		t.Fatalf("finish location = %q", location)
+	if got := finish.Header().Get("Content-Type"); !strings.HasPrefix(got, "application/json") {
+		t.Fatalf("finish Content-Type = %q", got)
+	}
+	var finishBody struct {
+		RedirectTo string `json:"redirectTo"`
+	}
+	if err := json.NewDecoder(finish.Body).Decode(&finishBody); err != nil {
+		t.Fatalf("decode finish body: %v", err)
+	}
+	if finishBody.RedirectTo != "/account" {
+		t.Fatalf("finish redirectTo = %q", finishBody.RedirectTo)
 	}
 	rotated := firstCookie(finish, middleware.SessionCookieName)
 	if rotated == nil || rotated.Value != "rotated-token" || !rotated.HttpOnly || rotated.Path != "/" {

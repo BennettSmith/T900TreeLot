@@ -128,7 +128,6 @@
           method: "POST",
           headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
           credentials: "same-origin",
-          redirect: "manual",
           body: JSON.stringify({
             token: profile.token,
             email: profile.email,
@@ -140,20 +139,22 @@
           })
         });
       }).then(function (response) {
-        if (response.status === 303 || response.status === 302) {
-          window.location.assign(response.headers.get("Location") || "/account");
-          return;
-        }
         if (!response.ok) {
-          throw new Error("finish failed");
+          return response.json().then(function (body) {
+            throw new Error((body && body.error) || "finish failed");
+          }, function () {
+            throw new Error("finish failed");
+          });
         }
-        window.location.assign("/account");
+        return response.json();
+      }).then(function (body) {
+        window.location.assign((body && body.redirectTo) || "/account");
       }).catch(function (error) {
         if (error && error.name === "AbortError") {
           showPasskeyError(container, "Passkey registration was canceled. No account was created.");
           return;
         }
-        showPasskeyError(container, "Try again when your browser is ready.");
+        showPasskeyError(container, (error && error.message) || "Try again when your browser is ready.");
       });
     });
   }

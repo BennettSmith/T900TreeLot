@@ -48,6 +48,9 @@ func TestHandlerServesEmbeddedPasskeyScript(t *testing.T) {
 	if body := response.Body.String(); !strings.Contains(body, "navigator.credentials.create") || !strings.Contains(body, "bootstrap_token") {
 		t.Errorf("passkey script missing bootstrap flow behavior: %s", body)
 	}
+	if body := response.Body.String(); !strings.Contains(body, "redirectTo") || strings.Contains(body, `redirect: "manual"`) {
+		t.Errorf("passkey script should follow JSON redirectTo without opaque manual redirects: %s", body)
+	}
 }
 
 func TestScoutBucksMetricsAdaptToTheirContainer(t *testing.T) {

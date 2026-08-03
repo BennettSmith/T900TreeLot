@@ -164,7 +164,9 @@ func (s *Server) bootstrapPasskeyFinish(response http.ResponseWriter, request *h
 		return
 	}
 	middleware.SetSessionCookie(response, result.Session.RawToken, result.Session.ExpiresAt, s.secureCookies)
-	http.Redirect(response, request, "/account", http.StatusSeeOther)
+	response.Header().Set("Content-Type", "application/json")
+	response.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(response).Encode(map[string]string{"redirectTo": "/account"})
 }
 
 func (s *Server) account(response http.ResponseWriter, request *http.Request) {
