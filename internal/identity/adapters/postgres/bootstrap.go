@@ -90,7 +90,7 @@ func (r *txRepositories) LockRegistrationCeremony(ctx context.Context, ceremonyI
 	var ceremony application.RegistrationCeremony
 	var email, firstName, lastName, preferredDisplayName string
 	err := r.tx.QueryRow(ctx, `
-		SELECT challenge, user_handle, expires_at, bootstrap_email,
+		SELECT COALESCE(session_id, 0), challenge, user_handle, expires_at, bootstrap_email,
 		       bootstrap_first_name, bootstrap_last_name,
 		       COALESCE(bootstrap_preferred_display_name, '')
 		FROM webauthn_ceremonies
@@ -99,6 +99,7 @@ func (r *txRepositories) LockRegistrationCeremony(ctx context.Context, ceremonyI
 		  AND consumed_at IS NULL
 		FOR UPDATE
 	`, ceremonyID).Scan(
+		&ceremony.SessionID,
 		&ceremony.Challenge,
 		&ceremony.UserHandle,
 		&ceremony.ExpiresAt,

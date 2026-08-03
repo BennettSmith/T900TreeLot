@@ -163,6 +163,7 @@ type IdentityEmail struct {
 }
 
 type RegistrationCeremony struct {
+	SessionID  int64
 	Challenge  []byte
 	UserHandle []byte
 	ExpiresAt  time.Time
@@ -293,6 +294,9 @@ func (s *BootstrapService) FinishBootstrap(ctx context.Context, command FinishBo
 		ceremony, err := repos.LockRegistrationCeremony(txCtx, command.PasskeyCeremonyID)
 		if err != nil {
 			return fmt.Errorf("%w: %v", domain.ErrCeremonyFailed, err)
+		}
+		if ceremony.SessionID != command.SessionID {
+			return fmt.Errorf("%w: registration session mismatch", domain.ErrCeremonyFailed)
 		}
 		submittedEmail, submittedName, err := validateClaim(
 			command.Email,

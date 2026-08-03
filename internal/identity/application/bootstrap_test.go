@@ -192,6 +192,62 @@ func TestFinishBootstrapRejectsProfileChangedAfterRegistrationBegan(t *testing.T
 	}
 }
 
+func TestFinishBootstrapRejectsCeremonyFromAnotherSessionWithoutConsumingIt(t *testing.T) {
+	fx := newBootstrapFixture()
+	fx.ids.values = []string{
+		"ceremony-session-bound",
+		"user-handle-session-bound",
+		"person-session-bound",
+		"identity-session-bound",
+		"passkey-session-bound",
+	}
+	service := fx.service()
+
+	pending, err := service.ClaimBootstrapProfile(context.Background(), application.ClaimBootstrapProfileCommand{
+		Token:        "valid-token",
+		RateLimitKey: "ip:127.0.0.1",
+		Email:        "first.admin@example.org",
+		FirstName:    "First",
+		LastName:     "Admin",
+	})
+	if err != nil {
+		t.Fatalf("ClaimBootstrapProfile: %v", err)
+	}
+	const sessionA int64 = 41
+	if _, err := service.BeginPasskeyRegistration(context.Background(), application.BeginPasskeyRegistrationCommand{
+		Pending:   pending,
+		SessionID: sessionA,
+	}); err != nil {
+		t.Fatalf("BeginPasskeyRegistration: %v", err)
+	}
+
+	finish := application.FinishBootstrapCommand{
+		Token:             "valid-token",
+		RateLimitKey:      "ip:127.0.0.1",
+		Email:             "first.admin@example.org",
+		FirstName:         "First",
+		LastName:          "Admin",
+		PasskeyCeremonyID: "ceremony-session-bound",
+		PasskeyResponse:   []byte(`{"ok":true}`),
+	}
+	finish.SessionID = 42
+	if _, err := service.FinishBootstrap(context.Background(), finish); !errors.Is(err, domain.ErrCeremonyFailed) {
+		t.Fatalf("session B FinishBootstrap error = %v, want generic ErrCeremonyFailed", err)
+	}
+	if fx.store.ceremonyConsumed {
+		t.Fatal("session B consumed session A's registration ceremony")
+	}
+
+	finish.SessionID = sessionA
+	result, err := service.FinishBootstrap(context.Background(), finish)
+	if err != nil {
+		t.Fatalf("session A FinishBootstrap: %v", err)
+	}
+	if result.IdentityID != "identity-session-bound" || !fx.store.ceremonyConsumed {
+		t.Fatalf("session A did not finish its ceremony: result=%#v store=%#v", result, fx.store)
+	}
+}
+
 func TestBootstrapPreflightRejectsRateLimitAndInvalidToken(t *testing.T) {
 	fx := newBootstrapFixture()
 	fx.rateLimits.allowed = false
@@ -259,7 +315,7 @@ func TestFinishBootstrapMapsPasskeyFailure(t *testing.T) {
 	_, err := service.FinishBootstrap(context.Background(), application.FinishBootstrapCommand{
 		Token:             "valid-token",
 		RateLimitKey:      "ip",
-		SessionID:         1,
+		SessionID:         41,
 		Email:             "first.admin@example.org",
 		FirstName:         "First",
 		LastName:          "Admin",
@@ -278,7 +334,7 @@ func TestFinishBootstrapRejectsExpiredRegistrationCeremony(t *testing.T) {
 	_, err := fx.service().FinishBootstrap(context.Background(), application.FinishBootstrapCommand{
 		Token:             "valid-token",
 		RateLimitKey:      "ip",
-		SessionID:         1,
+		SessionID:         41,
 		Email:             "first.admin@example.org",
 		FirstName:         "First",
 		LastName:          "Admin",
@@ -350,6 +406,7 @@ type fakeStore struct {
 	closed              bool
 	adminExists         bool
 	ceremonyConsumed    bool
+	ceremonySessionID   int64
 	ceremonyExpiresAt   time.Time
 	ceremonyEmail       domain.Email
 	ceremonyName        domain.ProfileName
@@ -373,6 +430,7 @@ func newFakeStore() *fakeStore {
 		emails:            map[string]string{},
 		roles:             map[string][]domain.Role{},
 		credentials:       map[string]application.PasskeyCredential{},
+		ceremonySessionID: 41,
 		ceremonyExpiresAt: time.Date(2026, 7, 31, 22, 15, 0, 0, time.UTC),
 		ceremonyEmail:     email,
 		ceremonyName:      name,
@@ -412,6 +470,7 @@ func (s *fakeStore) LockRegistrationCeremony(context.Context, string) (applicati
 		return application.RegistrationCeremony{}, errors.New("webauthn ceremony not found")
 	}
 	return application.RegistrationCeremony{
+		SessionID:  s.ceremonySessionID,
 		Challenge:  []byte("challenge"),
 		UserHandle: []byte("user-handle"),
 		ExpiresAt:  s.ceremonyExpiresAt,
@@ -501,6 +560,7 @@ type fakePasskeys struct {
 func (p *fakePasskeys) BeginRegistration(_ context.Context, start application.RegistrationStart) (application.RegistrationOptions, error) {
 	p.lastStart = start
 	if p.store != nil {
+		p.store.ceremonySessionID = start.SessionID
 		p.store.ceremonyEmail = start.Email
 		p.store.ceremonyName = domain.ProfileName{
 			FirstName:            start.FirstName,

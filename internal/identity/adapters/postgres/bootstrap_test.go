@@ -27,11 +27,12 @@ func TestBootstrapUnitOfWorkPersistsFirstAdmin(t *testing.T) {
 	}
 	if _, err := db.Exec(context.Background(), `
 		INSERT INTO webauthn_ceremonies (
-			id, purpose, challenge, user_handle, expires_at, created_at,
+			id, session_id, purpose, challenge, user_handle, expires_at, created_at,
 			bootstrap_email, bootstrap_first_name, bootstrap_last_name
 		)
-		VALUES ('ceremony-1', 'bootstrap_registration', $1, $2, $3, $4, $5, $6, $7)
+		VALUES ('ceremony-1', $1, 'bootstrap_registration', $2, $3, $4, $5, $6, $7, $8)
 	`,
+		oldSession.ID,
 		[]byte("challenge"),
 		[]byte("user-handle"),
 		clk.Now().Add(15*time.Minute),
@@ -100,11 +101,20 @@ func TestBootstrapUnitOfWorkRollsBackVerifiedRegistrationWhenSessionRotationFail
 	if err != nil {
 		t.Fatalf("NewRegistrationCeremony: %v", err)
 	}
+	sessionStore := session.NewStore(db, clk, time.Hour)
+	rollbackSession, _, err := sessionStore.Create(ctx)
+	if err != nil {
+		t.Fatalf("create rollback session: %v", err)
+	}
+	if err := sessionStore.Revoke(ctx, rollbackSession.ID); err != nil {
+		t.Fatalf("revoke rollback session: %v", err)
+	}
 	email, err := domain.NewEmail("first.admin@example.org")
 	if err != nil {
 		t.Fatalf("NewEmail: %v", err)
 	}
 	options, err := passkeys.BeginRegistration(ctx, application.RegistrationStart{
+		SessionID:   rollbackSession.ID,
 		CeremonyID:  "ceremony-rollback",
 		Email:       email,
 		FirstName:   "First",
@@ -144,7 +154,7 @@ func TestBootstrapUnitOfWorkRollsBackVerifiedRegistrationWhenSessionRotationFail
 	_, err = service.FinishBootstrap(ctx, application.FinishBootstrapCommand{
 		Token:             "valid-token",
 		RateLimitKey:      "ip:127.0.0.1",
-		SessionID:         99999,
+		SessionID:         rollbackSession.ID,
 		Email:             email.String(),
 		FirstName:         "First",
 		LastName:          "Admin",
@@ -174,7 +184,7 @@ func TestBootstrapUnitOfWorkRollsBackVerifiedRegistrationWhenSessionRotationFail
 		t.Fatalf("read rolled-back bootstrap state: %v", err)
 	}
 	if consumedAt != nil || closedAt != nil || people != 0 || identities != 0 || emails != 0 ||
-		roles != 0 || credentials != 0 || audits != 0 || sessions != 0 {
+		roles != 0 || credentials != 0 || audits != 0 || sessions != 1 {
 		t.Fatalf(
 			"bootstrap changes persisted: consumed=%v closed=%v people=%d identities=%d emails=%d roles=%d credentials=%d audits=%d sessions=%d",
 			consumedAt, closedAt, people, identities, emails, roles, credentials, audits, sessions,
