@@ -3,6 +3,7 @@ package config_test
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/troop900/treelot/internal/platform/config"
 )
@@ -15,6 +16,7 @@ func TestLoadRequiresValidatedSettings(t *testing.T) {
 	t.Setenv("PUBLIC_BASE_URL", "https://treelot.troop900livermore.org")
 	t.Setenv("SESSION_KEY", "0123456789abcdef0123456789abcdef")
 	t.Setenv("BOOTSTRAP_ENROLLMENT_TOKEN", "bootstrap-enrollment-token-0001")
+	t.Setenv("BOOTSTRAP_TOKEN_EXPIRES_AT", "2026-08-06T16:00:00Z")
 	t.Setenv("GROUPS_IO_ENABLED", "false")
 
 	cfg, err := config.Load()
@@ -36,8 +38,9 @@ func TestLoadRequiresValidatedSettings(t *testing.T) {
 	if cfg.BootstrapEnrollmentToken != "bootstrap-enrollment-token-0001" {
 		t.Error("BootstrapEnrollmentToken was not loaded")
 	}
-	if cfg.BootstrapTokenExpiry != 72*60*60*1_000_000_000 {
-		t.Errorf("BootstrapTokenExpiry = %v, want 72h", cfg.BootstrapTokenExpiry)
+	wantBootstrapExpiry := time.Date(2026, 8, 6, 16, 0, 0, 0, time.UTC)
+	if !cfg.BootstrapTokenExpiresAt.Equal(wantBootstrapExpiry) {
+		t.Errorf("BootstrapTokenExpiresAt = %v, want %v", cfg.BootstrapTokenExpiresAt, wantBootstrapExpiry)
 	}
 	if cfg.WebAuthnRPID != "treelot.troop900livermore.org" {
 		t.Errorf("WebAuthnRPID = %q", cfg.WebAuthnRPID)
@@ -67,6 +70,7 @@ func TestAcceptanceDisablesSecureCookiesForHTTPDrivers(t *testing.T) {
 	t.Setenv("PUBLIC_BASE_URL", "https://treelot.test")
 	t.Setenv("SESSION_KEY", "0123456789abcdef0123456789abcdef")
 	t.Setenv("BOOTSTRAP_ENROLLMENT_TOKEN", "bootstrap-enrollment-token-0001")
+	t.Setenv("BOOTSTRAP_TOKEN_EXPIRES_AT", "2026-08-06T16:00:00Z")
 	t.Setenv("TEST_CONTROL_KEY", "test-control-secret")
 
 	cfg, err := config.Load()
@@ -138,6 +142,7 @@ func TestDevelopmentAllowsHTTPAndDefaults(t *testing.T) {
 	t.Setenv("PUBLIC_BASE_URL", "http://localhost:8080")
 	t.Setenv("SESSION_KEY", "0123456789abcdef0123456789abcdef")
 	t.Setenv("BOOTSTRAP_ENROLLMENT_TOKEN", "bootstrap-enrollment-token-0001")
+	t.Setenv("BOOTSTRAP_TOKEN_EXPIRES_AT", "2026-08-06T16:00:00Z")
 	t.Setenv("GROUPS_IO_ENABLED", "")
 
 	cfg, err := config.Load()
@@ -166,6 +171,7 @@ func TestAcceptanceRequiresTestControlKey(t *testing.T) {
 	t.Setenv("PUBLIC_BASE_URL", "https://treelot.test")
 	t.Setenv("SESSION_KEY", "0123456789abcdef0123456789abcdef")
 	t.Setenv("BOOTSTRAP_ENROLLMENT_TOKEN", "bootstrap-enrollment-token-0001")
+	t.Setenv("BOOTSTRAP_TOKEN_EXPIRES_AT", "2026-08-06T16:00:00Z")
 	t.Setenv("TEST_CONTROL_KEY", "")
 
 	_, err := config.Load()
@@ -187,7 +193,16 @@ func TestLoadValidatesBootstrapAndAuthSettings(t *testing.T) {
 	}
 
 	t.Setenv("BOOTSTRAP_ENROLLMENT_TOKEN", "bootstrap-enrollment-token-0001")
-	t.Setenv("BOOTSTRAP_TOKEN_EXPIRY", "48h")
+	if _, err := config.Load(); err == nil || !strings.Contains(err.Error(), "BOOTSTRAP_TOKEN_EXPIRES_AT") {
+		t.Fatalf("expected required BOOTSTRAP_TOKEN_EXPIRES_AT error, got %v", err)
+	}
+
+	t.Setenv("BOOTSTRAP_TOKEN_EXPIRES_AT", "not-a-timestamp")
+	if _, err := config.Load(); err == nil || !strings.Contains(err.Error(), "BOOTSTRAP_TOKEN_EXPIRES_AT") {
+		t.Fatalf("expected BOOTSTRAP_TOKEN_EXPIRES_AT error, got %v", err)
+	}
+
+	t.Setenv("BOOTSTRAP_TOKEN_EXPIRES_AT", "2026-08-06T16:00:00-07:00")
 	t.Setenv("WEBAUTHN_RP_ID", "example.test")
 	t.Setenv("AUTH_RATE_LIMIT_MAX", "7")
 	t.Setenv("AUTH_RATE_LIMIT_WINDOW", "5m")
@@ -195,8 +210,9 @@ func TestLoadValidatesBootstrapAndAuthSettings(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if cfg.BootstrapTokenExpiry != 48*60*60*1_000_000_000 {
-		t.Errorf("BootstrapTokenExpiry = %v, want 48h", cfg.BootstrapTokenExpiry)
+	wantExpiry := time.Date(2026, 8, 6, 23, 0, 0, 0, time.UTC)
+	if !cfg.BootstrapTokenExpiresAt.Equal(wantExpiry) {
+		t.Errorf("BootstrapTokenExpiresAt = %v, want %v", cfg.BootstrapTokenExpiresAt, wantExpiry)
 	}
 	if cfg.WebAuthnRPID != "example.test" {
 		t.Errorf("WebAuthnRPID = %q, want example.test", cfg.WebAuthnRPID)

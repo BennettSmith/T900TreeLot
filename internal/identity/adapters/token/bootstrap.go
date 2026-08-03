@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/troop900/treelot/internal/identity/domain"
-	"github.com/troop900/treelot/internal/platform/clock"
 )
 
 type BootstrapValidator struct {
@@ -16,16 +15,10 @@ type BootstrapValidator struct {
 	expiresAt time.Time
 }
 
-func NewBootstrapValidator(token string, ttl time.Duration, clk clock.Clock) *BootstrapValidator {
-	if ttl <= 0 {
-		ttl = 72 * time.Hour
-	}
-	if clk == nil {
-		clk = clock.System()
-	}
+func NewBootstrapValidator(token string, expiresAt time.Time) *BootstrapValidator {
 	return &BootstrapValidator{
 		hash:      sha256.Sum256([]byte(token)),
-		expiresAt: clk.Now().Add(ttl).UTC(),
+		expiresAt: expiresAt.UTC(),
 	}
 }
 

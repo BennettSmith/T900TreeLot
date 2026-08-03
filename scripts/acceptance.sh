@@ -73,6 +73,7 @@ common_env=(
   -e TREE_LOT_TIME_ZONE=America/Los_Angeles
   -e SESSION_KEY=0123456789abcdef0123456789abcdef
   -e BOOTSTRAP_ENROLLMENT_TOKEN=acceptance-bootstrap-token-0001
+  -e BOOTSTRAP_TOKEN_EXPIRES_AT=2099-01-01T00:00:00Z
   -e AUTH_RATE_LIMIT_MAX=20
   -e GROUPS_IO_ENABLED=false
 )

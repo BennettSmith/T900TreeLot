@@ -26,7 +26,7 @@ type Config struct {
 	PublicBaseURL            *url.URL
 	SessionKey               []byte
 	BootstrapEnrollmentToken string
-	BootstrapTokenExpiry     time.Duration
+	BootstrapTokenExpiresAt  time.Time
 	WebAuthnRPID             string
 	WebAuthnOrigins          []string
 	AuthRateLimitMax         int
@@ -94,9 +94,13 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("BOOTSTRAP_ENROLLMENT_TOKEN must be at least 24 characters")
 	}
 
-	bootstrapTokenExpiry, err := durationEnv("BOOTSTRAP_TOKEN_EXPIRY", 72*time.Hour)
+	bootstrapTokenExpiresAtRaw := strings.TrimSpace(os.Getenv("BOOTSTRAP_TOKEN_EXPIRES_AT"))
+	if bootstrapTokenExpiresAtRaw == "" {
+		return Config{}, fmt.Errorf("BOOTSTRAP_TOKEN_EXPIRES_AT is required")
+	}
+	bootstrapTokenExpiresAt, err := time.Parse(time.RFC3339, bootstrapTokenExpiresAtRaw)
 	if err != nil {
-		return Config{}, err
+		return Config{}, fmt.Errorf("BOOTSTRAP_TOKEN_EXPIRES_AT must be RFC3339: %w", err)
 	}
 
 	webAuthnRPID := strings.TrimSpace(os.Getenv("WEBAUTHN_RP_ID"))
@@ -145,7 +149,7 @@ func Load() (Config, error) {
 		PublicBaseURL:            baseURL,
 		SessionKey:               []byte(sessionKey),
 		BootstrapEnrollmentToken: bootstrapEnrollmentToken,
-		BootstrapTokenExpiry:     bootstrapTokenExpiry,
+		BootstrapTokenExpiresAt:  bootstrapTokenExpiresAt.UTC(),
 		WebAuthnRPID:             webAuthnRPID,
 		WebAuthnOrigins:          []string{webAuthnOrigin},
 		AuthRateLimitMax:         authRateLimitMax,

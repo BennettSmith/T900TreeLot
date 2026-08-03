@@ -13,7 +13,7 @@ import (
 
 func TestBootstrapValidatorAcceptsConfiguredTokenUntilExpiry(t *testing.T) {
 	clk := clock.NewControllable(time.Date(2026, 7, 31, 23, 30, 0, 0, time.UTC))
-	validator := token.NewBootstrapValidator("bootstrap-enrollment-token-0001", time.Hour, clk)
+	validator := token.NewBootstrapValidator("bootstrap-enrollment-token-0001", clk.Now().Add(time.Hour))
 
 	if err := validator.ValidateBootstrapToken(context.Background(), "bootstrap-enrollment-token-0001", clk.Now()); err != nil {
 		t.Fatalf("ValidateBootstrapToken: %v", err)
@@ -26,13 +26,18 @@ func TestBootstrapValidatorAcceptsConfiguredTokenUntilExpiry(t *testing.T) {
 	}
 }
 
-func TestBootstrapValidatorDefaultsTTL(t *testing.T) {
-	clk := clock.NewControllable(time.Date(2026, 7, 31, 23, 30, 0, 0, time.UTC))
-	validator := token.NewBootstrapValidator("bootstrap-enrollment-token-0001", 0, clk)
-	if err := validator.ValidateBootstrapToken(context.Background(), "bootstrap-enrollment-token-0001", clk.Now().Add(71*time.Hour)); err != nil {
-		t.Fatalf("token before default expiry: %v", err)
+func TestBootstrapValidatorRemainsExpiredAfterReconstruction(t *testing.T) {
+	expiresAt := time.Date(2026, 8, 1, 0, 30, 0, 0, time.UTC)
+	clk := clock.NewControllable(expiresAt.Add(-time.Minute))
+	validator := token.NewBootstrapValidator("bootstrap-enrollment-token-0001", expiresAt)
+
+	if err := validator.ValidateBootstrapToken(context.Background(), "bootstrap-enrollment-token-0001", clk.Now()); err != nil {
+		t.Fatalf("token before expiry: %v", err)
 	}
-	if err := validator.ValidateBootstrapToken(context.Background(), "bootstrap-enrollment-token-0001", clk.Now().Add(73*time.Hour)); !errors.Is(err, domain.ErrInvalidToken) {
-		t.Fatalf("token after default expiry error = %v, want ErrInvalidToken", err)
+
+	clk.Advance(2 * time.Minute)
+	reconstructed := token.NewBootstrapValidator("bootstrap-enrollment-token-0001", expiresAt)
+	if err := reconstructed.ValidateBootstrapToken(context.Background(), "bootstrap-enrollment-token-0001", clk.Now()); !errors.Is(err, domain.ErrInvalidToken) {
+		t.Fatalf("reconstructed validator error = %v, want ErrInvalidToken", err)
 	}
 }

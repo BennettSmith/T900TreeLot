@@ -28,6 +28,7 @@ func testConfig(t *testing.T) config.Config {
 	t.Setenv("PUBLIC_BASE_URL", "http://localhost:8080")
 	t.Setenv("SESSION_KEY", "0123456789abcdef0123456789abcdef")
 	t.Setenv("BOOTSTRAP_ENROLLMENT_TOKEN", "bootstrap-enrollment-token-0001")
+	t.Setenv("BOOTSTRAP_TOKEN_EXPIRES_AT", "2026-08-06T16:00:00Z")
 	t.Setenv("GROUPS_IO_ENABLED", "false")
 	cfg, err := config.Load()
 	if err != nil {

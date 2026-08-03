@@ -293,7 +293,7 @@ Shift signup must use a transaction with row locking or a conditional update so 
 
 Browser sessions use opaque, cryptographically random tokens stored in `Secure`, `HttpOnly`, and `SameSite=Lax` cookies. PostgreSQL stores only a cryptographic hash of each session token, along with identity, creation, expiry, last-use, and revocation metadata.
 
-Invitation, household-link, recovery, bootstrap, and idempotency tokens are also random, expire, are single-use where required, and are stored hashed when the clear value does not need to be recovered.
+Invitation, household-link, recovery, bootstrap, and idempotency tokens are also random, expire, are single-use where required, and are stored hashed when the clear value does not need to be recovered. Bootstrap token expiry is configured as an absolute RFC 3339 instant so validator reconstruction or a process restart cannot extend the deadline.
 
 Account emails are normalized before comparison and stored for account identification and later notification/recovery use. Maintain uniqueness with a normalized unique index or keyed blind index as appropriate. Passkey private keys never leave the authenticator; PostgreSQL stores only public-key credential material, credential IDs, sign-count/metadata, and the owning identity. The system does not store phone numbers for authentication or operational notification delivery.
 

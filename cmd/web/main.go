@@ -83,15 +83,14 @@ func newHTTPServer(cfg config.Config, db *postgres.DB, appClock clock.Clock, con
 		return nil, err
 	}
 	bootstrapService := &identityapp.BootstrapService{
-		UnitOfWork:              identitypostgres.NewUnitOfWork(db, appClock),
-		Tokens:                  token.NewBootstrapValidator(cfg.BootstrapEnrollmentToken, cfg.BootstrapTokenExpiry, appClock),
-		RateLimiter:             ratelimit.NewBuckets(db, appClock),
-		Passkeys:                passkeys,
-		Clock:                   appClock,
-		IDs:                     ids.NewGenerator(),
-		AuthRateLimitMax:        cfg.AuthRateLimitMax,
-		AuthRateLimitWindow:     cfg.AuthRateLimitWindow,
-		BootstrapTokenExpiresIn: cfg.BootstrapTokenExpiry,
+		UnitOfWork:          identitypostgres.NewUnitOfWork(db, appClock),
+		Tokens:              token.NewBootstrapValidator(cfg.BootstrapEnrollmentToken, cfg.BootstrapTokenExpiresAt),
+		RateLimiter:         ratelimit.NewBuckets(db, appClock),
+		Passkeys:            passkeys,
+		Clock:               appClock,
+		IDs:                 ids.NewGenerator(),
+		AuthRateLimitMax:    cfg.AuthRateLimitMax,
+		AuthRateLimitWindow: cfg.AuthRateLimitWindow,
 	}
 	var outboxControl handlers.OutboxControl
 	var bootstrapReset handlers.BootstrapResetControl
