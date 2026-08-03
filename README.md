@@ -56,6 +56,38 @@ make down
 Migrations are applied only by `cmd/migrate`. Web and worker validate schema
 compatibility and refuse to start on mismatch.
 
+## Inspecting the database
+
+With `make up`, Compose Postgres is published on host port **5433**
+(`treelot` / `treelot` / database `treelot`). Do not point inspection tools at
+`treelot_test`; that database is reset by unit and component tests.
+
+```sh
+psql "postgres://treelot:treelot@127.0.0.1:5433/treelot?sslmode=disable"
+# or
+docker compose exec -T postgres psql -U treelot -d treelot
+```
+
+Useful starter queries after first-Admin bootstrap:
+
+```sql
+\dt
+SELECT * FROM bootstrap_state;
+SELECT id, person_id FROM identities;
+SELECT identity_id, email, email_normalized, active, verified_at IS NOT NULL AS verified
+  FROM identity_emails;
+SELECT identity_id, role FROM identity_roles;
+SELECT id, first_name, last_name, preferred_display_name FROM people;
+SELECT id, identity_id, attestation_type, sign_count FROM passkey_credentials;
+SELECT id, identity_id, expires_at, revoked_at, authenticated_at
+  FROM sessions
+ ORDER BY id;
+```
+
+Exact DDL lives in versioned SQL under [`migrations/`](migrations/). Conceptual
+persistence and WebAuthn behavior are described in
+[`docs/architecture.md`](docs/architecture.md).
+
 ## Acceptance tests
 
 Foundation acceptance specs live under `acceptance/` (ATDD four-layer layout) and
