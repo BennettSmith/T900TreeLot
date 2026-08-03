@@ -1,6 +1,7 @@
 package scripts
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -210,6 +211,59 @@ func TestMakefileExposesDoctorAndAcceptancePreflight(t *testing.T) {
 			t.Fatalf("Makefile does not expose %s", target)
 		}
 	}
+}
+
+func TestComposeRequiresOneBootstrapExpiryForEveryApplicationService(t *testing.T) {
+	command := exec.Command(
+		"docker", "compose", "-f", "../docker-compose.yml",
+		"--profile", "dev", "--profile", "acceptance",
+		"config", "--format", "json",
+	)
+	command.Env = environmentWith("BOOTSTRAP_TOKEN_EXPIRES_AT", "")
+	output, err := command.CombinedOutput()
+	if err == nil {
+		t.Fatal("Compose config succeeded without BOOTSTRAP_TOKEN_EXPIRES_AT")
+	}
+	if !strings.Contains(string(output), "BOOTSTRAP_TOKEN_EXPIRES_AT") {
+		t.Fatalf("output = %q, want BOOTSTRAP_TOKEN_EXPIRES_AT diagnostic", output)
+	}
+
+	const expiry = "2030-01-02T03:04:05Z"
+	command = exec.Command(
+		"docker", "compose", "-f", "../docker-compose.yml",
+		"--profile", "dev", "--profile", "acceptance",
+		"config", "--format", "json",
+	)
+	command.Env = environmentWith("BOOTSTRAP_TOKEN_EXPIRES_AT", expiry)
+	output, err = command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Compose config failed with valid expiry: %v\n%s", err, output)
+	}
+
+	var rendered struct {
+		Services map[string]struct {
+			Environment map[string]string `json:"environment"`
+		} `json:"services"`
+	}
+	if err := json.Unmarshal(output, &rendered); err != nil {
+		t.Fatalf("decode Compose config: %v", err)
+	}
+	for _, service := range []string{"migrate", "web", "worker", "acceptance-web", "acceptance-worker"} {
+		if got := rendered.Services[service].Environment["BOOTSTRAP_TOKEN_EXPIRES_AT"]; got != expiry {
+			t.Errorf("%s BOOTSTRAP_TOKEN_EXPIRES_AT = %q, want %q", service, got, expiry)
+		}
+	}
+}
+
+func environmentWith(name, value string) []string {
+	prefix := name + "="
+	environment := make([]string, 0, len(os.Environ())+1)
+	for _, entry := range os.Environ() {
+		if !strings.HasPrefix(entry, prefix) {
+			environment = append(environment, entry)
+		}
+	}
+	return append(environment, prefix+value)
 }
 
 func writeExecutable(t *testing.T, directory, name, contents string) {

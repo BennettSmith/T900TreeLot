@@ -19,6 +19,17 @@ PRODUCTION_BASE_URL="${ACCEPTANCE_PRODUCTION_BASE_URL:-http://127.0.0.1:8081}"
 STUB_BASE_URL="${ACCEPTANCE_STUB_BASE_URL:-http://127.0.0.1:8090}"
 TEST_CONTROL_KEY="${ACCEPTANCE_TEST_CONTROL_KEY:-acceptance-test-control-key}"
 
+default_bootstrap_expiry() {
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    date -u -v+24H '+%Y-%m-%dT%H:%M:%SZ'
+  else
+    date -u -d '+24 hours' '+%Y-%m-%dT%H:%M:%SZ'
+  fi
+}
+
+BOOTSTRAP_TOKEN_EXPIRES_AT="${ACCEPTANCE_BOOTSTRAP_TOKEN_EXPIRES_AT:-$(default_bootstrap_expiry)}"
+export BOOTSTRAP_TOKEN_EXPIRES_AT
+
 cleanup() {
   if [[ -z "${ACCEPTANCE_KEEP:-}" ]]; then
     $COMPOSE --profile acceptance down >/dev/null 2>&1 || true
@@ -73,7 +84,7 @@ common_env=(
   -e TREE_LOT_TIME_ZONE=America/Los_Angeles
   -e SESSION_KEY=0123456789abcdef0123456789abcdef
   -e BOOTSTRAP_ENROLLMENT_TOKEN=acceptance-bootstrap-token-0001
-  -e BOOTSTRAP_TOKEN_EXPIRES_AT=2099-01-01T00:00:00Z
+  -e BOOTSTRAP_TOKEN_EXPIRES_AT="$BOOTSTRAP_TOKEN_EXPIRES_AT"
   -e AUTH_RATE_LIMIT_MAX=20
   -e GROUPS_IO_ENABLED=false
 )

@@ -10,7 +10,8 @@ and [`docs/user-stories/roadmap.md`](docs/user-stories/roadmap.md).
 - Node.js 22+ (Tailwind asset build only)
 - Docker and Docker Compose (local stack, acceptance, and local `make ci` fallback)
 
-Copy [`.env.example`](.env.example) to `.env` for local overrides.
+Copy [`.env.example`](.env.example) to `.env` for local overrides, then set
+`BOOTSTRAP_TOKEN_EXPIRES_AT` to a fixed, future RFC3339 instant.
 
 Install the tracked Git hooks once per clone:
 
@@ -80,6 +81,21 @@ make down
 
 Migrations are applied only by `cmd/migrate`. Web and worker validate schema
 compatibility and refuse to start on mismatch.
+
+The local `migrate`, `web`, and `worker` Compose services all receive the same
+required `BOOTSTRAP_TOKEN_EXPIRES_AT` value from `.env` or the shell. Compose
+stops with an actionable error when it is absent, and application configuration
+rejects a value that is not RFC3339.
+
+`make acceptance` generates one deadline 24 hours in the future and supplies it
+to its migrate, web, worker, production-mode web, and Compose startup paths. Set
+`ACCEPTANCE_BOOTSTRAP_TOKEN_EXPIRES_AT` only when a deterministic acceptance
+deadline is needed.
+
+Production deployment must inject its own absolute
+`BOOTSTRAP_TOKEN_EXPIRES_AT`; neither Compose nor the application supplies a
+production fallback. Choose the shortest operational window that permits the
+designated first Admin to enroll. Restarting a process does not extend it.
 
 ## Inspecting the database
 
