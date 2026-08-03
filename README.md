@@ -12,6 +12,15 @@ and [`docs/user-stories/roadmap.md`](docs/user-stories/roadmap.md).
 
 Copy [`.env.example`](.env.example) to `.env` for local overrides.
 
+Install the tracked Git hooks once per clone:
+
+```sh
+make install-hooks
+```
+
+The pre-push hook checks every commit being introduced to the remote. CI runs
+the same check against the exact pull-request or push range.
+
 `make ci` / `make test` need a disposable Postgres database whose name ends with
 `_test` (default `treelot_test`). Helpers drop foundation tables there, so the
 development `treelot` database is rejected.
@@ -32,7 +41,8 @@ can supply `:5433`.
 
 ```sh
 make help          # list targets
-make doctor        # diagnose local tools, Docker, networking guidance, and ports
+make doctor        # diagnose local tools, Git hooks, Docker, networking, and ports
+make install-hooks # activate the tracked pre-push checks for this clone
 make traceability  # validate requirement revisions, evidence, and generated report
 make ci            # fast checks: traceability, assets, format, vet, coverage
 make test          # unit/component tests
@@ -44,6 +54,21 @@ make logs          # tail postgres/web/worker
 make ps            # Compose status
 make showcase      # design-system gallery (development)
 ```
+
+## Commit messages
+
+Every commit subject must use this Conventional Commits form:
+
+```text
+<type>[optional scope][!]: <description>
+```
+
+Allowed types are `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`,
+`refactor`, `revert`, `style`, and `test`. Scopes, when present, use small ASCII
+letters, digits, `.`, `_`, `/`, or `-`. The description must be non-empty.
+Examples include `feat: add household invitations`,
+`fix(identity): reject expired tokens`, and
+`refactor!: remove the legacy API`.
 
 ## Local Docker flow
 

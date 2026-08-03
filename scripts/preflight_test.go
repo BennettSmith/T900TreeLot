@@ -1,6 +1,7 @@
 package scripts
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -106,6 +107,7 @@ case "$*" in
 esac
 exit 0
 `)
+	writeGitStub(t, bin, ".githooks")
 
 	command := exec.Command("bash", "preflight.sh", "doctor")
 	command.Env = append(os.Environ(),
@@ -118,6 +120,66 @@ exit 0
 	}
 	if !strings.Contains(string(output), "project PostgreSQL") {
 		t.Fatalf("output = %q, want project PostgreSQL ownership", output)
+	}
+	if !strings.Contains(string(output), "Tracked Git hooks are installed") {
+		t.Fatalf("output = %q, want installed hooks status", output)
+	}
+}
+
+func TestDoctorAllowsProjectWebOnPort8080(t *testing.T) {
+	bin := t.TempDir()
+	writeExecutable(t, bin, "go", "#!/bin/sh\nexit 0\n")
+	writeExecutable(t, bin, "node", "#!/bin/sh\nexit 0\n")
+	writeExecutable(t, bin, "curl", "#!/bin/sh\nexit 0\n")
+	writeExecutable(t, bin, "lsof", `#!/bin/sh
+case "$*" in
+  *8080*) echo "com.docker 1234 user 10u IPv4 TCP *:8080 (LISTEN)"; exit 0 ;;
+  *) exit 1 ;;
+esac
+`)
+	writeExecutable(t, bin, "docker", `#!/bin/sh
+case "$*" in
+  "compose ps -q web") echo "project-web" ;;
+  "port project-web 8080/tcp") echo "0.0.0.0:8080" ;;
+esac
+exit 0
+`)
+	writeGitStub(t, bin, ".githooks")
+
+	command := exec.Command("bash", "preflight.sh", "doctor")
+	command.Env = append(os.Environ(),
+		"PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"),
+		"PREFLIGHT_OS=Darwin",
+	)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("doctor failed for project web: %v\n%s", err, output)
+	}
+	if !strings.Contains(string(output), "Port 8080 is in use by project web") {
+		t.Fatalf("output = %q, want project web ownership", output)
+	}
+}
+
+func TestDoctorReportsMissingTrackedGitHooks(t *testing.T) {
+	bin := t.TempDir()
+	writeExecutable(t, bin, "go", "#!/bin/sh\nexit 0\n")
+	writeExecutable(t, bin, "node", "#!/bin/sh\nexit 0\n")
+	writeExecutable(t, bin, "curl", "#!/bin/sh\nexit 0\n")
+	writeExecutable(t, bin, "docker", "#!/bin/sh\nexit 0\n")
+	writeExecutable(t, bin, "lsof", "#!/bin/sh\nexit 1\n")
+	writeGitStub(t, bin, "")
+
+	command := exec.Command("bash", "preflight.sh", "doctor")
+	command.Env = append(os.Environ(),
+		"PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"),
+		"PREFLIGHT_OS=Darwin",
+	)
+	output, err := command.CombinedOutput()
+	if err == nil {
+		t.Fatal("doctor passed without tracked Git hooks installed")
+	}
+	if !strings.Contains(string(output), "run make install-hooks") {
+		t.Fatalf("output = %q, want hook installation guidance", output)
 	}
 }
 
@@ -156,4 +218,23 @@ func writeExecutable(t *testing.T, directory, name, contents string) {
 	if err := os.WriteFile(path, []byte(contents), 0o755); err != nil {
 		t.Fatalf("write %s: %v", name, err)
 	}
+}
+
+func writeGitStub(t *testing.T, directory, hooksPath string) {
+	t.Helper()
+	root, err := filepath.Abs("..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	contents := fmt.Sprintf(`#!/bin/sh
+case "$*" in
+  "config --local --get core.hooksPath")
+    printf '%%s\n' %q
+    ;;
+  "rev-parse --show-toplevel")
+    printf '%%s\n' %q
+    ;;
+esac
+`, hooksPath, root)
+	writeExecutable(t, directory, "git", contents)
 }
