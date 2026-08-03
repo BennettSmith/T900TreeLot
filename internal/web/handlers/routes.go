@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/troop900/treelot/internal/identity/application"
 	"github.com/troop900/treelot/internal/platform/clock"
 	"github.com/troop900/treelot/internal/web/middleware"
 	"github.com/troop900/treelot/internal/web/views"
@@ -32,6 +33,24 @@ type Options struct {
 	Clock              clock.Clock
 	ControllableClock  *clock.Controllable
 	Outbox             OutboxControl
+	Bootstrap          BootstrapService
+	Accounts           AccountReader
+	BootstrapReset     BootstrapResetControl
+}
+
+type BootstrapService interface {
+	StartBootstrap(context.Context, application.StartBootstrapCommand) (application.StartBootstrapResult, error)
+	ClaimBootstrapProfile(context.Context, application.ClaimBootstrapProfileCommand) (application.PendingEnrollment, error)
+	BeginPasskeyRegistration(context.Context, application.BeginPasskeyRegistrationCommand) (application.RegistrationOptions, error)
+	FinishBootstrap(context.Context, application.FinishBootstrapCommand) (application.BootstrapResult, error)
+}
+
+type AccountReader interface {
+	FindAccountProfile(context.Context, string) (application.AccountProfile, error)
+}
+
+type BootstrapResetControl interface {
+	ResetBootstrap(context.Context) error
 }
 
 type Server struct {
@@ -42,10 +61,16 @@ type Server struct {
 	controllableClock *clock.Controllable
 	clock             clock.Clock
 	outbox            OutboxControl
+	bootstrap         BootstrapService
+	accounts          AccountReader
+	bootstrapReset    BootstrapResetControl
+	secureCookies     bool
 }
 
 type renderer interface {
 	Home(context.Context, io.Writer, views.Home) error
+	Bootstrap(context.Context, io.Writer, views.BootstrapPage) error
+	Account(context.Context, io.Writer, views.AccountPage) error
 	ComponentGallery(context.Context, io.Writer, views.Gallery) error
 	ParityResult(context.Context, io.Writer, views.Gallery) error
 }
@@ -72,6 +97,10 @@ func New(viewRenderer renderer, options Options) http.Handler {
 		controllableClock: options.ControllableClock,
 		clock:             clk,
 		outbox:            options.Outbox,
+		bootstrap:         options.Bootstrap,
+		accounts:          options.Accounts,
+		bootstrapReset:    options.BootstrapReset,
+		secureCookies:     options.SecureCookies,
 	}
 
 	mux := http.NewServeMux()
@@ -81,6 +110,12 @@ func New(viewRenderer renderer, options Options) http.Handler {
 
 	browser := http.NewServeMux()
 	browser.HandleFunc("GET /{$}", server.home)
+	browser.HandleFunc("GET /bootstrap", server.bootstrapEntry)
+	browser.HandleFunc("POST /bootstrap/start", server.bootstrapStart)
+	browser.HandleFunc("POST /bootstrap/claim", server.bootstrapClaim)
+	browser.HandleFunc("POST /bootstrap/passkey/begin", server.bootstrapPasskeyBegin)
+	browser.HandleFunc("POST /bootstrap/passkey/finish", server.bootstrapPasskeyFinish)
+	browser.HandleFunc("GET /account", server.account)
 	browser.HandleFunc("POST /smoke", server.smoke)
 	if options.Development {
 		browser.HandleFunc("GET /_dev/components", server.gallery)
@@ -91,6 +126,7 @@ func New(viewRenderer renderer, options Options) http.Handler {
 		mux.HandleFunc("GET /_test/clock", server.getClock)
 		mux.HandleFunc("POST /_test/outbox", server.enqueueOutbox)
 		mux.HandleFunc("GET /_test/outbox", server.getOutbox)
+		mux.HandleFunc("POST /_test/bootstrap/reset", server.resetBootstrap)
 	}
 
 	var browserHandler http.Handler = browser

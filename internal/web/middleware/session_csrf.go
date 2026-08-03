@@ -2,9 +2,13 @@
 package middleware
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/troop900/treelot/internal/platform/session"
@@ -42,15 +46,7 @@ func SessionCSRF(store Sessions, secureCookies bool, next http.Handler) http.Han
 			return
 		}
 		if rawToken != "" {
-			http.SetCookie(response, &http.Cookie{
-				Name:     SessionCookieName,
-				Value:    rawToken,
-				Path:     "/",
-				HttpOnly: true,
-				SameSite: http.SameSiteLaxMode,
-				Secure:   secureCookies,
-				Expires:  current.ExpiresAt,
-			})
+			SetSessionCookie(response, rawToken, current.ExpiresAt, secureCookies)
 		}
 
 		if isUnsafe(request.Method) && !csrfValid(request, current) {
@@ -60,6 +56,19 @@ func SessionCSRF(store Sessions, secureCookies bool, next http.Handler) http.Han
 
 		ctx := context.WithValue(request.Context(), contextKey{}, current)
 		next.ServeHTTP(response, request.WithContext(ctx))
+	})
+}
+
+// SetSessionCookie writes the hardened browser session cookie.
+func SetSessionCookie(response http.ResponseWriter, rawToken string, expiresAt time.Time, secure bool) {
+	http.SetCookie(response, &http.Cookie{
+		Name:     SessionCookieName,
+		Value:    rawToken,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   secure,
+		Expires:  expiresAt,
 	})
 }
 
@@ -95,6 +104,22 @@ func csrfValid(request *http.Request, current *session.Session) bool {
 	if token == "" {
 		_ = request.ParseForm()
 		token = request.FormValue(CSRFFormField)
+	}
+	if token == "" && request.Body != nil && strings.HasPrefix(strings.ToLower(request.Header.Get("Content-Type")), "application/json") {
+		body, err := io.ReadAll(request.Body)
+		if err == nil {
+			request.Body = io.NopCloser(bytes.NewReader(body))
+			var payload struct {
+				CSRFToken string `json:"csrf_token"`
+				CSRF      string `json:"csrf"`
+			}
+			if json.Unmarshal(body, &payload) == nil {
+				token = payload.CSRFToken
+				if token == "" {
+					token = payload.CSRF
+				}
+			}
+		}
 	}
 	return token != "" && token == current.CSRFToken
 }

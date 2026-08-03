@@ -17,6 +17,15 @@ type memoryOutbox struct {
 	messages map[string]outbox.Message
 }
 
+type memoryBootstrapReset struct {
+	called bool
+}
+
+func (m *memoryBootstrapReset) ResetBootstrap(context.Context) error {
+	m.called = true
+	return nil
+}
+
 func (m *memoryOutbox) Enqueue(_ context.Context, idempotencyKey, channel string) error {
 	if m.messages == nil {
 		m.messages = map[string]outbox.Message{}
@@ -115,5 +124,44 @@ func TestOutboxTestControlRequiresKeyAndEnqueues(t *testing.T) {
 	}, nil)
 	if defaultChannel.Code != http.StatusCreated {
 		t.Fatalf("default channel status = %d", defaultChannel.Code)
+	}
+}
+
+func TestBootstrapResetTestControlRequiresKeyAndResets(t *testing.T) {
+	t.Parallel()
+
+	reset := &memoryBootstrapReset{}
+	server := newServer(t, handlers.Options{
+		TestControlEnabled: true,
+		TestControlKey:     "secret",
+		Sessions:           session.NewMemoryStore(clock.System(), time.Hour),
+		BootstrapReset:     reset,
+	})
+
+	unauthorized := request(t, server, http.MethodPost, "/_test/bootstrap/reset", "", nil, nil)
+	if unauthorized.Code != http.StatusForbidden {
+		t.Fatalf("unauthorized status = %d", unauthorized.Code)
+	}
+
+	response := request(t, server, http.MethodPost, "/_test/bootstrap/reset", "", map[string]string{
+		"X-Test-Control-Key": "secret",
+	}, nil)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d body=%s", response.Code, response.Body.String())
+	}
+	if !reset.called {
+		t.Fatal("reset port was not called")
+	}
+
+	unavailable := newServer(t, handlers.Options{
+		TestControlEnabled: true,
+		TestControlKey:     "secret",
+		Sessions:           session.NewMemoryStore(clock.System(), time.Hour),
+	})
+	missingPort := request(t, unavailable, http.MethodPost, "/_test/bootstrap/reset", "", map[string]string{
+		"X-Test-Control-Key": "secret",
+	}, nil)
+	if missingPort.Code != http.StatusServiceUnavailable {
+		t.Fatalf("missing reset port status = %d", missingPort.Code)
 	}
 }

@@ -7,17 +7,26 @@ DOCKER ?= $(shell if docker info >/dev/null 2>&1; then echo docker; else echo su
 COMPOSE = $(DOCKER) compose
 IMAGE ?= treelot:local
 
-.PHONY: help doctor acceptance-preflight assets assets-watch assets-check showcase format format-check \
-	lint test-db test coverage traceability ci image up down migrate logs ps acceptance
+.PHONY: help doctor acceptance-preflight install-hooks commit-messages assets assets-watch assets-check \
+	showcase format format-check lint test-db test coverage traceability ci image up down migrate logs ps acceptance
 
 help: ## List available targets and explain when to use them.
 	@awk 'BEGIN {FS = ":.*## "; printf "Usage: make <target>\n\nTargets:\n"} /^[[:alnum:]_.-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-doctor: ## Diagnose local tools, Docker, networking guidance, and required ports.
+doctor: ## Diagnose local tools, Git hooks, Docker, networking, and required ports.
 	@bash ./scripts/preflight.sh doctor
 
 acceptance-preflight: ## Check acceptance prerequisites and required ports without cleanup.
 	@bash ./scripts/preflight.sh acceptance
+
+install-hooks: ## Configure Git to use the repository's tracked local hooks.
+	@git config --local core.hooksPath .githooks
+	@echo "Git hooks installed from .githooks."
+
+commit-messages: ## Validate commit subjects from BASE_SHA through HEAD_SHA.
+	@test -n "$(BASE_SHA)" || { echo "BASE_SHA is required." >&2; exit 2; }
+	@test -n "$(HEAD_SHA)" || { echo "HEAD_SHA is required." >&2; exit 2; }
+	@bash ./scripts/check-commit-messages.sh "$(BASE_SHA)" "$(HEAD_SHA)"
 
 $(NODE_MODULES_STAMP): package.json package-lock.json
 	@npm ci

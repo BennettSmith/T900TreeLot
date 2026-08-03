@@ -258,6 +258,7 @@ Enabled Groups.io network calls, and any future email-provider calls, must not r
 PostgreSQL stores:
 
 - Identities, claimed email identifiers, email verification state, passkey public-key credential records, roles, and sessions
+- Bootstrap closure state, expiring WebAuthn ceremony challenges with their trusted enrollment identity/profile claims, and authentication rate-limit buckets
 - Invitations, recovery enrollment tokens, and household link tokens
 - Person profiles, households, memberships, and family units
 - Seasons, templates, shifts, assignments, and assignment ownership
@@ -269,6 +270,8 @@ PostgreSQL stores:
 - Audit entries, privacy requests, and retention state
 
 Relational storage is the correct fit because the system has strong relationships, uniqueness rules, multi-record transactions, reporting joins, and concurrency-sensitive capacity constraints.
+
+Exact DDL is versioned under `migrations/`. Do not maintain a parallel hand-written schema catalog. As of the identity bootstrap increment, the live tables include foundation primitives (`audit_events`, `outbox_messages`, `background_jobs`, `sessions`) plus identity enrollment tables such as `people`, `identities`, `identity_emails`, `identity_roles`, `passkey_credentials`, `webauthn_ceremonies`, `bootstrap_state`, and `rate_limit_buckets`. Sessions may be anonymous for CSRF or identity-bound after successful enrollment or sign-in.
 
 All timestamps are stored as UTC instants. Season dates, shift entry, schedule display, reminder calculation, and attendance-window presentation use one deployment-configured IANA time zone for the tree-lot location. The required `TREE_LOT_TIME_ZONE` environment variable contains an IANA identifier such as `America/Los_Angeles`; startup fails if it is missing or invalid. Domain code receives that zone and an injected clock explicitly; it must not depend on the host machine's local time. Daylight-saving transitions are resolved when local shift times are converted to instants, and the original local date, local time, and zone remain available for display and audit.
 
@@ -290,7 +293,7 @@ Shift signup must use a transaction with row locking or a conditional update so 
 
 Browser sessions use opaque, cryptographically random tokens stored in `Secure`, `HttpOnly`, and `SameSite=Lax` cookies. PostgreSQL stores only a cryptographic hash of each session token, along with identity, creation, expiry, last-use, and revocation metadata.
 
-Invitation, household-link, recovery, bootstrap, and idempotency tokens are also random, expire, are single-use where required, and are stored hashed when the clear value does not need to be recovered.
+Invitation, household-link, recovery, bootstrap, and idempotency tokens are also random, expire, are single-use where required, and are stored hashed when the clear value does not need to be recovered. Bootstrap token expiry is configured as an absolute RFC 3339 instant so validator reconstruction or a process restart cannot extend the deadline.
 
 Account emails are normalized before comparison and stored for account identification and later notification/recovery use. Maintain uniqueness with a normalized unique index or keyed blind index as appropriate. Passkey private keys never leave the authenticator; PostgreSQL stores only public-key credential material, credential IDs, sign-count/metadata, and the owning identity. The system does not store phone numbers for authentication or operational notification delivery.
 
@@ -342,6 +345,7 @@ The archive generator and restore command are versioned with the application and
 4. The Identity application service begins a WebAuthn registration ceremony and returns public options to the browser.
 5. The browser completes passkey creation; the server verifies the attestation/registration response and stores the public credential on the authenticated identity.
 6. The email remains unverified. The server creates a local browser session and consumes the invitation or bootstrap token.
+7. For the JavaScript passkey finish path, the server returns JSON such as `{"redirectTo":"/account"}` after setting the rotated session cookie. Browser `fetch` clients must follow that payload rather than relying on opaque HTTP redirects.
 
 **Sign-in:**
 
@@ -351,7 +355,7 @@ The archive generator and restore command are versioned with the application and
 4. On approval, the server resolves the existing identity and creates a local browser session.
 5. Security-sensitive actions require a recent passkey step-up timestamp.
 
-The application never learns passkey private keys. Bootstrap uses a configured one-time enrollment token secret. The bootstrap path succeeds only when no administrator exists and permanently closes after the first administrator is created.
+The application never learns passkey private keys. Bootstrap uses a configured one-time enrollment token secret. The bootstrap path succeeds only when no administrator exists and permanently closes after the first administrator is created. Ordinary HTML form submissions may still use Post/Redirect/Get; the JSON `redirectTo` contract is specifically for the WebAuthn finish fetch path.
 
 ### 7.2 Authorization
 

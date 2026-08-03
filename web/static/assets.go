@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-//go:embed app.css
+//go:embed app.css passkeys.js
 var files embed.FS
 
 func Handler() http.Handler {

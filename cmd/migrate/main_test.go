@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"log/slog"
 	"os"
 	"testing"
@@ -16,7 +15,7 @@ func TestRunRequiresUpArgument(t *testing.T) {
 }
 
 func TestRunAppliesMigrations(t *testing.T) {
-	db := testdb.OpenMigrated(t)
+	_ = testdb.OpenEmpty(t)
 	url := os.Getenv("TEST_DATABASE_URL")
 	if url == "" {
 		url = "postgres://treelot:treelot@localhost:5432/treelot_test?sslmode=disable"
@@ -27,10 +26,8 @@ func TestRunAppliesMigrations(t *testing.T) {
 	t.Setenv("TREE_LOT_TIME_ZONE", "UTC")
 	t.Setenv("PUBLIC_BASE_URL", "http://localhost:8080")
 	t.Setenv("SESSION_KEY", "0123456789abcdef0123456789abcdef")
-
-	_, _ = db.Exec(context.Background(), `
-		DROP TABLE IF EXISTS sessions, background_jobs, outbox_messages, audit_events, schema_migrations CASCADE;
-	`)
+	t.Setenv("BOOTSTRAP_ENROLLMENT_TOKEN", "bootstrap-enrollment-token-0001")
+	t.Setenv("BOOTSTRAP_TOKEN_EXPIRES_AT", "2026-08-06T16:00:00Z")
 	if status := run(slog.New(slog.DiscardHandler), []string{"up"}); status != 0 {
 		t.Fatalf("status = %d, want 0", status)
 	}

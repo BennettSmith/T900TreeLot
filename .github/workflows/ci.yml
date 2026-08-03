@@ -39,6 +39,20 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check pull request commit messages
+        if: github.event_name == 'pull_request'
+        run: >-
+          make commit-messages
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+
+      - name: Check pushed commit messages
+        if: github.event_name == 'push'
+        run: >-
+          make commit-messages
+          BASE_SHA="${{ github.event.before }}"
+          HEAD_SHA="${{ github.event.after }}"
+
       - name: Set up Go
         uses: actions/setup-go@v6
         with:

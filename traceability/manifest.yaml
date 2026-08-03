@@ -678,7 +678,8 @@ stories:
         change: Initial user-story traceability baseline
       - revision: 2
         requirements_status: accepted
-        delivery_status: planned
+        delivery_status: verified
+        implementation_pr: 10
         source_use_cases: [UC-0@r2]
         change: Removed household-invitation and privileged-role acceptance from bootstrap; deferred those outcomes to US-005 and US-060
   US-002:
@@ -996,7 +997,7 @@ increments:
     delivery_status: verified
     implementation_pr: 4
   INC-02:
-    delivery_status: planned
+    delivery_status: in_progress
   INC-03:
     delivery_status: planned
   INC-04:

@@ -16,6 +16,11 @@ if ! $DOCKER info >/dev/null 2>&1; then
 fi
 COMPOSE="$DOCKER compose"
 
+# Compose interpolates the shared application environment even when only the
+# database service is selected. This expired sentinel permits that parse; this
+# helper never starts an application service.
+export BOOTSTRAP_TOKEN_EXPIRES_AT="${BOOTSTRAP_TOKEN_EXPIRES_AT:-1970-01-01T00:00:00Z}"
+
 ping_db() {
   local url="$1"
   go run ./scripts/dbping "$url" >/dev/null 2>&1
