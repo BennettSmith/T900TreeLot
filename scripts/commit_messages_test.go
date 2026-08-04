@@ -63,6 +63,10 @@ func TestCommitMessageGateIsWiredIntoPrePushAndCI(t *testing.T) {
 	assertFileContains(t, "../.github/workflows/ci.yml", "github.event.before")
 }
 
+func TestAcceptanceWorkflowUsesNode24BuildxAction(t *testing.T) {
+	assertFileContains(t, "../.github/workflows/ci.yml", "docker/setup-buildx-action@v4")
+}
+
 func newCommitMessageRepository(t *testing.T) (string, string) {
 	t.Helper()
 	repository := t.TempDir()
