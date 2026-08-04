@@ -223,6 +223,13 @@ func TestIdentityFixtureRoleRequiresTestControlKey(t *testing.T) {
 	if fixture.command.Email != "manager@example.org" || fixture.command.Role != "family_manager" {
 		t.Fatalf("command = %#v", fixture.command)
 	}
+	revoked := request(t, server, http.MethodPost, "/_test/identity/revoke", `{"email":"manager@example.org"}`, map[string]string{
+		"Content-Type":       "application/json",
+		"X-Test-Control-Key": "secret",
+	}, nil)
+	if revoked.Code != http.StatusOK || fixture.revokedEmail != "manager@example.org" {
+		t.Fatalf("revoke status=%d email=%q body=%q", revoked.Code, fixture.revokedEmail, revoked.Body.String())
+	}
 }
 
 func TestParityRejectsMalformedFormAndUsesDefaultMessage(t *testing.T) {
@@ -339,7 +346,8 @@ func request(t *testing.T, handler http.Handler, method, target, body string, he
 }
 
 type fakeIdentityFixture struct {
-	command application.SetFixtureRoleCommand
+	command      application.SetFixtureRoleCommand
+	revokedEmail string
 }
 
 func (f *fakeIdentityFixture) SetRole(_ context.Context, command application.SetFixtureRoleCommand) error {
@@ -347,6 +355,7 @@ func (f *fakeIdentityFixture) SetRole(_ context.Context, command application.Set
 	return nil
 }
 
-func (*fakeIdentityFixture) RevokeSessions(context.Context, string) error {
+func (f *fakeIdentityFixture) RevokeSessions(_ context.Context, email string) error {
+	f.revokedEmail = email
 	return nil
 }

@@ -666,6 +666,15 @@ type SignIn struct{ lot *Lot }
 
 // FamilyManagerUsesDiscoverablePasskey proves usernameless role-aware sign-in.
 func (s *SignIn) FamilyManagerUsesDiscoverablePasskey(token, email string) {
+	s.signInWithRole(token, email, "Family Manager", "family_manager", "/family", "Family dashboard", "")
+}
+
+// YoungAdultScoutUsesPersonalSchedule proves self-only scout landing.
+func (s *SignIn) YoungAdultScoutUsesPersonalSchedule(token, email string) {
+	s.signInWithRole(token, email, "Young Adult Scout", "young_adult_scout", "/scout/schedule", "Personal schedule", "household")
+}
+
+func (s *SignIn) signInWithRole(token, email, displayName, role, redirect, heading, forbidden string) *web.Client {
 	s.lot.t.Helper()
 	bootstrap := s.lot.Bootstrap()
 	bootstrap.reset()
@@ -674,8 +683,8 @@ func (s *SignIn) FamilyManagerUsesDiscoverablePasskey(token, email string) {
 		ID:     "treelot.test",
 		Origin: "https://treelot.test",
 	})
-	bootstrap.completeEnrollmentWithPasskey(s.lot.web, token, email, "Family Manager", passkey)
-	s.setRole(email, "family_manager")
+	bootstrap.completeEnrollmentWithPasskey(s.lot.web, token, email, displayName, passkey)
+	s.setRole(email, role)
 
 	client, err := web.NewClient(s.lot.config.BaseURL)
 	if err != nil {
@@ -712,12 +721,171 @@ func (s *SignIn) FamilyManagerUsesDiscoverablePasskey(token, email string) {
 	if err := json.Unmarshal([]byte(body), &finish); err != nil {
 		s.lot.t.Fatalf("decode sign-in finish: %v body=%q", err, body)
 	}
-	if finish.RedirectTo != "/family" {
-		s.lot.t.Fatalf("family manager redirectTo=%q, want /family", finish.RedirectTo)
+	if finish.RedirectTo != redirect {
+		s.lot.t.Fatalf("redirectTo=%q, want %q", finish.RedirectTo, redirect)
 	}
 	status, body, err = client.Get(finish.RedirectTo)
-	if err != nil || status != http.StatusOK || !strings.Contains(body, "Family dashboard") {
-		s.lot.t.Fatalf("family dashboard status=%d err=%v body=%q", status, err, body)
+	if err != nil || status != http.StatusOK || !strings.Contains(body, heading) {
+		s.lot.t.Fatalf("role landing status=%d err=%v body=%q", status, err, body)
+	}
+	if forbidden != "" && strings.Contains(strings.ToLower(body), forbidden) {
+		s.lot.t.Fatalf("role landing exposed forbidden %q context: %q", forbidden, body)
+	}
+	return client
+}
+
+// EmailHintDoesNotRevealAccount compares observable known and unknown hint outcomes.
+func (s *SignIn) EmailHintDoesNotRevealAccount(token, knownEmail, unknownEmail string) {
+	s.lot.t.Helper()
+	bootstrap := s.lot.Bootstrap()
+	bootstrap.reset()
+	bootstrap.completeEnrollment(s.lot.web, token, knownEmail, "Hinted Manager")
+	s.setRole(knownEmail, "family_manager")
+
+	for label, email := range map[string]string{"known": knownEmail, "unknown": unknownEmail} {
+		client, err := web.NewClient(s.lot.config.BaseURL)
+		if err != nil {
+			s.lot.t.Fatal(err)
+		}
+		status, body, err := client.Get("/sign-in")
+		if err != nil || status != http.StatusOK {
+			s.lot.t.Fatalf("%s hint entry status=%d err=%v", label, status, err)
+		}
+		csrf, err := web.CSRFToken(body)
+		if err != nil {
+			s.lot.t.Fatal(err)
+		}
+		payload, err := json.Marshal(map[string]string{"email": email})
+		if err != nil {
+			s.lot.t.Fatal(err)
+		}
+		status, body, _, err = client.PostJSON("/sign-in/passkey/begin", string(payload), map[string]string{"X-CSRF-Token": csrf})
+		if err != nil || status != http.StatusOK {
+			s.lot.t.Fatalf("%s hint status=%d err=%v body=%q", label, status, err, body)
+		}
+		if _, err := webauthndriver.ParseBeginPayload(body); err != nil {
+			s.lot.t.Fatalf("%s hint payload: %v", label, err)
+		}
+		lowerBody := strings.ToLower(body)
+		if strings.Contains(lowerBody, strings.ToLower(knownEmail)) ||
+			strings.Contains(lowerBody, strings.ToLower(unknownEmail)) ||
+			strings.Contains(lowerBody, "registered") ||
+			strings.Contains(lowerBody, "unknown account") {
+			s.lot.t.Fatalf("%s hint disclosed account existence: %q", label, body)
+		}
+	}
+}
+
+// RateLimitsEmailHints proves repeated account-hint requests are bounded.
+func (s *SignIn) RateLimitsEmailHints(email string, maxAttempts int) {
+	s.lot.t.Helper()
+	s.lot.Bootstrap().reset()
+	client, err := web.NewClient(s.lot.config.BaseURL)
+	if err != nil {
+		s.lot.t.Fatal(err)
+	}
+	status, body, err := client.Get("/sign-in")
+	if err != nil || status != http.StatusOK {
+		s.lot.t.Fatalf("rate limit entry status=%d err=%v", status, err)
+	}
+	csrf, err := web.CSRFToken(body)
+	if err != nil {
+		s.lot.t.Fatal(err)
+	}
+	payload, err := json.Marshal(map[string]string{"email": email})
+	if err != nil {
+		s.lot.t.Fatal(err)
+	}
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		status, body, _, err = client.PostJSON("/sign-in/passkey/begin", string(payload), map[string]string{"X-CSRF-Token": csrf})
+		if err != nil || status != http.StatusOK {
+			s.lot.t.Fatalf("hint attempt %d status=%d err=%v body=%q", attempt, status, err, body)
+		}
+	}
+	status, body, _, err = client.PostJSON("/sign-in/passkey/begin", string(payload), map[string]string{"X-CSRF-Token": csrf})
+	if err != nil || status != http.StatusTooManyRequests || !strings.Contains(body, "Too many attempts") {
+		s.lot.t.Fatalf("rate-limited hint status=%d err=%v body=%q", status, err, body)
+	}
+}
+
+// RevokedSessionIsRejected proves every protected request observes revocation.
+func (s *SignIn) RevokedSessionIsRejected(token, email string) {
+	s.lot.t.Helper()
+	client := s.signInWithRole(token, email, "Revoked Manager", "family_manager", "/family", "Family dashboard", "")
+	payload, err := json.Marshal(map[string]string{"email": email})
+	if err != nil {
+		s.lot.t.Fatal(err)
+	}
+	status, body, _, err := s.lot.web.PostJSON("/_test/identity/revoke", string(payload), map[string]string{"X-Test-Control-Key": s.lot.config.TestControlKey})
+	if err != nil || status != http.StatusOK {
+		s.lot.t.Fatalf("revoke fixture status=%d err=%v body=%q", status, err, body)
+	}
+	status, body, err = client.Get("/family")
+	if err != nil || status != http.StatusSeeOther {
+		s.lot.t.Fatalf("revoked family access status=%d err=%v body=%q", status, err, body)
+	}
+}
+
+// RejectsFailedAndReplayedAssertion proves failed and consumed ceremonies grant no access.
+func (s *SignIn) RejectsFailedAndReplayedAssertion(token, email string) {
+	s.lot.t.Helper()
+	bootstrap := s.lot.Bootstrap()
+	bootstrap.reset()
+	passkey := webauthndriver.NewPasskey(webauthndriver.RelyingParty{
+		Name: "Troop 900 Tree Lot", ID: "treelot.test", Origin: "https://treelot.test",
+	})
+	bootstrap.completeEnrollmentWithPasskey(s.lot.web, token, email, "Failed Sign-in Manager", passkey)
+	s.setRole(email, "family_manager")
+	client, err := web.NewClient(s.lot.config.BaseURL)
+	if err != nil {
+		s.lot.t.Fatal(err)
+	}
+	status, body, err := client.Get("/sign-in")
+	if err != nil || status != http.StatusOK {
+		s.lot.t.Fatalf("failed assertion entry status=%d err=%v", status, err)
+	}
+	csrf, err := web.CSRFToken(body)
+	if err != nil {
+		s.lot.t.Fatal(err)
+	}
+	status, body, _, err = client.PostJSON("/sign-in/passkey/begin", `{}`, map[string]string{"X-CSRF-Token": csrf})
+	if err != nil || status != http.StatusOK {
+		s.lot.t.Fatalf("failed assertion begin status=%d err=%v body=%q", status, err, body)
+	}
+	begin, err := webauthndriver.ParseBeginPayload(body)
+	if err != nil {
+		s.lot.t.Fatal(err)
+	}
+	badFinish := fmt.Sprintf(`{"ceremonyId":%q,"credential":{"id":"bad","rawId":"bad","type":"public-key","response":{"clientDataJSON":"e30","authenticatorData":"e30","signature":"e30","userHandle":""}}}`, begin.CeremonyID)
+	status, body, _, err = client.PostJSON("/sign-in/passkey/finish", badFinish, map[string]string{"X-CSRF-Token": csrf})
+	if err != nil || status != http.StatusBadRequest || !strings.Contains(body, "Sign-in could not be completed") {
+		s.lot.t.Fatalf("bad assertion status=%d err=%v body=%q", status, err, body)
+	}
+	status, _, err = client.Get("/family")
+	if err != nil || status != http.StatusSeeOther {
+		s.lot.t.Fatalf("failed assertion granted family access status=%d err=%v", status, err)
+	}
+
+	assertion, err := passkey.CreateAssertionResponse(begin.PublicKey)
+	if err != nil {
+		s.lot.t.Fatal(err)
+	}
+	validFinish := fmt.Sprintf(`{"ceremonyId":%q,"credential":%s}`, begin.CeremonyID, assertion)
+	status, body, _, err = client.PostJSON("/sign-in/passkey/finish", validFinish, map[string]string{"X-CSRF-Token": csrf})
+	if err != nil || status != http.StatusOK {
+		s.lot.t.Fatalf("valid retry status=%d err=%v body=%q", status, err, body)
+	}
+	status, signInBody, err := client.Get("/sign-in")
+	if err != nil || status != http.StatusOK {
+		s.lot.t.Fatalf("replay csrf page status=%d err=%v", status, err)
+	}
+	replayCSRF, err := web.CSRFToken(signInBody)
+	if err != nil {
+		s.lot.t.Fatal(err)
+	}
+	status, body, _, err = client.PostJSON("/sign-in/passkey/finish", validFinish, map[string]string{"X-CSRF-Token": replayCSRF})
+	if err != nil || status != http.StatusBadRequest || !strings.Contains(body, "Sign-in could not be completed") {
+		s.lot.t.Fatalf("replayed assertion status=%d err=%v body=%q", status, err, body)
 	}
 }
 

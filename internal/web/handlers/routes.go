@@ -158,6 +158,7 @@ func New(viewRenderer renderer, options Options) http.Handler {
 		mux.HandleFunc("GET /_test/outbox", server.getOutbox)
 		mux.HandleFunc("POST /_test/bootstrap/reset", server.resetBootstrap)
 		mux.HandleFunc("POST /_test/identity/role", server.setFixtureIdentityRole)
+		mux.HandleFunc("POST /_test/identity/revoke", server.revokeFixtureIdentitySessions)
 	}
 
 	var browserHandler http.Handler = browser
@@ -189,6 +190,30 @@ func (s *Server) setFixtureIdentityRole(response http.ResponseWriter, request *h
 	}
 	response.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(response).Encode(map[string]string{"status": "updated"})
+}
+
+func (s *Server) revokeFixtureIdentitySessions(response http.ResponseWriter, request *http.Request) {
+	if !s.authorizeTestControl(request) {
+		http.Error(response, "forbidden", http.StatusForbidden)
+		return
+	}
+	if s.identityFixture == nil {
+		http.Error(response, "identity fixture unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	var payload struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
+		http.Error(response, "invalid body", http.StatusBadRequest)
+		return
+	}
+	if err := s.identityFixture.RevokeSessions(request.Context(), payload.Email); err != nil {
+		http.Error(response, "unable to revoke identity fixture sessions", http.StatusBadRequest)
+		return
+	}
+	response.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(response).Encode(map[string]string{"status": "revoked"})
 }
 
 func (s *Server) live(response http.ResponseWriter, _ *http.Request) {
