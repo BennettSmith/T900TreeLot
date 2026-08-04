@@ -109,12 +109,14 @@ func (c *RegistrationCeremony) VerifyRegistration(_ context.Context, verificatio
 		transports = append(transports, string(transport))
 	}
 	return application.PasskeyCredential{
-		CredentialID:    credential.ID,
-		PublicKey:       credential.PublicKey,
-		AttestationType: credential.AttestationType,
-		AAGUID:          hex.EncodeToString(credential.Authenticator.AAGUID),
-		SignCount:       credential.Authenticator.SignCount,
-		Transports:      transports,
+		CredentialID:       credential.ID,
+		PublicKey:          credential.PublicKey,
+		AttestationType:    credential.AttestationType,
+		AAGUID:             hex.EncodeToString(credential.Authenticator.AAGUID),
+		SignCount:          credential.Authenticator.SignCount,
+		Transports:         transports,
+		AuthenticatorFlags: uint8(credential.Flags.ProtocolValue()),
+		FlagsKnown:         true,
 	}, nil
 }
 

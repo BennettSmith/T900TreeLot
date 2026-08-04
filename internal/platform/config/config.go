@@ -158,7 +158,7 @@ func Load() (Config, error) {
 		SecureCookies:            appEnv == EnvProduction,
 		TestControlEnabled:       testControlEnabled,
 		TestControlKey:           testControlKey,
-		ExpectedSchema:           4,
+		ExpectedSchema:           5,
 	}, nil
 }
 

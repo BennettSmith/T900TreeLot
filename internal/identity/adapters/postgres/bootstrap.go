@@ -291,15 +291,23 @@ func (r *txRepositories) StorePasskeyCredential(ctx context.Context, credential 
 	_, err := r.tx.Exec(ctx, `
 		INSERT INTO passkey_credentials (
 			id, identity_id, credential_id, public_key, attestation_type,
-			aaguid, sign_count, transports, created_at, last_used_at
+			aaguid, sign_count, transports, authenticator_flags, created_at, last_used_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 	`, credential.ID, credential.IdentityID, credential.CredentialID, credential.PublicKey, credential.AttestationType,
-		credential.AAGUID, int64(credential.SignCount), credential.Transports, credential.CreatedAt, credential.LastUsedAt)
+		credential.AAGUID, int64(credential.SignCount), credential.Transports, nullableAuthenticatorFlags(credential),
+		credential.CreatedAt, credential.LastUsedAt)
 	if err != nil {
 		return fmt.Errorf("store passkey credential: %w", err)
 	}
 	return nil
+}
+
+func nullableAuthenticatorFlags(credential application.PasskeyCredential) any {
+	if !credential.FlagsKnown {
+		return nil
+	}
+	return int16(credential.AuthenticatorFlags)
 }
 
 func (r *txRepositories) CloseBootstrap(ctx context.Context, identityID string, closedAt time.Time) error {

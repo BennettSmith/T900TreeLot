@@ -55,7 +55,7 @@ func TestSignInTransactionPersistsAssertionAndRotatesSession(t *testing.T) {
 		if err != nil || loaded.ID != identity.ID {
 			t.Fatalf("credential identity = %#v err=%v", loaded, err)
 		}
-		if err := repos.UpdatePasskeyAfterAssertion(txCtx, "credential-1", 1, now); err != nil {
+		if err := repos.UpdatePasskeyAfterAssertion(txCtx, "credential-1", 1, 12, now); err != nil {
 			return err
 		}
 		if err := repos.ConsumeAssertionCeremony(txCtx, "assertion-1", now); err != nil {
@@ -74,12 +74,12 @@ func TestSignInTransactionPersistsAssertionAndRotatesSession(t *testing.T) {
 		t.Fatalf("sign-in transaction: %v", err)
 	}
 
-	var signCount int
-	if err := db.QueryRow(ctx, `SELECT sign_count FROM passkey_credentials WHERE id = 'credential-1'`).Scan(&signCount); err != nil {
+	var signCount, authenticatorFlags int
+	if err := db.QueryRow(ctx, `SELECT sign_count, authenticator_flags FROM passkey_credentials WHERE id = 'credential-1'`).Scan(&signCount, &authenticatorFlags); err != nil {
 		t.Fatal(err)
 	}
-	if signCount != 1 {
-		t.Fatalf("sign count = %d", signCount)
+	if signCount != 1 || authenticatorFlags != 12 {
+		t.Fatalf("sign count/flags = %d/%d", signCount, authenticatorFlags)
 	}
 	var consumedAt *time.Time
 	if err := db.QueryRow(ctx, `SELECT consumed_at FROM webauthn_ceremonies WHERE id = 'assertion-1'`).Scan(&consumedAt); err != nil {

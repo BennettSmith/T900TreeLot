@@ -179,16 +179,18 @@ type RegistrationVerification struct {
 }
 
 type PasskeyCredential struct {
-	ID              string
-	IdentityID      string
-	CredentialID    []byte
-	PublicKey       []byte
-	AttestationType string
-	AAGUID          string
-	SignCount       uint32
-	Transports      []string
-	CreatedAt       time.Time
-	LastUsedAt      *time.Time
+	ID                 string
+	IdentityID         string
+	CredentialID       []byte
+	PublicKey          []byte
+	AttestationType    string
+	AAGUID             string
+	SignCount          uint32
+	Transports         []string
+	AuthenticatorFlags uint8
+	FlagsKnown         bool
+	CreatedAt          time.Time
+	LastUsedAt         *time.Time
 }
 
 type IssuedSession struct {

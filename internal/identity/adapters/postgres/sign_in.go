@@ -83,7 +83,7 @@ func (r *txRepositories) loadSignInIdentity(ctx context.Context, identityID stri
 
 	credentialRows, err := r.tx.Query(ctx, `
 		SELECT id, credential_id, public_key, attestation_type, aaguid,
-		       sign_count, transports, created_at, last_used_at
+		       sign_count, transports, authenticator_flags, created_at, last_used_at
 		FROM passkey_credentials
 		WHERE identity_id = $1
 		ORDER BY id
@@ -95,6 +95,7 @@ func (r *txRepositories) loadSignInIdentity(ctx context.Context, identityID stri
 	for credentialRows.Next() {
 		var credential application.PasskeyCredential
 		var signCount int64
+		var authenticatorFlags *int16
 		if err := credentialRows.Scan(
 			&credential.ID,
 			&credential.CredentialID,
@@ -103,12 +104,17 @@ func (r *txRepositories) loadSignInIdentity(ctx context.Context, identityID stri
 			&credential.AAGUID,
 			&signCount,
 			&credential.Transports,
+			&authenticatorFlags,
 			&credential.CreatedAt,
 			&credential.LastUsedAt,
 		); err != nil {
 			return application.SignInIdentity{}, fmt.Errorf("scan sign-in credential: %w", err)
 		}
 		credential.SignCount = uint32(signCount)
+		if authenticatorFlags != nil {
+			credential.AuthenticatorFlags = uint8(*authenticatorFlags)
+			credential.FlagsKnown = true
+		}
 		identity.Credentials = append(identity.Credentials, credential)
 	}
 	if err := credentialRows.Err(); err != nil {
@@ -175,12 +181,12 @@ func (r *txRepositories) ConsumeAssertionCeremony(ctx context.Context, ceremonyI
 	return nil
 }
 
-func (r *txRepositories) UpdatePasskeyAfterAssertion(ctx context.Context, credentialID string, signCount uint32, usedAt time.Time) error {
+func (r *txRepositories) UpdatePasskeyAfterAssertion(ctx context.Context, credentialID string, signCount uint32, authenticatorFlags uint8, usedAt time.Time) error {
 	tag, err := r.tx.Exec(ctx, `
 		UPDATE passkey_credentials
-		SET sign_count = $2, last_used_at = $3
+		SET sign_count = $2, authenticator_flags = $3, last_used_at = $4
 		WHERE id = $1
-	`, credentialID, int64(signCount), usedAt)
+	`, credentialID, int64(signCount), int16(authenticatorFlags), usedAt)
 	if err != nil {
 		return fmt.Errorf("update passkey assertion state: %w", err)
 	}

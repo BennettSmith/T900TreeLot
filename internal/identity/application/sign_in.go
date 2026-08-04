@@ -23,7 +23,7 @@ type SignInRepositories interface {
 	StoreAssertionCeremony(context.Context, AssertionCeremony) error
 	LockAssertionCeremony(context.Context, string) (AssertionCeremony, error)
 	ConsumeAssertionCeremony(context.Context, string, time.Time) error
-	UpdatePasskeyAfterAssertion(context.Context, string, uint32, time.Time) error
+	UpdatePasskeyAfterAssertion(context.Context, string, uint32, uint8, time.Time) error
 	WriteAudit(context.Context, AuditEvent) error
 	RotateForIdentity(context.Context, int64, string, time.Time) (IssuedSession, error)
 }
@@ -98,8 +98,9 @@ type AssertionVerification struct {
 }
 
 type VerifiedAssertion struct {
-	CredentialID []byte
-	SignCount    uint32
+	CredentialID       []byte
+	SignCount          uint32
+	AuthenticatorFlags uint8
 }
 
 func (s *SignInService) BeginSignIn(ctx context.Context, command BeginSignInCommand) (BeginSignInResult, error) {
@@ -191,7 +192,7 @@ func (s *SignInService) FinishSignIn(ctx context.Context, command FinishSignInCo
 		if !ok {
 			return signInFailure(errors.New("credential missing from identity"))
 		}
-		if err := repos.UpdatePasskeyAfterAssertion(txCtx, credential.ID, verified.SignCount, now); err != nil {
+		if err := repos.UpdatePasskeyAfterAssertion(txCtx, credential.ID, verified.SignCount, verified.AuthenticatorFlags, now); err != nil {
 			return err
 		}
 		if err := repos.ConsumeAssertionCeremony(txCtx, command.PasskeyCeremonyID, now); err != nil {

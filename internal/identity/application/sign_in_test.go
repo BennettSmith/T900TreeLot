@@ -359,7 +359,7 @@ func (r *fakeSignInRepositories) ConsumeAssertionCeremony(context.Context, strin
 	return nil
 }
 
-func (r *fakeSignInRepositories) UpdatePasskeyAfterAssertion(_ context.Context, credentialID string, signCount uint32, _ time.Time) error {
+func (r *fakeSignInRepositories) UpdatePasskeyAfterAssertion(_ context.Context, credentialID string, signCount uint32, _ uint8, _ time.Time) error {
 	r.updatedCredentialID = credentialID
 	r.updatedSignCount = signCount
 	return nil

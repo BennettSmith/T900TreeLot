@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/descope/virtualwebauthn"
+	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/troop900/treelot/internal/identity/application"
 	"github.com/troop900/treelot/internal/identity/domain"
 	"github.com/troop900/treelot/internal/platform/clock"
@@ -23,7 +24,10 @@ func TestAssertionCeremonyVerifiesDiscoverableCredential(t *testing.T) {
 		Origin: "https://treelot.test",
 	}
 	userHandle := []byte("stable-user-handle")
-	authenticator := virtualwebauthn.NewAuthenticator()
+	authenticator := virtualwebauthn.NewAuthenticatorWithOptions(virtualwebauthn.AuthenticatorOptions{
+		BackupEligible: true,
+		BackupState:    true,
+	})
 	credential := virtualwebauthn.NewCredential(virtualwebauthn.KeyTypeEC2)
 
 	registration, err := platformwebauthn.NewRegistrationCeremony(db, clock.System(), rp.ID, []string{rp.Origin})
@@ -57,6 +61,9 @@ func TestAssertionCeremonyVerifiesDiscoverableCredential(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if !stored.FlagsKnown || stored.AuthenticatorFlags&uint8(protocol.FlagBackupEligible) == 0 {
+		t.Fatalf("registration did not preserve backup-eligible flags: %#v", stored)
+	}
 
 	assertions, err := platformwebauthn.NewAssertionCeremony(rp.ID, []string{rp.Origin})
 	if err != nil {
@@ -66,13 +73,15 @@ func TestAssertionCeremonyVerifiesDiscoverableCredential(t *testing.T) {
 		ID:         "identity-1",
 		UserHandle: userHandle,
 		Credentials: []application.PasskeyCredential{{
-			ID:              "credential-1",
-			CredentialID:    stored.CredentialID,
-			PublicKey:       stored.PublicKey,
-			AttestationType: stored.AttestationType,
-			AAGUID:          stored.AAGUID,
-			SignCount:       stored.SignCount,
-			Transports:      stored.Transports,
+			ID:                 "credential-1",
+			CredentialID:       stored.CredentialID,
+			PublicKey:          stored.PublicKey,
+			AttestationType:    stored.AttestationType,
+			AAGUID:             stored.AAGUID,
+			SignCount:          stored.SignCount,
+			Transports:         stored.Transports,
+			AuthenticatorFlags: stored.AuthenticatorFlags,
+			FlagsKnown:         stored.FlagsKnown,
 		}},
 	}
 	options, err := assertions.BeginAssertion(context.Background(), nil)
@@ -107,6 +116,9 @@ func TestAssertionCeremonyVerifiesDiscoverableCredential(t *testing.T) {
 	}
 	if string(credentialID) != string(stored.CredentialID) || verified.SignCount != 1 {
 		t.Fatalf("credential id/count = %x/%d", credentialID, verified.SignCount)
+	}
+	if verified.AuthenticatorFlags&uint8(protocol.FlagBackupEligible) == 0 {
+		t.Fatalf("assertion did not preserve backup eligibility: %#v", verified)
 	}
 
 	identity.Credentials[0].SignCount = verified.SignCount

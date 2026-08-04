@@ -36,7 +36,7 @@ func (c *AssertionCeremony) BeginAssertion(_ context.Context, identity *applicat
 	if identity == nil {
 		assertion, session, err = c.webauthn.BeginDiscoverableLogin()
 	} else {
-		assertion, session, err = c.webauthn.BeginLogin(assertionUserFrom(*identity))
+		assertion, session, err = c.webauthn.BeginLogin(assertionUserFrom(*identity, 0))
 	}
 	if err != nil {
 		return application.AssertionOptions{}, err
@@ -60,7 +60,7 @@ func (c *AssertionCeremony) VerifyAssertion(_ context.Context, verification appl
 	if err != nil {
 		return application.VerifiedAssertion{}, err
 	}
-	user := assertionUserFrom(verification.Identity)
+	user := assertionUserFrom(verification.Identity, parsed.Response.AuthenticatorData.Flags)
 	session := gowebauthn.SessionData{
 		Challenge:            string(verification.Challenge),
 		RelyingPartyID:       c.webauthn.Config.RPID,
@@ -84,8 +84,9 @@ func (c *AssertionCeremony) VerifyAssertion(_ context.Context, verification appl
 		return application.VerifiedAssertion{}, err
 	}
 	return application.VerifiedAssertion{
-		CredentialID: append([]byte(nil), credential.ID...),
-		SignCount:    credential.Authenticator.SignCount,
+		CredentialID:       append([]byte(nil), credential.ID...),
+		SignCount:          credential.Authenticator.SignCount,
+		AuthenticatorFlags: uint8(credential.Flags.ProtocolValue()),
 	}, nil
 }
 
@@ -94,18 +95,23 @@ type assertionUser struct {
 	credentials []gowebauthn.Credential
 }
 
-func assertionUserFrom(identity application.SignInIdentity) assertionUser {
+func assertionUserFrom(identity application.SignInIdentity, unknownFlags protocol.AuthenticatorFlags) assertionUser {
 	credentials := make([]gowebauthn.Credential, 0, len(identity.Credentials))
 	for _, stored := range identity.Credentials {
 		transports := make([]protocol.AuthenticatorTransport, 0, len(stored.Transports))
 		for _, transport := range stored.Transports {
 			transports = append(transports, protocol.AuthenticatorTransport(transport))
 		}
+		flags := protocol.AuthenticatorFlags(stored.AuthenticatorFlags)
+		if !stored.FlagsKnown {
+			flags = unknownFlags
+		}
 		credentials = append(credentials, gowebauthn.Credential{
 			ID:              append([]byte(nil), stored.CredentialID...),
 			PublicKey:       append([]byte(nil), stored.PublicKey...),
 			AttestationType: stored.AttestationType,
 			Transport:       transports,
+			Flags:           gowebauthn.NewCredentialFlags(flags),
 			Authenticator: gowebauthn.Authenticator{
 				SignCount: stored.SignCount,
 			},
