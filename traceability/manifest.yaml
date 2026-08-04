@@ -20,11 +20,14 @@ use_cases:
         requirements_status: accepted
         change: Baseline adopted from use-case document version 3.13
   UC-2:
-    current_revision: 1
+    current_revision: 2
     revisions:
       - revision: 1
-        requirements_status: accepted
+        requirements_status: superseded
         change: Baseline adopted from use-case document version 3.13
+      - revision: 2
+        requirements_status: accepted
+        change: Focused sign-in on authentication, secure sessions, and role-aware landing; deferred Agreement Center direction and participation gating to UC-50 through UC-55
   UC-2A:
     current_revision: 1
     revisions:
@@ -685,13 +688,18 @@ stories:
   US-002:
     path: docs/user-stories/platform-bootstrap-identity/us-002-secure-authenticated-sign-in.md
     increment: INC-02
-    current_revision: 1
+    current_revision: 2
     revisions:
       - revision: 1
-        requirements_status: accepted
+        requirements_status: superseded
         delivery_status: planned
         source_use_cases: [UC-2@r1]
         change: Initial user-story traceability baseline
+      - revision: 2
+        requirements_status: accepted
+        delivery_status: planned
+        source_use_cases: [UC-2@r2]
+        change: Deferred Agreement Center direction and participation eligibility enforcement to the seasonal-agreement stories in INC-04
   US-003:
     path: docs/user-stories/platform-bootstrap-identity/us-003-change-own-phone-number.md
     increment: INC-02

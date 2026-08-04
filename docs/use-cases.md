@@ -1,8 +1,8 @@
 # Troop 900 Tree Lot Shift Scheduler
 ## Use Cases Document
 
-**Version:** 3.14  
-**Date:** July 2026  
+**Version:** 3.15
+**Date:** August 2026
 **Purpose:** This document describes what the Troop 900 Tree Lot Shift Scheduler does from a user's perspective. It covers all functional use cases organized by category.
 
 The document version identifies an edition of the complete requirements set.
@@ -185,7 +185,6 @@ Approximately 40-50 family members (scouts and parents) from 15-20 families/hous
 3. The system verifies the WebAuthn assertion against a passkey registered to an active authenticated identity
 4. The system creates a secure session and applies permissions for their role
 5. A Family Manager opens the family dashboard; a Young Adult Scout opens their personal schedule
-6. Unless the person's own current-season agreement status is Confirmed, the web app prominently directs them to the Agreement Center and disables their participation actions
 
 **Security and Recovery:**
 - Discoverable passkeys are preferred so repeat sign-in does not require typing an email
@@ -2397,6 +2396,7 @@ per-use-case and user-story revisions in `traceability/manifest.yaml`.
 | 3.12 | Jul 2026 | Replaced SMS phone authentication with passkeys and claimed email account identifiers; deferred email mailbox verification until notifications or recovery need it; switched enrollment and recovery to invitation links/QR codes; required browser JavaScript for WebAuthn while continuing to forbid heavy client-side frameworks; left operational SMS notification use cases in place pending a later move to email and Groups.io |
 | 3.13 | Jul 2026 | Removed operational SMS/phone notification delivery; made the per-user in-app inbox the required notification channel with private read state; reserved Groups.io for troop-wide messages when enabled; kept direct and family-scoped messages in-app only; documented future opted-in delivery to verified email addresses |
 | 3.14 | Jul 2026 | Narrowed Use Case 0 to first-Admin bootstrap and permanent bootstrap closure; added Use Case 60 for Admin grant/revoke of Admin and Committee roles on an existing adult login identity (not Young Adult Scout), with passkey step-up, audit, and last-Admin continuity |
+| 3.15 | Aug 2026 | Kept Use Case 2 focused on authentication, secure sessions, and role-aware landing; deferred Agreement Center direction and participation gating to the seasonal-agreement workflows in Use Cases 50–55 |
 
 ---
 
