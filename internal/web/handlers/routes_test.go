@@ -213,6 +213,10 @@ func TestIdentityFixtureRoleRequiresTestControlKey(t *testing.T) {
 	if unauthorized.Code != http.StatusForbidden {
 		t.Fatalf("unauthorized status = %d", unauthorized.Code)
 	}
+	unauthorizedRevoke := request(t, server, http.MethodPost, "/_test/identity/revoke", `{"email":"manager@example.org"}`, map[string]string{"Content-Type": "application/json"}, nil)
+	if unauthorizedRevoke.Code != http.StatusForbidden {
+		t.Fatalf("unauthorized revoke status = %d", unauthorizedRevoke.Code)
+	}
 	authorized := request(t, server, http.MethodPost, "/_test/identity/role", body, map[string]string{
 		"Content-Type":       "application/json",
 		"X-Test-Control-Key": "secret",
@@ -229,6 +233,42 @@ func TestIdentityFixtureRoleRequiresTestControlKey(t *testing.T) {
 	}, nil)
 	if revoked.Code != http.StatusOK || fixture.revokedEmail != "manager@example.org" {
 		t.Fatalf("revoke status=%d email=%q body=%q", revoked.Code, fixture.revokedEmail, revoked.Body.String())
+	}
+
+	malformed := request(t, server, http.MethodPost, "/_test/identity/role", `{`, map[string]string{
+		"Content-Type":       "application/json",
+		"X-Test-Control-Key": "secret",
+	}, nil)
+	if malformed.Code != http.StatusBadRequest {
+		t.Fatalf("malformed role status=%d", malformed.Code)
+	}
+
+	unavailable := newServer(t, handlers.Options{TestControlEnabled: true, TestControlKey: "secret"})
+	for _, target := range []string{"/_test/identity/role", "/_test/identity/revoke"} {
+		response := request(t, unavailable, http.MethodPost, target, body, map[string]string{
+			"Content-Type":       "application/json",
+			"X-Test-Control-Key": "secret",
+		}, nil)
+		if response.Code != http.StatusServiceUnavailable {
+			t.Fatalf("%s unavailable status=%d", target, response.Code)
+		}
+	}
+
+	fixture.setRoleErr = errors.New("fixture role failed")
+	failedRole := request(t, server, http.MethodPost, "/_test/identity/role", body, map[string]string{
+		"Content-Type":       "application/json",
+		"X-Test-Control-Key": "secret",
+	}, nil)
+	if failedRole.Code != http.StatusBadRequest {
+		t.Fatalf("failed role status=%d", failedRole.Code)
+	}
+	fixture.revokeErr = errors.New("fixture revoke failed")
+	failedRevoke := request(t, server, http.MethodPost, "/_test/identity/revoke", `{"email":"manager@example.org"}`, map[string]string{
+		"Content-Type":       "application/json",
+		"X-Test-Control-Key": "secret",
+	}, nil)
+	if failedRevoke.Code != http.StatusBadRequest {
+		t.Fatalf("failed revoke status=%d", failedRevoke.Code)
 	}
 }
 
@@ -348,14 +388,16 @@ func request(t *testing.T, handler http.Handler, method, target, body string, he
 type fakeIdentityFixture struct {
 	command      application.SetFixtureRoleCommand
 	revokedEmail string
+	setRoleErr   error
+	revokeErr    error
 }
 
 func (f *fakeIdentityFixture) SetRole(_ context.Context, command application.SetFixtureRoleCommand) error {
 	f.command = command
-	return nil
+	return f.setRoleErr
 }
 
 func (f *fakeIdentityFixture) RevokeSessions(_ context.Context, email string) error {
 	f.revokedEmail = email
-	return nil
+	return f.revokeErr
 }

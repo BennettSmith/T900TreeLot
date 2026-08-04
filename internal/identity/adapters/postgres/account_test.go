@@ -36,6 +36,22 @@ func TestAccountQueriesReturnsNotFound(t *testing.T) {
 	}
 }
 
+func TestAccountQueriesFindsRoleAwareLandingProfile(t *testing.T) {
+	db := testdb.OpenMigrated(t)
+	seedIdentity(t, db, "identity-1", "person-1", "Young", "Scout", "Trailblazer", "scout@example.org")
+	if _, err := db.Exec(context.Background(), `INSERT INTO identity_roles (identity_id, role, created_at) VALUES ('identity-1', 'young_adult_scout', now())`); err != nil {
+		t.Fatal(err)
+	}
+
+	profile, err := identitypostgres.NewAccountQueries(db).FindLandingProfile(context.Background(), "identity-1")
+	if err != nil {
+		t.Fatalf("FindLandingProfile: %v", err)
+	}
+	if profile.DisplayName != "Trailblazer" || !profile.HasRole(domain.RoleYoungAdultScout) || profile.HasRole(domain.RoleFamilyManager) {
+		t.Fatalf("profile = %#v", profile)
+	}
+}
+
 func TestFixtureTransactionReplacesIdentityRoles(t *testing.T) {
 	db := testdb.OpenMigrated(t)
 	seedIdentity(t, db, "identity-1", "person-1", "Ada", "Admin", "", "ada@example.org")

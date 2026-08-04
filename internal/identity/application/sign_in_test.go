@@ -73,6 +73,55 @@ func TestBeginSignInUsesDecoyCredentialForUnknownEmailHint(t *testing.T) {
 	}
 }
 
+func TestBeginSignInUsesKnownEmailHintWithoutReturningIdentityDetails(t *testing.T) {
+	repos := &fakeSignInRepositories{identity: application.SignInIdentity{
+		ID: "identity-1", UserHandle: []byte("user"),
+		Credentials: []application.PasskeyCredential{{CredentialID: []byte("credential")}},
+	}}
+	passkeys := &fakeAssertions{}
+	service := application.SignInService{
+		UnitOfWork:  fakeSignInUnitOfWork{repos: repos},
+		RateLimiter: &fakeRateLimiter{allowed: true},
+		Passkeys:    passkeys,
+		Clock:       fakeClock{now: signInNow},
+		IDs:         &fakeIDs{values: []string{"ceremony-1"}},
+	}
+
+	result, err := service.BeginSignIn(context.Background(), application.BeginSignInCommand{
+		SessionID: 41, RateLimitKey: "sign-in:127.0.0.1", EmailHint: " Identity@Example.org ",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.CeremonyID != "ceremony-1" || passkeys.beginIdentity == nil || passkeys.beginIdentity.ID != "identity-1" {
+		t.Fatalf("result/identity = %#v / %#v", result, passkeys.beginIdentity)
+	}
+	if repos.ceremony.IdentityID != "identity-1" || string(repos.ceremony.UserHandle) != "user" {
+		t.Fatalf("ceremony = %#v", repos.ceremony)
+	}
+}
+
+func TestBeginSignInMasksMalformedEmailHintWithDecoy(t *testing.T) {
+	repos := &fakeSignInRepositories{}
+	passkeys := &fakeAssertions{}
+	service := application.SignInService{
+		UnitOfWork:  fakeSignInUnitOfWork{repos: repos},
+		RateLimiter: &fakeRateLimiter{allowed: true},
+		Passkeys:    passkeys,
+		Clock:       fakeClock{now: signInNow},
+		IDs:         &fakeIDs{values: []string{"ceremony-1"}},
+	}
+
+	if _, err := service.BeginSignIn(context.Background(), application.BeginSignInCommand{
+		SessionID: 41, RateLimitKey: "sign-in:127.0.0.1", EmailHint: "not-an-email",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if passkeys.beginIdentity == nil || passkeys.beginIdentity.ID != "" || len(passkeys.beginIdentity.Credentials) != 1 {
+		t.Fatalf("decoy identity = %#v", passkeys.beginIdentity)
+	}
+}
+
 func TestUnknownEmailHintUsesStableOpaqueDecoy(t *testing.T) {
 	repos := &fakeSignInRepositories{findByEmailErr: application.ErrSignInIdentityNotFound}
 	passkeys := &fakeAssertions{}
@@ -204,6 +253,66 @@ func TestFinishSignInRejectsCeremonyFromAnotherBrowserSession(t *testing.T) {
 	}
 }
 
+func TestFinishSignInRejectsUnknownCredentialWithoutStateChange(t *testing.T) {
+	repos := &fakeSignInRepositories{ceremony: application.AssertionCeremony{
+		SessionID: 41, ExpiresAt: signInNow.Add(time.Minute),
+	}}
+	service := application.SignInService{
+		UnitOfWork: fakeSignInUnitOfWork{repos: repos},
+		Passkeys:   &fakeAssertions{credentialIDErr: errors.New("malformed credential")},
+		Clock:      fakeClock{now: signInNow},
+	}
+
+	_, err := service.FinishSignIn(context.Background(), application.FinishSignInCommand{
+		SessionID: 41, PasskeyCeremonyID: "ceremony-1", PasskeyResponse: []byte(`{}`),
+	})
+	if !errors.Is(err, domain.ErrCeremonyFailed) {
+		t.Fatalf("error = %v", err)
+	}
+	if repos.consumed || repos.rotations != 0 {
+		t.Fatalf("unknown credential changed state: %#v", repos)
+	}
+}
+
+func TestFinishSignInSelectsRoleAppropriateLanding(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		role domain.Role
+		want string
+	}{
+		{name: "young adult scout", role: domain.RoleYoungAdultScout, want: "/scout/schedule"},
+		{name: "admin", role: domain.RoleAdmin, want: "/account"},
+		{name: "committee", role: domain.RoleCommittee, want: "/account"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			repos := &fakeSignInRepositories{
+				ceremony: application.AssertionCeremony{SessionID: 41, Challenge: []byte("challenge"), ExpiresAt: signInNow.Add(time.Minute)},
+				identity: application.SignInIdentity{
+					ID: "identity-1", Roles: []domain.Role{test.role},
+					Credentials: []application.PasskeyCredential{{ID: "credential-1", CredentialID: []byte("credential-id")}},
+				},
+			}
+			service := application.SignInService{
+				UnitOfWork: fakeSignInUnitOfWork{repos: repos},
+				Passkeys: &fakeAssertions{
+					credentialID: []byte("credential-id"),
+					verified:     application.VerifiedAssertion{CredentialID: []byte("credential-id"), SignCount: 1},
+				},
+				Clock: fakeClock{now: signInNow},
+			}
+			result, err := service.FinishSignIn(context.Background(), application.FinishSignInCommand{
+				SessionID: 41, PasskeyCeremonyID: "ceremony-1", PasskeyResponse: []byte(`{}`),
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.RedirectTo != test.want {
+				t.Fatalf("redirect = %q, want %q", result.RedirectTo, test.want)
+			}
+		})
+	}
+}
+
 var signInNow = time.Date(2026, 8, 4, 18, 0, 0, 0, time.UTC)
 
 type fakeSignInUnitOfWork struct {
@@ -276,6 +385,7 @@ type fakeAssertions struct {
 	beginIdentity   *application.SignInIdentity
 	beginIdentities []*application.SignInIdentity
 	credentialID    []byte
+	credentialIDErr error
 	verified        application.VerifiedAssertion
 	verification    application.AssertionVerification
 }
@@ -294,7 +404,7 @@ func (a *fakeAssertions) BeginAssertion(_ context.Context, identity *application
 }
 
 func (a *fakeAssertions) CredentialID([]byte) ([]byte, error) {
-	return a.credentialID, nil
+	return a.credentialID, a.credentialIDErr
 }
 
 func (a *fakeAssertions) VerifyAssertion(_ context.Context, verification application.AssertionVerification) (application.VerifiedAssertion, error) {

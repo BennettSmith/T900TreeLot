@@ -27,6 +27,18 @@ func TestFixtureServiceReplacesRoleByNormalizedEmail(t *testing.T) {
 	}
 }
 
+func TestFixtureServiceRevokesSessionsByNormalizedEmail(t *testing.T) {
+	repos := &fakeFixtureRepositories{identityID: "identity-1"}
+	service := application.TestFixtureService{UnitOfWork: fakeFixtureUnitOfWork{repos: repos}}
+
+	if err := service.RevokeSessions(context.Background(), " Scout@Example.org "); err != nil {
+		t.Fatalf("RevokeSessions: %v", err)
+	}
+	if repos.normalizedEmail != "scout@example.org" || repos.revokedIdentityID != "identity-1" {
+		t.Fatalf("revocation = %#v", repos)
+	}
+}
+
 type fakeFixtureUnitOfWork struct {
 	repos application.TestFixtureRepositories
 }
@@ -39,6 +51,7 @@ type fakeFixtureRepositories struct {
 	identityID         string
 	normalizedEmail    string
 	replacedIdentityID string
+	revokedIdentityID  string
 	role               domain.Role
 }
 
@@ -55,6 +68,7 @@ func (r *fakeFixtureRepositories) ReplaceRoles(_ context.Context, identityID str
 	return nil
 }
 
-func (*fakeFixtureRepositories) RevokeSessionsForIdentity(context.Context, string) error {
+func (r *fakeFixtureRepositories) RevokeSessionsForIdentity(_ context.Context, identityID string) error {
+	r.revokedIdentityID = identityID
 	return nil
 }

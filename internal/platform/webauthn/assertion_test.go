@@ -108,6 +108,36 @@ func TestAssertionCeremonyVerifiesDiscoverableCredential(t *testing.T) {
 	if string(credentialID) != string(stored.CredentialID) || verified.SignCount != 1 {
 		t.Fatalf("credential id/count = %x/%d", credentialID, verified.SignCount)
 	}
+
+	identity.Credentials[0].SignCount = verified.SignCount
+	hintedOptions, err := assertions.BeginAssertion(context.Background(), &identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hintedJSON, err := json.Marshal(hintedOptions.PublicKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hintedRequest, err := virtualwebauthn.ParseAssertionOptions(string(hintedJSON))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hintedRequest.AllowCredentials) != 1 {
+		t.Fatalf("hinted allowed credentials = %#v", hintedRequest.AllowCredentials)
+	}
+	credential.Counter++
+	hintedResponse := virtualwebauthn.CreateAssertionResponse(rp, authenticator, credential, *hintedRequest)
+	hintedVerified, err := assertions.VerifyAssertion(context.Background(), application.AssertionVerification{
+		Challenge: hintedOptions.Challenge,
+		Identity:  identity,
+		Response:  []byte(hintedResponse),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hintedVerified.SignCount != 2 {
+		t.Fatalf("hinted sign count = %d", hintedVerified.SignCount)
+	}
 }
 
 func mustEmail(t *testing.T, value string) domain.Email {
