@@ -23,8 +23,7 @@ Provide passwordless browser sign-in for an active authenticated identity using 
 3. **Given** a Young Adult Scout completes sign-in, **when** the session resolves the linked scout profile, **then** the web app opens that scout's personal schedule without authority over another person.
 4. **Given** discoverable credentials are available, **when** the person chooses sign-in with passkey, **then** they are not required to type an email first.
 5. **Given** an account hint is needed, **when** an email is submitted before assertion, **then** the response is rate-limited and does not disclose whether the email is registered.
-6. **Given** the signed-in person's current-season agreement is not Confirmed, **when** they enter the app, **then** the app prominently directs them to the Agreement Center and their own participation actions remain disabled.
-7. **Given** a session has been revoked by the user, an authorized Family Manager for a managed Young Adult Scout profile, or an Admin, **when** that session is presented again, **then** it no longer grants access.
+6. **Given** a session has been revoked by the user, an authorized Family Manager for a managed Young Adult Scout profile, or an Admin, **when** that session is presented again, **then** it no longer grants access.
 
 ## Business rules
 
@@ -50,3 +49,4 @@ Provide passwordless browser sign-in for an active authenticated identity using 
 - Assisted recovery when no passkey remains.
 - Granting roles or Young Adult Scout access.
 - Recording seasonal-agreement confirmation.
+- Agreement Center direction and participation eligibility enforcement, which are delivered by the seasonal-agreement stories in INC-04.
