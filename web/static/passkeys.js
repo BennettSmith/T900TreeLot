@@ -53,6 +53,36 @@
     };
   }
 
+  function credentialRequestOptions(raw) {
+    var options = raw && raw.publicKey ? raw.publicKey : raw;
+    if (!options) {
+      throw new Error("missing passkey options");
+    }
+    options.challenge = base64urlToBuffer(options.challenge);
+    if (Array.isArray(options.allowCredentials)) {
+      options.allowCredentials = options.allowCredentials.map(function (credential) {
+        credential.id = base64urlToBuffer(credential.id);
+        return credential;
+      });
+    }
+    return { publicKey: options };
+  }
+
+  function assertionToJSON(credential) {
+    return {
+      id: credential.id,
+      rawId: bufferToBase64url(credential.rawId),
+      type: credential.type,
+      response: {
+        clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+        authenticatorData: bufferToBase64url(credential.response.authenticatorData),
+        signature: bufferToBase64url(credential.response.signature),
+        userHandle: credential.response.userHandle ? bufferToBase64url(credential.response.userHandle) : ""
+      },
+      clientExtensionResults: credential.getClientExtensionResults ? credential.getClientExtensionResults() : {}
+    };
+  }
+
   function formValue(form, name) {
     var field = form.querySelector('[name="' + name + '"]');
     return field ? field.value : "";
@@ -159,6 +189,67 @@
     });
   }
 
+  function installSignInForms() {
+    var container = document.querySelector("[data-sign-in-passkey]");
+    if (!container) {
+      return;
+    }
+    var forms = container.querySelectorAll("[data-sign-in-form]");
+    forms.forEach(function (form) {
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        if (!window.PublicKeyCredential || !navigator.credentials || !navigator.credentials.get) {
+          showPasskeyError(container, "This browser does not support passkey sign-in.");
+          return;
+        }
+        var csrf = formValue(form, "csrf_token");
+        fetch(container.dataset.beginUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
+          credentials: "same-origin",
+          body: JSON.stringify({ email: formValue(form, "email") })
+        }).then(function (response) {
+          if (!response.ok) {
+            return response.json().then(function (body) {
+              throw new Error((body && body.error) || "Sign-in could not be started.");
+            });
+          }
+          return response.json();
+        }).then(function (payload) {
+          return navigator.credentials.get(credentialRequestOptions(payload.publicKey)).then(function (credential) {
+            return { ceremonyId: payload.ceremonyId, credential: credential };
+          });
+        }).then(function (asserted) {
+          return fetch(container.dataset.finishUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
+            credentials: "same-origin",
+            body: JSON.stringify({
+              ceremonyId: asserted.ceremonyId,
+              credential: assertionToJSON(asserted.credential)
+            })
+          });
+        }).then(function (response) {
+          if (!response.ok) {
+            return response.json().then(function (body) {
+              throw new Error((body && body.error) || "Sign-in could not be completed.");
+            });
+          }
+          return response.json();
+        }).then(function (body) {
+          window.location.assign((body && body.redirectTo) || "/");
+        }).catch(function (error) {
+          if (error && error.name === "AbortError") {
+            showPasskeyError(container, "Passkey sign-in was canceled.");
+            return;
+          }
+          showPasskeyError(container, (error && error.message) || "Sign-in could not be completed. Try again.");
+        });
+      });
+    });
+  }
+
   captureBootstrapToken();
   installPasskeyForm();
+  installSignInForms();
 }());

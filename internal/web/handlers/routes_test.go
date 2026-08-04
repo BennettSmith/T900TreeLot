@@ -120,7 +120,7 @@ func TestHomeAndSmokeJourney(t *testing.T) {
 		t.Fatalf("home status = %d", home.Code)
 	}
 	body := home.Body.String()
-	if !strings.Contains(body, "Troop 900 Tree Lot") || !strings.Contains(body, `aria-label="Primary"`) {
+	if !strings.Contains(body, "Troop 900 Tree Lot") || !strings.Contains(body, `aria-label="Primary"`) || !strings.Contains(body, `href="/sign-in"`) {
 		t.Fatalf("home missing brand or navigation: %s", body)
 	}
 	cookie := firstCookie(home, middleware.SessionCookieName)

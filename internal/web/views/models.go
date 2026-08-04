@@ -231,6 +231,24 @@ type BootstrapPage struct {
 	Fields               []Field
 }
 
+type SignInPage struct {
+	PageTitle  string
+	Brand      string
+	Navigation []Link
+	CSRFToken  string
+	EmailHint  string
+	Alert      *Alert
+}
+
+type LandingPage struct {
+	PageTitle   string
+	Brand       string
+	Heading     string
+	Supporting  string
+	DisplayName string
+	Navigation  []Link
+}
+
 type AccountPage struct {
 	PageTitle    string
 	Brand        string

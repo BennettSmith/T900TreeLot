@@ -58,6 +58,21 @@ func (u *UnitOfWork) WithinTestFixtureTx(ctx context.Context, fn func(context.Co
 	return nil
 }
 
+func (u *UnitOfWork) WithinSignInTx(ctx context.Context, fn func(context.Context, application.SignInRepositories) error) error {
+	tx, err := u.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin sign-in transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := fn(ctx, &txRepositories{tx: tx, sessions: u.sessions}); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit sign-in transaction: %w", err)
+	}
+	return nil
+}
+
 type txRepositories struct {
 	tx       pgx.Tx
 	sessions *session.Store
@@ -207,9 +222,9 @@ func (r *txRepositories) CreatePersonalProfile(ctx context.Context, profile appl
 
 func (r *txRepositories) CreateIdentity(ctx context.Context, record application.IdentityRecord) error {
 	_, err := r.tx.Exec(ctx, `
-		INSERT INTO identities (id, person_id, created_at, updated_at)
-		VALUES ($1, $2, $3, $4)
-	`, record.ID, record.PersonID, record.CreatedAt, record.UpdatedAt)
+		INSERT INTO identities (id, person_id, webauthn_user_handle, created_at, updated_at)
+		VALUES ($1, $2, NULLIF($3, '\x'::bytea), $4, $5)
+	`, record.ID, record.PersonID, record.UserHandle, record.CreatedAt, record.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("create identity: %w", err)
 	}

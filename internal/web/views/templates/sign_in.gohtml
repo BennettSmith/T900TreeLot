@@ -1,0 +1,50 @@
+{{define "sign-in"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.PageTitle}}</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/passkeys.js" defer></script>
+</head>
+<body class="min-h-screen">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="border-b border-border bg-surface">
+    <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4">
+      <p class="text-lg font-semibold tracking-tight text-text">{{.Brand}}</p>
+      <nav aria-label="Primary"><ul class="flex gap-4">{{range .Navigation}}<li><a class="text-sm font-medium text-action hover:text-action-hover" href="{{.Href}}"{{if .Current}} aria-current="page"{{end}}>{{.Label}}</a></li>{{end}}</ul></nav>
+    </div>
+  </header>
+  <main id="main" class="mx-auto max-w-5xl px-4 py-10">
+    <section class="max-w-xl space-y-6" data-sign-in-passkey data-begin-url="/sign-in/passkey/begin" data-finish-url="/sign-in/passkey/finish">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-wide text-action">Secure access</p>
+        <h1 class="mt-2 text-3xl font-semibold tracking-tight text-text">Sign in with a passkey</h1>
+        <p class="mt-3 text-base text-text-secondary">Use a passkey saved on this device or another nearby device. No email is required for a discoverable passkey.</p>
+      </div>
+      {{if .Alert}}{{template "alert" .Alert}}{{end}}
+      <div class="alert alert--critical" role="alert" data-passkey-error hidden>
+        {{template "icon" (printfIcon "critical")}}<div><strong>Sign-in could not be completed.</strong><p data-passkey-error-message>Try again when your browser is ready.</p></div>
+      </div>
+      <form class="space-y-4" data-sign-in-form>
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <button class="w-full rounded-control bg-action px-4 py-3 text-sm font-semibold text-white hover:bg-action-hover" type="submit">Sign in with passkey</button>
+      </form>
+      <details class="rounded-control border border-border bg-surface p-4">
+        <summary class="cursor-pointer text-sm font-semibold text-action">Use an email account hint</summary>
+        <form class="mt-4 space-y-4" data-sign-in-form>
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <div class="space-y-2">
+            <label class="block text-sm font-semibold text-text" for="sign-in-email">Email address</label>
+            <input class="w-full rounded-control border border-border bg-surface px-3 py-2 text-text" id="sign-in-email" name="email" type="email" value="{{.EmailHint}}" autocomplete="email">
+          </div>
+          <button class="rounded-control border border-action px-4 py-2 text-sm font-semibold text-action hover:bg-muted" type="submit">Continue with email hint</button>
+        </form>
+      </details>
+      <p class="text-sm text-text-secondary">Email is only an account hint. It is not an authentication factor.</p>
+    </section>
+  </main>
+</body>
+</html>
+{{end}}

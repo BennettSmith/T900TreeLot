@@ -51,6 +51,11 @@ func TestHandlerServesEmbeddedPasskeyScript(t *testing.T) {
 	if body := response.Body.String(); !strings.Contains(body, "redirectTo") || strings.Contains(body, `redirect: "manual"`) {
 		t.Errorf("passkey script should follow JSON redirectTo without opaque manual redirects: %s", body)
 	}
+	for _, token := range []string{"navigator.credentials.get", "authenticatorData", "signature", "userHandle", "data-sign-in-form"} {
+		if body := response.Body.String(); !strings.Contains(body, token) {
+			t.Errorf("passkey script missing assertion behavior %q", token)
+		}
+	}
 }
 
 func TestScoutBucksMetricsAdaptToTheirContainer(t *testing.T) {

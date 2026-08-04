@@ -34,7 +34,9 @@ type Options struct {
 	ControllableClock  *clock.Controllable
 	Outbox             OutboxControl
 	Bootstrap          BootstrapService
+	SignIn             SignInService
 	Accounts           AccountReader
+	Landings           LandingReader
 	BootstrapReset     BootstrapResetControl
 	IdentityFixture    IdentityFixtureControl
 }
@@ -48,6 +50,15 @@ type BootstrapService interface {
 
 type AccountReader interface {
 	FindAccountProfile(context.Context, string) (application.AccountProfile, error)
+}
+
+type SignInService interface {
+	BeginSignIn(context.Context, application.BeginSignInCommand) (application.BeginSignInResult, error)
+	FinishSignIn(context.Context, application.FinishSignInCommand) (application.SignInResult, error)
+}
+
+type LandingReader interface {
+	FindLandingProfile(context.Context, string) (application.LandingProfile, error)
 }
 
 type BootstrapResetControl interface {
@@ -68,7 +79,9 @@ type Server struct {
 	clock             clock.Clock
 	outbox            OutboxControl
 	bootstrap         BootstrapService
+	signIn            SignInService
 	accounts          AccountReader
+	landings          LandingReader
 	bootstrapReset    BootstrapResetControl
 	identityFixture   IdentityFixtureControl
 	secureCookies     bool
@@ -77,6 +90,8 @@ type Server struct {
 type renderer interface {
 	Home(context.Context, io.Writer, views.Home) error
 	Bootstrap(context.Context, io.Writer, views.BootstrapPage) error
+	SignIn(context.Context, io.Writer, views.SignInPage) error
+	Landing(context.Context, io.Writer, views.LandingPage) error
 	Account(context.Context, io.Writer, views.AccountPage) error
 	ComponentGallery(context.Context, io.Writer, views.Gallery) error
 	ParityResult(context.Context, io.Writer, views.Gallery) error
@@ -105,7 +120,9 @@ func New(viewRenderer renderer, options Options) http.Handler {
 		clock:             clk,
 		outbox:            options.Outbox,
 		bootstrap:         options.Bootstrap,
+		signIn:            options.SignIn,
 		accounts:          options.Accounts,
+		landings:          options.Landings,
 		bootstrapReset:    options.BootstrapReset,
 		identityFixture:   options.IdentityFixture,
 		secureCookies:     options.SecureCookies,
@@ -123,6 +140,11 @@ func New(viewRenderer renderer, options Options) http.Handler {
 	browser.HandleFunc("POST /bootstrap/claim", server.bootstrapClaim)
 	browser.HandleFunc("POST /bootstrap/passkey/begin", server.bootstrapPasskeyBegin)
 	browser.HandleFunc("POST /bootstrap/passkey/finish", server.bootstrapPasskeyFinish)
+	browser.HandleFunc("GET /sign-in", server.signInEntry)
+	browser.HandleFunc("POST /sign-in/passkey/begin", server.signInPasskeyBegin)
+	browser.HandleFunc("POST /sign-in/passkey/finish", server.signInPasskeyFinish)
+	browser.HandleFunc("GET /family", server.familyLanding)
+	browser.HandleFunc("GET /scout/schedule", server.scoutLanding)
 	browser.HandleFunc("GET /account", server.account)
 	browser.HandleFunc("POST /smoke", server.smoke)
 	if options.Development {
@@ -194,6 +216,7 @@ func (s *Server) home(response http.ResponseWriter, request *http.Request) {
 		Supporting: "Families coordinate tree-lot shifts for the troop season from this secure site.",
 		Navigation: []views.Link{
 			{Label: "Home", Href: "/", Current: true},
+			{Label: "Sign in", Href: "/sign-in"},
 		},
 		SmokeInput: request.URL.Query().Get("message"),
 	}

@@ -46,7 +46,10 @@ func (c *RegistrationCeremony) BeginRegistration(ctx context.Context, start appl
 		name:        start.Email.Normalized(),
 		displayName: start.DisplayName,
 	}
-	creation, sessionData, err := c.webauthn.BeginRegistration(user)
+	creation, sessionData, err := c.webauthn.BeginRegistration(
+		user,
+		gowebauthn.WithResidentKeyRequirement(protocol.ResidentKeyRequirementRequired),
+	)
 	if err != nil {
 		return application.RegistrationOptions{}, err
 	}

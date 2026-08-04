@@ -146,10 +146,11 @@ type PersonalProfile struct {
 }
 
 type IdentityRecord struct {
-	ID        string
-	PersonID  string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID         string
+	PersonID   string
+	UserHandle []byte
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 type IdentityEmail struct {
@@ -346,7 +347,13 @@ func (s *BootstrapService) FinishBootstrap(ctx context.Context, command FinishBo
 		}); err != nil {
 			return err
 		}
-		if err := repos.CreateIdentity(txCtx, IdentityRecord{ID: identityID, PersonID: personID, CreatedAt: now, UpdatedAt: now}); err != nil {
+		if err := repos.CreateIdentity(txCtx, IdentityRecord{
+			ID:         identityID,
+			PersonID:   personID,
+			UserHandle: ceremony.UserHandle,
+			CreatedAt:  now,
+			UpdatedAt:  now,
+		}); err != nil {
 			return err
 		}
 		if err := repos.AddEmail(txCtx, IdentityEmail{IdentityID: identityID, Email: email.String(), Normalized: email.Normalized(), Active: true, CreatedAt: now, UpdatedAt: now}); err != nil {
