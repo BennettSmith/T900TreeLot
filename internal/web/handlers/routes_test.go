@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/troop900/treelot/internal/identity/application"
 	"github.com/troop900/treelot/internal/platform/clock"
 	"github.com/troop900/treelot/internal/platform/session"
 	"github.com/troop900/treelot/internal/web/handlers"
@@ -198,6 +199,32 @@ func TestTestControlAbsentInProduction(t *testing.T) {
 	}
 }
 
+func TestIdentityFixtureRoleRequiresTestControlKey(t *testing.T) {
+	t.Parallel()
+	fixture := &fakeIdentityFixture{}
+	server := newServer(t, handlers.Options{
+		TestControlEnabled: true,
+		TestControlKey:     "secret",
+		IdentityFixture:    fixture,
+	})
+	body := `{"email":"manager@example.org","role":"family_manager"}`
+
+	unauthorized := request(t, server, http.MethodPost, "/_test/identity/role", body, map[string]string{"Content-Type": "application/json"}, nil)
+	if unauthorized.Code != http.StatusForbidden {
+		t.Fatalf("unauthorized status = %d", unauthorized.Code)
+	}
+	authorized := request(t, server, http.MethodPost, "/_test/identity/role", body, map[string]string{
+		"Content-Type":       "application/json",
+		"X-Test-Control-Key": "secret",
+	}, nil)
+	if authorized.Code != http.StatusOK {
+		t.Fatalf("authorized status = %d body=%q", authorized.Code, authorized.Body.String())
+	}
+	if fixture.command.Email != "manager@example.org" || fixture.command.Role != "family_manager" {
+		t.Fatalf("command = %#v", fixture.command)
+	}
+}
+
 func TestParityRejectsMalformedFormAndUsesDefaultMessage(t *testing.T) {
 	t.Parallel()
 
@@ -309,4 +336,17 @@ func request(t *testing.T, handler http.Handler, method, target, body string, he
 	handler.ServeHTTP(response, req)
 	_, _ = io.Copy(io.Discard, response.Result().Body)
 	return response
+}
+
+type fakeIdentityFixture struct {
+	command application.SetFixtureRoleCommand
+}
+
+func (f *fakeIdentityFixture) SetRole(_ context.Context, command application.SetFixtureRoleCommand) error {
+	f.command = command
+	return nil
+}
+
+func (*fakeIdentityFixture) RevokeSessions(context.Context, string) error {
+	return nil
 }

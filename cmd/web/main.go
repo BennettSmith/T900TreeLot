@@ -94,9 +94,11 @@ func newHTTPServer(cfg config.Config, db *postgres.DB, appClock clock.Clock, con
 	}
 	var outboxControl handlers.OutboxControl
 	var bootstrapReset handlers.BootstrapResetControl
+	var identityFixture handlers.IdentityFixtureControl
 	if cfg.TestControlEnabled {
 		outboxControl = outbox.NewStore(db, appClock)
 		bootstrapReset = identitypostgres.NewTestControl(db)
+		identityFixture = &identityapp.TestFixtureService{UnitOfWork: identitypostgres.NewUnitOfWork(db, appClock)}
 	}
 	handler := handlers.New(renderer, handlers.Options{
 		Development:        cfg.AppEnv == config.EnvDevelopment,
@@ -112,6 +114,7 @@ func newHTTPServer(cfg config.Config, db *postgres.DB, appClock clock.Clock, con
 		Bootstrap:          bootstrapService,
 		Accounts:           identitypostgres.NewAccountQueries(db),
 		BootstrapReset:     bootstrapReset,
+		IdentityFixture:    identityFixture,
 	})
 	return &http.Server{
 		Addr:              cfg.ListenAddress,

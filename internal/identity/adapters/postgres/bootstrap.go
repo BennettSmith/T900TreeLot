@@ -43,6 +43,21 @@ func (u *UnitOfWork) WithinTx(ctx context.Context, fn func(context.Context, appl
 	return nil
 }
 
+func (u *UnitOfWork) WithinTestFixtureTx(ctx context.Context, fn func(context.Context, application.TestFixtureRepositories) error) error {
+	tx, err := u.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin identity fixture transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := fn(ctx, &txRepositories{tx: tx, sessions: u.sessions}); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit identity fixture transaction: %w", err)
+	}
+	return nil
+}
+
 type txRepositories struct {
 	tx       pgx.Tx
 	sessions *session.Store
@@ -84,6 +99,43 @@ func (r *txRepositories) EmailTaken(ctx context.Context, normalized string) (boo
 		)
 	`, normalized).Scan(&exists)
 	return exists, err
+}
+
+func (r *txRepositories) FindIdentityByEmail(ctx context.Context, normalized string) (string, error) {
+	var identityID string
+	err := r.tx.QueryRow(ctx, `
+		SELECT identity_id
+		FROM identity_emails
+		WHERE email_normalized = $1 AND active
+	`, normalized).Scan(&identityID)
+	if err != nil {
+		return "", fmt.Errorf("find identity by email: %w", err)
+	}
+	return identityID, nil
+}
+
+func (r *txRepositories) ReplaceRoles(ctx context.Context, identityID string, roles []domain.Role) error {
+	if _, err := r.tx.Exec(ctx, `DELETE FROM identity_roles WHERE identity_id = $1`, identityID); err != nil {
+		return fmt.Errorf("clear identity roles: %w", err)
+	}
+	for _, role := range roles {
+		if err := r.GrantRole(ctx, identityID, role); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *txRepositories) RevokeSessionsForIdentity(ctx context.Context, identityID string) error {
+	_, err := r.tx.Exec(ctx, `
+		UPDATE sessions
+		SET revoked_at = now()
+		WHERE identity_id = $1 AND revoked_at IS NULL
+	`, identityID)
+	if err != nil {
+		return fmt.Errorf("revoke identity sessions: %w", err)
+	}
+	return nil
 }
 
 func (r *txRepositories) LockRegistrationCeremony(ctx context.Context, ceremonyID string) (application.RegistrationCeremony, error) {

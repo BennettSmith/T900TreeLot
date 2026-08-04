@@ -101,6 +101,9 @@ func (l *Lot) Providers() *Providers { return &Providers{lot: l} }
 // Bootstrap exposes first-Admin enrollment checks.
 func (l *Lot) Bootstrap() *Bootstrap { return &Bootstrap{lot: l} }
 
+// SignIn exposes authenticated passkey sign-in checks.
+func (l *Lot) SignIn() *SignIn { return &SignIn{lot: l} }
+
 // Presence captures anonymous visitor checks.
 type Presence struct{ lot *Lot }
 
@@ -565,6 +568,15 @@ func (b *Bootstrap) OnlyOneConcurrentBootstrapSucceeds(token string) {
 }
 
 func (b *Bootstrap) completeEnrollment(client *web.Client, token, email, displayName string) {
+	passkey := webauthndriver.NewPasskey(webauthndriver.RelyingParty{
+		Name:   "Troop 900 Tree Lot",
+		ID:     "treelot.test",
+		Origin: "https://treelot.test",
+	})
+	b.completeEnrollmentWithPasskey(client, token, email, displayName, passkey)
+}
+
+func (b *Bootstrap) completeEnrollmentWithPasskey(client *web.Client, token, email, displayName string, passkey *webauthndriver.Passkey) {
 	b.lot.t.Helper()
 	csrf := b.startAndClaim(client, token, email, displayName)
 	beginBody, err := json.Marshal(map[string]string{
@@ -585,11 +597,7 @@ func (b *Bootstrap) completeEnrollment(client *web.Client, token, email, display
 	if err != nil {
 		b.lot.t.Fatal(err)
 	}
-	attestationResponse, err := webauthndriver.CreateAttestationResponse(webauthndriver.RelyingParty{
-		Name:   "Troop 900 Tree Lot",
-		ID:     "treelot.test",
-		Origin: "https://treelot.test",
-	}, begin.PublicKey)
+	attestationResponse, err := passkey.CreateAttestationResponse(begin.PublicKey)
 	if err != nil {
 		b.lot.t.Fatalf("create attestation: %v", err)
 	}
@@ -650,5 +658,77 @@ func (b *Bootstrap) reset() {
 	status, body, _, err := b.lot.web.PostJSON("/_test/bootstrap/reset", `{}`, map[string]string{"X-Test-Control-Key": b.lot.config.TestControlKey})
 	if err != nil || status != http.StatusOK || !strings.Contains(body, "reset") {
 		b.lot.t.Fatalf("bootstrap reset status=%d err=%v body=%q", status, err, body)
+	}
+}
+
+// SignIn captures the browser-visible passkey assertion flow.
+type SignIn struct{ lot *Lot }
+
+// FamilyManagerUsesDiscoverablePasskey proves usernameless role-aware sign-in.
+func (s *SignIn) FamilyManagerUsesDiscoverablePasskey(token, email string) {
+	s.lot.t.Helper()
+	bootstrap := s.lot.Bootstrap()
+	bootstrap.reset()
+	passkey := webauthndriver.NewPasskey(webauthndriver.RelyingParty{
+		Name:   "Troop 900 Tree Lot",
+		ID:     "treelot.test",
+		Origin: "https://treelot.test",
+	})
+	bootstrap.completeEnrollmentWithPasskey(s.lot.web, token, email, "Family Manager", passkey)
+	s.setRole(email, "family_manager")
+
+	client, err := web.NewClient(s.lot.config.BaseURL)
+	if err != nil {
+		s.lot.t.Fatalf("anonymous sign-in client: %v", err)
+	}
+	status, body, err := client.Get("/sign-in")
+	if err != nil || status != http.StatusOK {
+		s.lot.t.Fatalf("sign-in entry status=%d err=%v body=%q", status, err, body)
+	}
+	csrf, err := web.CSRFToken(body)
+	if err != nil {
+		s.lot.t.Fatalf("sign-in csrf: %v", err)
+	}
+	status, body, _, err = client.PostJSON("/sign-in/passkey/begin", `{}`, map[string]string{"X-CSRF-Token": csrf})
+	if err != nil || status != http.StatusOK {
+		s.lot.t.Fatalf("sign-in begin status=%d err=%v body=%q", status, err, body)
+	}
+	begin, err := webauthndriver.ParseBeginPayload(body)
+	if err != nil {
+		s.lot.t.Fatal(err)
+	}
+	assertion, err := passkey.CreateAssertionResponse(begin.PublicKey)
+	if err != nil {
+		s.lot.t.Fatalf("create assertion: %v", err)
+	}
+	finishBody := fmt.Sprintf(`{"ceremonyId":%q,"credential":%s}`, begin.CeremonyID, assertion)
+	status, body, _, err = client.PostJSON("/sign-in/passkey/finish", finishBody, map[string]string{"X-CSRF-Token": csrf})
+	if err != nil || status != http.StatusOK {
+		s.lot.t.Fatalf("sign-in finish status=%d err=%v body=%q", status, err, body)
+	}
+	var finish struct {
+		RedirectTo string `json:"redirectTo"`
+	}
+	if err := json.Unmarshal([]byte(body), &finish); err != nil {
+		s.lot.t.Fatalf("decode sign-in finish: %v body=%q", err, body)
+	}
+	if finish.RedirectTo != "/family" {
+		s.lot.t.Fatalf("family manager redirectTo=%q, want /family", finish.RedirectTo)
+	}
+	status, body, err = client.Get(finish.RedirectTo)
+	if err != nil || status != http.StatusOK || !strings.Contains(body, "Family dashboard") {
+		s.lot.t.Fatalf("family dashboard status=%d err=%v body=%q", status, err, body)
+	}
+}
+
+func (s *SignIn) setRole(email, role string) {
+	s.lot.t.Helper()
+	body, err := json.Marshal(map[string]string{"email": email, "role": role})
+	if err != nil {
+		s.lot.t.Fatal(err)
+	}
+	status, response, _, err := s.lot.web.PostJSON("/_test/identity/role", string(body), map[string]string{"X-Test-Control-Key": s.lot.config.TestControlKey})
+	if err != nil || status != http.StatusOK {
+		s.lot.t.Fatalf("set fixture role status=%d err=%v body=%q", status, err, response)
 	}
 }

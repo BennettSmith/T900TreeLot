@@ -36,6 +36,7 @@ type Options struct {
 	Bootstrap          BootstrapService
 	Accounts           AccountReader
 	BootstrapReset     BootstrapResetControl
+	IdentityFixture    IdentityFixtureControl
 }
 
 type BootstrapService interface {
@@ -53,6 +54,11 @@ type BootstrapResetControl interface {
 	ResetBootstrap(context.Context) error
 }
 
+type IdentityFixtureControl interface {
+	SetRole(context.Context, application.SetFixtureRoleCommand) error
+	RevokeSessions(context.Context, string) error
+}
+
 type Server struct {
 	renderer          renderer
 	logger            *slog.Logger
@@ -64,6 +70,7 @@ type Server struct {
 	bootstrap         BootstrapService
 	accounts          AccountReader
 	bootstrapReset    BootstrapResetControl
+	identityFixture   IdentityFixtureControl
 	secureCookies     bool
 }
 
@@ -100,6 +107,7 @@ func New(viewRenderer renderer, options Options) http.Handler {
 		bootstrap:         options.Bootstrap,
 		accounts:          options.Accounts,
 		bootstrapReset:    options.BootstrapReset,
+		identityFixture:   options.IdentityFixture,
 		secureCookies:     options.SecureCookies,
 	}
 
@@ -127,6 +135,7 @@ func New(viewRenderer renderer, options Options) http.Handler {
 		mux.HandleFunc("POST /_test/outbox", server.enqueueOutbox)
 		mux.HandleFunc("GET /_test/outbox", server.getOutbox)
 		mux.HandleFunc("POST /_test/bootstrap/reset", server.resetBootstrap)
+		mux.HandleFunc("POST /_test/identity/role", server.setFixtureIdentityRole)
 	}
 
 	var browserHandler http.Handler = browser
@@ -136,6 +145,28 @@ func New(viewRenderer renderer, options Options) http.Handler {
 	mux.Handle("/", browserHandler)
 
 	return middleware.BrowserHeaders(mux)
+}
+
+func (s *Server) setFixtureIdentityRole(response http.ResponseWriter, request *http.Request) {
+	if !s.authorizeTestControl(request) {
+		http.Error(response, "forbidden", http.StatusForbidden)
+		return
+	}
+	if s.identityFixture == nil {
+		http.Error(response, "identity fixture unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	var command application.SetFixtureRoleCommand
+	if err := json.NewDecoder(request.Body).Decode(&command); err != nil {
+		http.Error(response, "invalid body", http.StatusBadRequest)
+		return
+	}
+	if err := s.identityFixture.SetRole(request.Context(), command); err != nil {
+		http.Error(response, "unable to set identity fixture role", http.StatusBadRequest)
+		return
+	}
+	response.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(response).Encode(map[string]string{"status": "updated"})
 }
 
 func (s *Server) live(response http.ResponseWriter, _ *http.Request) {
