@@ -82,6 +82,10 @@ func newHTTPServer(cfg config.Config, db *postgres.DB, appClock clock.Clock, con
 	if err != nil {
 		return nil, err
 	}
+	assertions, err := platformwebauthn.NewAssertionCeremony(cfg.WebAuthnRPID, cfg.WebAuthnOrigins)
+	if err != nil {
+		return nil, err
+	}
 	bootstrapService := &identityapp.BootstrapService{
 		UnitOfWork:          identitypostgres.NewUnitOfWork(db, appClock),
 		Tokens:              token.NewBootstrapValidator(cfg.BootstrapEnrollmentToken, cfg.BootstrapTokenExpiresAt),
@@ -92,12 +96,28 @@ func newHTTPServer(cfg config.Config, db *postgres.DB, appClock clock.Clock, con
 		AuthRateLimitMax:    cfg.AuthRateLimitMax,
 		AuthRateLimitWindow: cfg.AuthRateLimitWindow,
 	}
+	signInService := &identityapp.SignInService{
+		UnitOfWork:          identitypostgres.NewUnitOfWork(db, appClock),
+		RateLimiter:         ratelimit.NewBuckets(db, appClock),
+		Passkeys:            assertions,
+		Clock:               appClock,
+		IDs:                 ids.NewGenerator(),
+		AuthRateLimitMax:    cfg.AuthRateLimitMax,
+		AuthRateLimitWindow: cfg.AuthRateLimitWindow,
+	}
+	signOutService := &identityapp.SignOutService{
+		UnitOfWork: identitypostgres.NewUnitOfWork(db, appClock),
+		Clock:      appClock,
+	}
 	var outboxControl handlers.OutboxControl
 	var bootstrapReset handlers.BootstrapResetControl
+	var identityFixture handlers.IdentityFixtureControl
 	if cfg.TestControlEnabled {
 		outboxControl = outbox.NewStore(db, appClock)
 		bootstrapReset = identitypostgres.NewTestControl(db)
+		identityFixture = &identityapp.TestFixtureService{UnitOfWork: identitypostgres.NewUnitOfWork(db, appClock)}
 	}
+	accountQueries := identitypostgres.NewAccountQueries(db)
 	handler := handlers.New(renderer, handlers.Options{
 		Development:        cfg.AppEnv == config.EnvDevelopment,
 		Logger:             logger,
@@ -110,8 +130,12 @@ func newHTTPServer(cfg config.Config, db *postgres.DB, appClock clock.Clock, con
 		ControllableClock:  controllable,
 		Outbox:             outboxControl,
 		Bootstrap:          bootstrapService,
-		Accounts:           identitypostgres.NewAccountQueries(db),
+		SignIn:             signInService,
+		SignOut:            signOutService,
+		Accounts:           accountQueries,
+		Landings:           accountQueries,
 		BootstrapReset:     bootstrapReset,
+		IdentityFixture:    identityFixture,
 	})
 	return &http.Server{
 		Addr:              cfg.ListenAddress,

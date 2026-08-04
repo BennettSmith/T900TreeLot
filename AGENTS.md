@@ -224,8 +224,11 @@ Non-obvious caveats:
   Do not set `TEST_DATABASE_URL`; leaving it unset uses the reachable `:5432` DB.
 - `make acceptance` needs Docker. It builds the production image and runs its
   own throwaway Compose PostgreSQL on host port `:5433` plus host-networked
-  web/worker/stub on `:8080`, `:8081`, `:8090`. It does not use the dev
-  PostgreSQL on `:5432`, so the two never conflict.
+  acceptance web, production web, and stub on `:18080`, `:18081`, and `:18090`
+  by default. Those application ports are configurable with
+  `ACCEPTANCE_WEB_PORT`, `ACCEPTANCE_PRODUCTION_PORT`, and
+  `ACCEPTANCE_STUB_PORT`. It does not use the dev PostgreSQL on `:5432`, so the
+  two never conflict.
 - Docker 29 defaults to the containerd snapshotter; the classic `vfs` graph
   driver requires `/etc/docker/daemon.json` to set
   `{"storage-driver":"vfs","features":{"containerd-snapshotter":false}}`.

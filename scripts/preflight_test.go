@@ -18,7 +18,7 @@ func TestAcceptancePreflightReportsOccupiedPort(t *testing.T) {
 	writeExecutable(t, bin, "docker", "#!/bin/sh\nexit 0\n")
 	writeExecutable(t, bin, "lsof", `#!/bin/sh
 case "$*" in
-  *8081*) echo "old-web 1234 user 10u IPv4 TCP *:8081 (LISTEN)"; exit 0 ;;
+  *28081*) echo "old-web 1234 user 10u IPv4 TCP *:28081 (LISTEN)"; exit 0 ;;
   *) exit 1 ;;
 esac
 `)
@@ -28,12 +28,13 @@ esac
 		"PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"),
 		"PREFLIGHT_OS=Darwin",
 		"PREFLIGHT_HOST_NETWORK_ATTEMPTS=1",
+		"ACCEPTANCE_PRODUCTION_PORT=28081",
 	)
 	output, err := command.CombinedOutput()
 	if err == nil {
-		t.Fatal("preflight succeeded with port 8081 occupied")
+		t.Fatal("preflight succeeded with configured production port occupied")
 	}
-	if !strings.Contains(string(output), "Port 8081 is in use") {
+	if !strings.Contains(string(output), "Port 28081 is in use") {
 		t.Fatalf("output = %q, want occupied port diagnostic", output)
 	}
 }
@@ -197,6 +198,26 @@ func TestAcceptanceRunnerCleansBeforePreflight(t *testing.T) {
 	}
 	if cleanup < 0 || cleanup > preflight {
 		t.Fatal("acceptance runner must remove its old containers before checking ports")
+	}
+}
+
+func TestAcceptanceRunnerUsesConfigurableHighPorts(t *testing.T) {
+	contents, err := os.ReadFile("acceptance.sh")
+	if err != nil {
+		t.Fatalf("read acceptance runner: %v", err)
+	}
+	script := string(contents)
+	for _, contract := range []string{
+		`WEB_PORT="${ACCEPTANCE_WEB_PORT:-18080}"`,
+		`PRODUCTION_PORT="${ACCEPTANCE_PRODUCTION_PORT:-18081}"`,
+		`STUB_PORT="${ACCEPTANCE_STUB_PORT:-18090}"`,
+		`-e PORT="$WEB_PORT"`,
+		`-e PORT="$PRODUCTION_PORT"`,
+		`-e PORT="$STUB_PORT"`,
+	} {
+		if !strings.Contains(script, contract) {
+			t.Errorf("acceptance runner missing configurable-port contract %q", contract)
+		}
 	}
 }
 

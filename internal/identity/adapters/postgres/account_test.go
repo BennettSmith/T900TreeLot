@@ -8,6 +8,8 @@ import (
 
 	identitypostgres "github.com/troop900/treelot/internal/identity/adapters/postgres"
 	"github.com/troop900/treelot/internal/identity/application"
+	"github.com/troop900/treelot/internal/identity/domain"
+	"github.com/troop900/treelot/internal/platform/clock"
 	platformpostgres "github.com/troop900/treelot/internal/platform/postgres"
 	"github.com/troop900/treelot/internal/platform/testdb"
 )
@@ -31,6 +33,50 @@ func TestAccountQueriesReturnsNotFound(t *testing.T) {
 	_, err := identitypostgres.NewAccountQueries(db).FindAccountProfile(context.Background(), "missing")
 	if !errors.Is(err, application.ErrAccountNotFound) {
 		t.Fatalf("err = %v, want ErrAccountNotFound", err)
+	}
+}
+
+func TestAccountQueriesFindsRoleAwareLandingProfile(t *testing.T) {
+	db := testdb.OpenMigrated(t)
+	seedIdentity(t, db, "identity-1", "person-1", "Young", "Scout", "Trailblazer", "scout@example.org")
+	if _, err := db.Exec(context.Background(), `INSERT INTO identity_roles (identity_id, role, created_at) VALUES ('identity-1', 'young_adult_scout', now())`); err != nil {
+		t.Fatal(err)
+	}
+
+	profile, err := identitypostgres.NewAccountQueries(db).FindLandingProfile(context.Background(), "identity-1")
+	if err != nil {
+		t.Fatalf("FindLandingProfile: %v", err)
+	}
+	if profile.DisplayName != "Trailblazer" || !profile.HasRole(domain.RoleYoungAdultScout) || profile.HasRole(domain.RoleFamilyManager) {
+		t.Fatalf("profile = %#v", profile)
+	}
+}
+
+func TestFixtureTransactionReplacesIdentityRoles(t *testing.T) {
+	db := testdb.OpenMigrated(t)
+	seedIdentity(t, db, "identity-1", "person-1", "Ada", "Admin", "", "ada@example.org")
+	if _, err := db.Exec(context.Background(), `INSERT INTO identity_roles (identity_id, role, created_at) VALUES ('identity-1', 'admin', now())`); err != nil {
+		t.Fatal(err)
+	}
+
+	unit := identitypostgres.NewUnitOfWork(db, clock.System())
+	err := unit.WithinTestFixtureTx(context.Background(), func(ctx context.Context, repos application.TestFixtureRepositories) error {
+		identityID, err := repos.FindIdentityByEmail(ctx, "ada@example.org")
+		if err != nil {
+			return err
+		}
+		return repos.ReplaceRoles(ctx, identityID, []domain.Role{domain.RoleFamilyManager})
+	})
+	if err != nil {
+		t.Fatalf("fixture transaction: %v", err)
+	}
+
+	var role string
+	if err := db.QueryRow(context.Background(), `SELECT role FROM identity_roles WHERE identity_id = 'identity-1'`).Scan(&role); err != nil {
+		t.Fatal(err)
+	}
+	if role != "family_manager" {
+		t.Fatalf("role = %q", role)
 	}
 }
 

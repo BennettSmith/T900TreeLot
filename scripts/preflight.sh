@@ -14,6 +14,9 @@ esac
 OS="${PREFLIGHT_OS:-$(uname -s)}"
 FAILURES=0
 HOST_CHECK_CONTAINER=""
+ACCEPTANCE_WEB_PORT="${ACCEPTANCE_WEB_PORT:-18080}"
+ACCEPTANCE_PRODUCTION_PORT="${ACCEPTANCE_PRODUCTION_PORT:-18081}"
+ACCEPTANCE_STUB_PORT="${ACCEPTANCE_STUB_PORT:-18090}"
 
 cleanup() {
   if [[ -n "$HOST_CHECK_CONTAINER" ]]; then
@@ -171,7 +174,11 @@ if command -v docker >/dev/null 2>&1; then
   fi
 fi
 
-for port in 5433 8080 8081 8090; do
+ports=(5433 8080 8081 8090)
+if [[ "$MODE" == "acceptance" ]]; then
+  ports=(5433 "$ACCEPTANCE_WEB_PORT" "$ACCEPTANCE_PRODUCTION_PORT" "$ACCEPTANCE_STUB_PORT")
+fi
+for port in "${ports[@]}"; do
   check_port "$port"
 done
 

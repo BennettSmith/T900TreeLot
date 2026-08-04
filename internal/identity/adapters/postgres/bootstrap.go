@@ -43,6 +43,51 @@ func (u *UnitOfWork) WithinTx(ctx context.Context, fn func(context.Context, appl
 	return nil
 }
 
+func (u *UnitOfWork) WithinTestFixtureTx(ctx context.Context, fn func(context.Context, application.TestFixtureRepositories) error) error {
+	tx, err := u.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin identity fixture transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := fn(ctx, &txRepositories{tx: tx, sessions: u.sessions}); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit identity fixture transaction: %w", err)
+	}
+	return nil
+}
+
+func (u *UnitOfWork) WithinSignInTx(ctx context.Context, fn func(context.Context, application.SignInRepositories) error) error {
+	tx, err := u.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin sign-in transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := fn(ctx, &txRepositories{tx: tx, sessions: u.sessions}); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit sign-in transaction: %w", err)
+	}
+	return nil
+}
+
+func (u *UnitOfWork) WithinSignOutTx(ctx context.Context, fn func(context.Context, application.SignOutRepositories) error) error {
+	tx, err := u.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin sign-out transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := fn(ctx, &txRepositories{tx: tx, sessions: u.sessions}); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit sign-out transaction: %w", err)
+	}
+	return nil
+}
+
 type txRepositories struct {
 	tx       pgx.Tx
 	sessions *session.Store
@@ -84,6 +129,58 @@ func (r *txRepositories) EmailTaken(ctx context.Context, normalized string) (boo
 		)
 	`, normalized).Scan(&exists)
 	return exists, err
+}
+
+func (r *txRepositories) FindIdentityByEmail(ctx context.Context, normalized string) (string, error) {
+	var identityID string
+	err := r.tx.QueryRow(ctx, `
+		SELECT identity_id
+		FROM identity_emails
+		WHERE email_normalized = $1 AND active
+	`, normalized).Scan(&identityID)
+	if err != nil {
+		return "", fmt.Errorf("find identity by email: %w", err)
+	}
+	return identityID, nil
+}
+
+func (r *txRepositories) ReplaceRoles(ctx context.Context, identityID string, roles []domain.Role) error {
+	if _, err := r.tx.Exec(ctx, `DELETE FROM identity_roles WHERE identity_id = $1`, identityID); err != nil {
+		return fmt.Errorf("clear identity roles: %w", err)
+	}
+	for _, role := range roles {
+		if err := r.GrantRole(ctx, identityID, role); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *txRepositories) RevokeSessionsForIdentity(ctx context.Context, identityID string) error {
+	_, err := r.tx.Exec(ctx, `
+		UPDATE sessions
+		SET revoked_at = now()
+		WHERE identity_id = $1 AND revoked_at IS NULL
+	`, identityID)
+	if err != nil {
+		return fmt.Errorf("revoke identity sessions: %w", err)
+	}
+	return nil
+}
+
+func (r *txRepositories) RevokeCurrentSession(ctx context.Context, sessionID int64, identityID string, revokedAt time.Time) error {
+	tag, err := r.tx.Exec(ctx, `
+		UPDATE sessions
+		SET revoked_at = $3
+		WHERE id = $1 AND identity_id = $2 AND revoked_at IS NULL
+	`, sessionID, identityID, revokedAt)
+	if err != nil {
+		return fmt.Errorf("revoke current session: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return application.ErrAccountNotFound
+	}
+	return nil
 }
 
 func (r *txRepositories) LockRegistrationCeremony(ctx context.Context, ceremonyID string) (application.RegistrationCeremony, error) {
@@ -155,9 +252,9 @@ func (r *txRepositories) CreatePersonalProfile(ctx context.Context, profile appl
 
 func (r *txRepositories) CreateIdentity(ctx context.Context, record application.IdentityRecord) error {
 	_, err := r.tx.Exec(ctx, `
-		INSERT INTO identities (id, person_id, created_at, updated_at)
-		VALUES ($1, $2, $3, $4)
-	`, record.ID, record.PersonID, record.CreatedAt, record.UpdatedAt)
+		INSERT INTO identities (id, person_id, webauthn_user_handle, created_at, updated_at)
+		VALUES ($1, $2, NULLIF($3, '\x'::bytea), $4, $5)
+	`, record.ID, record.PersonID, record.UserHandle, record.CreatedAt, record.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("create identity: %w", err)
 	}
@@ -194,15 +291,23 @@ func (r *txRepositories) StorePasskeyCredential(ctx context.Context, credential 
 	_, err := r.tx.Exec(ctx, `
 		INSERT INTO passkey_credentials (
 			id, identity_id, credential_id, public_key, attestation_type,
-			aaguid, sign_count, transports, created_at, last_used_at
+			aaguid, sign_count, transports, authenticator_flags, created_at, last_used_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 	`, credential.ID, credential.IdentityID, credential.CredentialID, credential.PublicKey, credential.AttestationType,
-		credential.AAGUID, int64(credential.SignCount), credential.Transports, credential.CreatedAt, credential.LastUsedAt)
+		credential.AAGUID, int64(credential.SignCount), credential.Transports, nullableAuthenticatorFlags(credential),
+		credential.CreatedAt, credential.LastUsedAt)
 	if err != nil {
 		return fmt.Errorf("store passkey credential: %w", err)
 	}
 	return nil
+}
+
+func nullableAuthenticatorFlags(credential application.PasskeyCredential) any {
+	if !credential.FlagsKnown {
+		return nil
+	}
+	return int16(credential.AuthenticatorFlags)
 }
 
 func (r *txRepositories) CloseBootstrap(ctx context.Context, identityID string, closedAt time.Time) error {

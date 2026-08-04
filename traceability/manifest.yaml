@@ -697,7 +697,8 @@ stories:
         change: Initial user-story traceability baseline
       - revision: 2
         requirements_status: accepted
-        delivery_status: planned
+        delivery_status: verified
+        implementation_pr: 15
         source_use_cases: [UC-2@r2]
         change: Deferred Agreement Center direction and participation eligibility enforcement to the seasonal-agreement stories in INC-04
   US-003:

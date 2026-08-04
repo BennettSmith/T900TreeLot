@@ -83,6 +83,26 @@ func (r *Renderer) Bootstrap(ctx context.Context, output io.Writer, data Bootstr
 	return nil
 }
 
+func (r *Renderer) SignIn(ctx context.Context, output io.Writer, data SignInPage) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := r.templates.ExecuteTemplate(output, "sign-in", data); err != nil {
+		return fmt.Errorf("render sign in: %w", err)
+	}
+	return nil
+}
+
+func (r *Renderer) Landing(ctx context.Context, output io.Writer, data LandingPage) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := r.templates.ExecuteTemplate(output, "landing", data); err != nil {
+		return fmt.Errorf("render landing: %w", err)
+	}
+	return nil
+}
+
 func (r *Renderer) Account(ctx context.Context, output io.Writer, data AccountPage) error {
 	if err := ctx.Err(); err != nil {
 		return err

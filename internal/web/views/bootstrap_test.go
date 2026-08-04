@@ -92,11 +92,12 @@ func TestAccountPageRendersAdminWelcome(t *testing.T) {
 		PageTitle:   "Admin account",
 		Brand:       "Troop 900 Tree Lot",
 		DisplayName: "Ada Admin",
+		CSRFToken:   "csrf-token",
 	}); err != nil {
 		t.Fatalf("Account: %v", err)
 	}
 	html := output.String()
-	for _, want := range []string{"Welcome, Ada Admin", `aria-label="Primary"`, "/static/app.css"} {
+	for _, want := range []string{"Welcome, Ada Admin", `aria-label="Primary"`, "/static/app.css", `action="/sign-out"`, `value="csrf-token"`, "Sign out"} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("account page missing %q in %s", want, html)
 		}

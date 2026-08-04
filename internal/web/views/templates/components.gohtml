@@ -107,3 +107,12 @@
 {{define "scout-bucks"}}
 <article class="bucks-summary" data-scout-bucks-state="{{.State}}"><header><div>{{template "badge" .Status}}<h3>Scout Bucks summary</h3></div><strong>{{.Revision}}</strong></header><div class="metric-grid"><div class="metric"><strong>{{.CreditedHours}}</strong><span>{{if eq .State "finalized"}}Finalized{{else}}Provisional{{end}} credited hours</span></div>{{if eq .State "finalized"}}<div class="metric"><strong>{{.Distributable}}</strong><span>Distributable pool</span></div><div class="metric"><strong>{{.EffectiveRate}}</strong><span>Effective rate · informational</span></div><div class="metric"><strong>{{.Rounding}}</strong><span>Rounding remainder allocated</span></div>{{end}}</div>{{if eq .State "finalized"}}<div class="reconciliation">{{template "icon" (printfIcon "check")}} <strong>Exact-pool reconciliation:</strong> {{.Reconciliation}}</div><p>The scheduler records the finalized award revision but does not maintain balances or redemptions.</p>{{else}}<p>Dollar awards are intentionally unavailable before Treasurer finalization.</p>{{end}}</article>
 {{end}}
+
+{{define "sign-out-nav"}}
+<li>
+  <form method="post" action="/sign-out">
+    <input type="hidden" name="csrf_token" value="{{.}}">
+    <button class="text-sm font-medium text-action hover:text-action-hover" type="submit">Sign out</button>
+  </form>
+</li>
+{{end}}

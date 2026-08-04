@@ -1,0 +1,27 @@
+{{define "landing"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.PageTitle}}</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="min-h-screen">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="border-b border-border bg-surface">
+    <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4">
+      <p class="text-lg font-semibold tracking-tight text-text">{{.Brand}}</p>
+      <nav aria-label="Primary"><ul class="flex gap-4">{{range .Navigation}}<li><a class="text-sm font-medium text-action hover:text-action-hover" href="{{.Href}}"{{if .Current}} aria-current="page"{{end}}>{{.Label}}</a></li>{{end}}{{template "sign-out-nav" .CSRFToken}}</ul></nav>
+    </div>
+  </header>
+  <main id="main" class="mx-auto max-w-5xl px-4 py-10">
+    <section class="max-w-2xl space-y-4">
+      <p class="text-sm font-semibold uppercase tracking-wide text-action">Welcome, {{.DisplayName}}</p>
+      <h1 class="text-3xl font-semibold tracking-tight text-text">{{.Heading}}</h1>
+      <p class="text-base text-text-secondary">{{.Supporting}}</p>
+    </section>
+  </main>
+</body>
+</html>
+{{end}}

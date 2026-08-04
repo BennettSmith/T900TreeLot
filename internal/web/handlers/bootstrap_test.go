@@ -419,6 +419,14 @@ func (failingRenderer) Bootstrap(context.Context, io.Writer, views.BootstrapPage
 	return errors.New("representative render failure")
 }
 
+func (failingRenderer) SignIn(context.Context, io.Writer, views.SignInPage) error {
+	return errors.New("representative render failure")
+}
+
+func (failingRenderer) Landing(context.Context, io.Writer, views.LandingPage) error {
+	return errors.New("representative render failure")
+}
+
 func (failingRenderer) Account(context.Context, io.Writer, views.AccountPage) error {
 	return errors.New("representative render failure")
 }

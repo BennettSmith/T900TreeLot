@@ -541,11 +541,13 @@ func (v *fakeTokenValidator) ValidateBootstrapToken(_ context.Context, token str
 
 type fakeRateLimiter struct {
 	allowed    bool
+	lastKey    string
 	lastMax    int
 	lastWindow time.Duration
 }
 
-func (r *fakeRateLimiter) Allow(_ context.Context, _ string, max int, window time.Duration) (bool, error) {
+func (r *fakeRateLimiter) Allow(_ context.Context, key string, max int, window time.Duration) (bool, error) {
+	r.lastKey = key
 	r.lastMax = max
 	r.lastWindow = window
 	return r.allowed, nil

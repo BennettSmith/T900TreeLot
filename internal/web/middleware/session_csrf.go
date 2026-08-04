@@ -72,6 +72,20 @@ func SetSessionCookie(response http.ResponseWriter, rawToken string, expiresAt t
 	})
 }
 
+// ClearSessionCookie expires the host-only browser session cookie.
+func ClearSessionCookie(response http.ResponseWriter, secure bool) {
+	http.SetCookie(response, &http.Cookie{
+		Name:     SessionCookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   secure,
+		Expires:  time.Unix(1, 0).UTC(),
+		MaxAge:   -1,
+	})
+}
+
 func loadOrCreate(ctx context.Context, store Sessions, request *http.Request) (*session.Session, string, error) {
 	cookie, err := request.Cookie(SessionCookieName)
 	if err == nil {
