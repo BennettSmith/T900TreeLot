@@ -35,6 +35,7 @@ type Options struct {
 	Outbox             OutboxControl
 	Bootstrap          BootstrapService
 	SignIn             SignInService
+	SignOut            SignOutService
 	Accounts           AccountReader
 	Landings           LandingReader
 	BootstrapReset     BootstrapResetControl
@@ -55,6 +56,10 @@ type AccountReader interface {
 type SignInService interface {
 	BeginSignIn(context.Context, application.BeginSignInCommand) (application.BeginSignInResult, error)
 	FinishSignIn(context.Context, application.FinishSignInCommand) (application.SignInResult, error)
+}
+
+type SignOutService interface {
+	SignOut(context.Context, application.SignOutCommand) error
 }
 
 type LandingReader interface {
@@ -80,6 +85,7 @@ type Server struct {
 	outbox            OutboxControl
 	bootstrap         BootstrapService
 	signIn            SignInService
+	signOut           SignOutService
 	accounts          AccountReader
 	landings          LandingReader
 	bootstrapReset    BootstrapResetControl
@@ -121,6 +127,7 @@ func New(viewRenderer renderer, options Options) http.Handler {
 		outbox:            options.Outbox,
 		bootstrap:         options.Bootstrap,
 		signIn:            options.SignIn,
+		signOut:           options.SignOut,
 		accounts:          options.Accounts,
 		landings:          options.Landings,
 		bootstrapReset:    options.BootstrapReset,
@@ -143,6 +150,7 @@ func New(viewRenderer renderer, options Options) http.Handler {
 	browser.HandleFunc("GET /sign-in", server.signInEntry)
 	browser.HandleFunc("POST /sign-in/passkey/begin", server.signInPasskeyBegin)
 	browser.HandleFunc("POST /sign-in/passkey/finish", server.signInPasskeyFinish)
+	browser.HandleFunc("POST /sign-out", server.signOutCurrentSession)
 	browser.HandleFunc("GET /family", server.familyLanding)
 	browser.HandleFunc("GET /scout/schedule", server.scoutLanding)
 	browser.HandleFunc("GET /account", server.account)

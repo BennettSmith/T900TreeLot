@@ -193,6 +193,7 @@ func (s *Server) account(response http.ResponseWriter, request *http.Request) {
 		Brand:        "Troop 900 Tree Lot",
 		DisplayName:  profile.DisplayName,
 		PrimaryEmail: profile.PrimaryEmail,
+		CSRFToken:    current.CSRFToken,
 		Navigation: []views.Link{
 			{Label: "Home", Href: "/"},
 			{Label: "Account", Href: "/account", Current: true},

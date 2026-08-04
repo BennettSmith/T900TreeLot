@@ -246,6 +246,7 @@ type LandingPage struct {
 	Heading     string
 	Supporting  string
 	DisplayName string
+	CSRFToken   string
 	Navigation  []Link
 }
 
@@ -254,6 +255,7 @@ type AccountPage struct {
 	Brand        string
 	DisplayName  string
 	PrimaryEmail string
+	CSRFToken    string
 	Navigation   []Link
 }
 

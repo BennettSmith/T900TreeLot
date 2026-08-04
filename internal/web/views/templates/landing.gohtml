@@ -12,7 +12,7 @@
   <header class="border-b border-border bg-surface">
     <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4">
       <p class="text-lg font-semibold tracking-tight text-text">{{.Brand}}</p>
-      <nav aria-label="Primary"><ul class="flex gap-4">{{range .Navigation}}<li><a class="text-sm font-medium text-action hover:text-action-hover" href="{{.Href}}"{{if .Current}} aria-current="page"{{end}}>{{.Label}}</a></li>{{end}}</ul></nav>
+      <nav aria-label="Primary"><ul class="flex gap-4">{{range .Navigation}}<li><a class="text-sm font-medium text-action hover:text-action-hover" href="{{.Href}}"{{if .Current}} aria-current="page"{{end}}>{{.Label}}</a></li>{{end}}{{template "sign-out-nav" .CSRFToken}}</ul></nav>
     </div>
   </header>
   <main id="main" class="mx-auto max-w-5xl px-4 py-10">

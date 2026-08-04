@@ -73,6 +73,21 @@ func (u *UnitOfWork) WithinSignInTx(ctx context.Context, fn func(context.Context
 	return nil
 }
 
+func (u *UnitOfWork) WithinSignOutTx(ctx context.Context, fn func(context.Context, application.SignOutRepositories) error) error {
+	tx, err := u.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin sign-out transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := fn(ctx, &txRepositories{tx: tx, sessions: u.sessions}); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit sign-out transaction: %w", err)
+	}
+	return nil
+}
+
 type txRepositories struct {
 	tx       pgx.Tx
 	sessions *session.Store
@@ -149,6 +164,21 @@ func (r *txRepositories) RevokeSessionsForIdentity(ctx context.Context, identity
 	`, identityID)
 	if err != nil {
 		return fmt.Errorf("revoke identity sessions: %w", err)
+	}
+	return nil
+}
+
+func (r *txRepositories) RevokeCurrentSession(ctx context.Context, sessionID int64, identityID string, revokedAt time.Time) error {
+	tag, err := r.tx.Exec(ctx, `
+		UPDATE sessions
+		SET revoked_at = $3
+		WHERE id = $1 AND identity_id = $2 AND revoked_at IS NULL
+	`, sessionID, identityID, revokedAt)
+	if err != nil {
+		return fmt.Errorf("revoke current session: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return application.ErrAccountNotFound
 	}
 	return nil
 }

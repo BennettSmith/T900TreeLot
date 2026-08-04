@@ -50,3 +50,10 @@ func TestFailedAndReplayedPasskeyAssertionsCreateNoExtraSession(t *testing.T) {
 	email := fmt.Sprintf("failed-sign-in-%d@example.org", time.Now().UTC().UnixNano())
 	lot.SignIn().RejectsFailedAndReplayedAssertion(acceptanceBootstrapToken, email)
 }
+
+// Trace: UC-2@r2 US-002@r2
+func TestSignedInPersonCanSignOut(t *testing.T) {
+	lot := dsl.NewLot(t)
+	email := fmt.Sprintf("sign-out-%d@example.org", time.Now().UTC().UnixNano())
+	lot.SignIn().SignedInPersonCanSignOut(acceptanceBootstrapToken, email)
+}

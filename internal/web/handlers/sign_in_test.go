@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -176,6 +177,71 @@ func TestRoleLandingsRequireAuthenticatedMatchingRole(t *testing.T) {
 	}
 }
 
+func TestSignedInPersonCanPostSignOut(t *testing.T) {
+	store := session.NewMemoryStore(clock.System(), time.Hour)
+	current, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	signOut := &fakeSignOutService{}
+	server := newServer(t, handlers.Options{Sessions: store, SignOut: signOut})
+	cookie := &http.Cookie{Name: middleware.SessionCookieName, Value: rawToken}
+	form := url.Values{middleware.CSRFFormField: {current.CSRFToken}}
+
+	response := request(t, server, http.MethodPost, "/sign-out", form.Encode(), map[string]string{
+		"Content-Type": "application/x-www-form-urlencoded",
+	}, cookie)
+	if response.Code != http.StatusSeeOther || response.Header().Get("Location") != "/" {
+		t.Fatalf("status=%d location=%q body=%q", response.Code, response.Header().Get("Location"), response.Body.String())
+	}
+	if signOut.command.IdentityID != "identity-1" || signOut.command.SessionID != current.ID {
+		t.Fatalf("command = %#v", signOut.command)
+	}
+	cleared := firstCookie(response, middleware.SessionCookieName)
+	if cleared == nil || cleared.Value != "" || cleared.MaxAge >= 0 {
+		t.Fatalf("cleared cookie = %#v", cleared)
+	}
+
+	get := request(t, server, http.MethodGet, "/sign-out", "", nil, cookie)
+	if get.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("GET sign-out status=%d, want 405", get.Code)
+	}
+}
+
+func TestSignOutHandlesAnonymousUnavailableAndFailedSessions(t *testing.T) {
+	signOut := &fakeSignOutService{}
+	anonymousServer := newServer(t, handlers.Options{SignOut: signOut})
+	cookie, csrf := establishSession(t, anonymousServer)
+	anonymous := request(t, anonymousServer, http.MethodPost, "/sign-out",
+		url.Values{middleware.CSRFFormField: {csrf}}.Encode(),
+		map[string]string{"Content-Type": "application/x-www-form-urlencoded"}, cookie)
+	if anonymous.Code != http.StatusSeeOther || signOut.command.IdentityID != "" {
+		t.Fatalf("anonymous status=%d command=%#v", anonymous.Code, signOut.command)
+	}
+
+	store := session.NewMemoryStore(clock.System(), time.Hour)
+	current, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	authCookie := &http.Cookie{Name: middleware.SessionCookieName, Value: rawToken}
+	form := url.Values{middleware.CSRFFormField: {current.CSRFToken}}.Encode()
+	unavailableServer := newServer(t, handlers.Options{Sessions: store})
+	unavailable := request(t, unavailableServer, http.MethodPost, "/sign-out", form,
+		map[string]string{"Content-Type": "application/x-www-form-urlencoded"}, authCookie)
+	if unavailable.Code != http.StatusServiceUnavailable {
+		t.Fatalf("unavailable status=%d", unavailable.Code)
+	}
+
+	signOut.err = errors.New("revoke failed")
+	failedServer := newServer(t, handlers.Options{Sessions: store, SignOut: signOut})
+	failed := request(t, failedServer, http.MethodPost, "/sign-out", form,
+		map[string]string{"Content-Type": "application/x-www-form-urlencoded"}, authCookie)
+	if failed.Code != http.StatusInternalServerError {
+		t.Fatalf("failed status=%d", failed.Code)
+	}
+}
+
 type fakeSignInService struct {
 	begin         application.BeginSignInResult
 	finish        application.SignInResult
@@ -198,6 +264,16 @@ func (s *fakeSignInService) FinishSignIn(_ context.Context, command application.
 type fakeLandingReader struct {
 	profile application.LandingProfile
 	err     error
+}
+
+type fakeSignOutService struct {
+	command application.SignOutCommand
+	err     error
+}
+
+func (s *fakeSignOutService) SignOut(_ context.Context, command application.SignOutCommand) error {
+	s.command = command
+	return s.err
 }
 
 func (r *fakeLandingReader) FindLandingProfile(context.Context, string) (application.LandingProfile, error) {

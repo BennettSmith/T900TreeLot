@@ -44,6 +44,27 @@ func TestComponentGalleryRendersAccessibleSignalFoundation(t *testing.T) {
 	}
 }
 
+func TestRoleLandingRendersCSRFProtectedSignOut(t *testing.T) {
+	t.Parallel()
+	renderer, err := views.NewRenderer()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	if err := renderer.Landing(context.Background(), &output, views.LandingPage{
+		PageTitle: "Family dashboard", Brand: "Troop 900 Tree Lot",
+		Heading: "Family dashboard", DisplayName: "Family Manager", CSRFToken: "csrf-token",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	html := output.String()
+	for _, want := range []string{`action="/sign-out"`, `method="post"`, `value="csrf-token"`, "Sign out"} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("landing missing %q in %s", want, html)
+		}
+	}
+}
+
 func TestGalleryStaticAccessibilityAndResponsiveContracts(t *testing.T) {
 	t.Parallel()
 

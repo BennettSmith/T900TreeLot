@@ -105,6 +105,10 @@ func newHTTPServer(cfg config.Config, db *postgres.DB, appClock clock.Clock, con
 		AuthRateLimitMax:    cfg.AuthRateLimitMax,
 		AuthRateLimitWindow: cfg.AuthRateLimitWindow,
 	}
+	signOutService := &identityapp.SignOutService{
+		UnitOfWork: identitypostgres.NewUnitOfWork(db, appClock),
+		Clock:      appClock,
+	}
 	var outboxControl handlers.OutboxControl
 	var bootstrapReset handlers.BootstrapResetControl
 	var identityFixture handlers.IdentityFixtureControl
@@ -127,6 +131,7 @@ func newHTTPServer(cfg config.Config, db *postgres.DB, appClock clock.Clock, con
 		Outbox:             outboxControl,
 		Bootstrap:          bootstrapService,
 		SignIn:             signInService,
+		SignOut:            signOutService,
 		Accounts:           accountQueries,
 		Landings:           accountQueries,
 		BootstrapReset:     bootstrapReset,

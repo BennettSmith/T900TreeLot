@@ -101,6 +101,28 @@ func (s *Server) signInPasskeyFinish(response http.ResponseWriter, request *http
 	_ = json.NewEncoder(response).Encode(map[string]string{"redirectTo": result.RedirectTo})
 }
 
+func (s *Server) signOutCurrentSession(response http.ResponseWriter, request *http.Request) {
+	current := middleware.FromContext(request.Context())
+	if current == nil || current.IdentityID == "" {
+		middleware.ClearSessionCookie(response, s.secureCookies)
+		http.Redirect(response, request, "/", http.StatusSeeOther)
+		return
+	}
+	if s.signOut == nil {
+		http.Error(response, "Sign-out is unavailable.", http.StatusServiceUnavailable)
+		return
+	}
+	if err := s.signOut.SignOut(request.Context(), application.SignOutCommand{
+		IdentityID: current.IdentityID,
+		SessionID:  current.ID,
+	}); err != nil {
+		s.renderError(response, request, err)
+		return
+	}
+	middleware.ClearSessionCookie(response, s.secureCookies)
+	http.Redirect(response, request, "/", http.StatusSeeOther)
+}
+
 func (s *Server) familyLanding(response http.ResponseWriter, request *http.Request) {
 	s.renderRoleLanding(response, request, domain.RoleFamilyManager, views.LandingPage{
 		PageTitle:  "Family dashboard",
@@ -144,6 +166,7 @@ func (s *Server) renderRoleLanding(response http.ResponseWriter, request *http.R
 	}
 	page.Brand = "Troop 900 Tree Lot"
 	page.DisplayName = profile.DisplayName
+	page.CSRFToken = current.CSRFToken
 	s.renderHTML(response, request, func(output io.Writer) error {
 		return s.renderer.Landing(request.Context(), output, page)
 	})

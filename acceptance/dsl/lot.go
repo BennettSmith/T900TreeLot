@@ -889,6 +889,34 @@ func (s *SignIn) RejectsFailedAndReplayedAssertion(token, email string) {
 	}
 }
 
+// SignedInPersonCanSignOut proves self-revocation through the browser boundary.
+func (s *SignIn) SignedInPersonCanSignOut(token, email string) {
+	s.lot.t.Helper()
+	bootstrap := s.lot.Bootstrap()
+	bootstrap.reset()
+	bootstrap.completeEnrollment(s.lot.web, token, email, "Signing Out Admin")
+
+	status, body, err := s.lot.web.Get("/account")
+	if err != nil || status != http.StatusOK || !strings.Contains(body, `action="/sign-out"`) {
+		s.lot.t.Fatalf("account sign-out control status=%d err=%v body=%q", status, err, body)
+	}
+	csrf, err := web.CSRFToken(body)
+	if err != nil {
+		s.lot.t.Fatal(err)
+	}
+	status, _, headers, err := s.lot.web.PostForm("/sign-out", url.Values{"csrf_token": {csrf}})
+	if err != nil || status != http.StatusSeeOther || headers.Get("Location") != "/" {
+		s.lot.t.Fatalf("sign-out status=%d err=%v location=%q", status, err, headers.Get("Location"))
+	}
+	if cookie := headers.Get("Set-Cookie"); !strings.Contains(cookie, "treelot_session=") || !strings.Contains(cookie, "Max-Age=0") {
+		s.lot.t.Fatalf("sign-out did not clear session cookie: %q", cookie)
+	}
+	status, body, err = s.lot.web.Get("/account")
+	if err != nil || status != http.StatusSeeOther {
+		s.lot.t.Fatalf("account after sign-out status=%d err=%v body=%q", status, err, body)
+	}
+}
+
 func (s *SignIn) setRole(email, role string) {
 	s.lot.t.Helper()
 	body, err := json.Marshal(map[string]string{"email": email, "role": role})
