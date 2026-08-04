@@ -73,6 +73,38 @@ func TestBeginSignInUsesDecoyCredentialForUnknownEmailHint(t *testing.T) {
 	}
 }
 
+func TestUnknownEmailHintUsesStableOpaqueDecoy(t *testing.T) {
+	repos := &fakeSignInRepositories{findByEmailErr: application.ErrSignInIdentityNotFound}
+	passkeys := &fakeAssertions{}
+	service := application.SignInService{
+		UnitOfWork:  fakeSignInUnitOfWork{repos: repos},
+		RateLimiter: &fakeRateLimiter{allowed: true},
+		Passkeys:    passkeys,
+		Clock:       fakeClock{now: signInNow},
+		IDs:         &fakeIDs{values: []string{"ceremony-1", "decoy-handle-1", "decoy-credential-1", "ceremony-2", "decoy-handle-2", "decoy-credential-2"}},
+	}
+	command := application.BeginSignInCommand{
+		SessionID:    41,
+		RateLimitKey: "sign-in:127.0.0.1",
+		EmailHint:    "missing@example.org",
+	}
+
+	if _, err := service.BeginSignIn(context.Background(), command); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.BeginSignIn(context.Background(), command); err != nil {
+		t.Fatal(err)
+	}
+	if len(passkeys.beginIdentities) != 2 {
+		t.Fatalf("begin identities = %#v", passkeys.beginIdentities)
+	}
+	first := passkeys.beginIdentities[0].Credentials[0].CredentialID
+	second := passkeys.beginIdentities[1].Credentials[0].CredentialID
+	if string(first) != string(second) {
+		t.Fatalf("decoy credential changed between identical hints: %x != %x", first, second)
+	}
+}
+
 func TestBeginSignInRejectsRateLimitedAttemptBeforeCeremony(t *testing.T) {
 	repos := &fakeSignInRepositories{}
 	service := application.SignInService{
@@ -241,14 +273,23 @@ func (r *fakeSignInRepositories) RotateForIdentity(_ context.Context, _ int64, i
 }
 
 type fakeAssertions struct {
-	beginIdentity *application.SignInIdentity
-	credentialID  []byte
-	verified      application.VerifiedAssertion
-	verification  application.AssertionVerification
+	beginIdentity   *application.SignInIdentity
+	beginIdentities []*application.SignInIdentity
+	credentialID    []byte
+	verified        application.VerifiedAssertion
+	verification    application.AssertionVerification
 }
 
 func (a *fakeAssertions) BeginAssertion(_ context.Context, identity *application.SignInIdentity) (application.AssertionOptions, error) {
 	a.beginIdentity = identity
+	if identity != nil {
+		copyIdentity := *identity
+		copyIdentity.UserHandle = append([]byte(nil), identity.UserHandle...)
+		copyIdentity.Credentials = append([]application.PasskeyCredential(nil), identity.Credentials...)
+		a.beginIdentities = append(a.beginIdentities, &copyIdentity)
+	} else {
+		a.beginIdentities = append(a.beginIdentities, nil)
+	}
 	return application.AssertionOptions{PublicKey: []byte("options"), Challenge: []byte("challenge")}, nil
 }
 

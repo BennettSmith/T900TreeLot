@@ -3,6 +3,7 @@ package application
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"time"
@@ -120,12 +121,13 @@ func (s *SignInService) BeginSignIn(ctx context.Context, command BeginSignInComm
 				case findErr == nil:
 					identity = &found
 				case errors.Is(findErr, ErrSignInIdentityNotFound):
-					identity, err = s.decoyIdentity()
+					identity = decoyIdentity(email.Normalized())
 				default:
 					return fmt.Errorf("%w: %v", domain.ErrCeremonyFailed, findErr)
 				}
 			} else {
-				identity, err = s.decoyIdentity()
+				identity = decoyIdentity(domain.NormalizeEmail(command.EmailHint))
+				err = nil
 			}
 			if err != nil {
 				return fmt.Errorf("%w: %v", domain.ErrCeremonyFailed, err)
@@ -252,21 +254,15 @@ func (s *SignInService) rateLimitWindow() time.Duration {
 	return s.AuthRateLimitWindow
 }
 
-func (s *SignInService) decoyIdentity() (*SignInIdentity, error) {
-	userHandle, err := s.IDs.NewID()
-	if err != nil {
-		return nil, err
-	}
-	credentialID, err := s.IDs.NewID()
-	if err != nil {
-		return nil, err
-	}
+func decoyIdentity(normalizedHint string) *SignInIdentity {
+	userHandle := sha256.Sum256([]byte("sign-in-decoy-user:" + normalizedHint))
+	credentialID := sha256.Sum256([]byte("sign-in-decoy-credential:" + normalizedHint))
 	return &SignInIdentity{
-		UserHandle: []byte(userHandle),
+		UserHandle: userHandle[:],
 		Credentials: []PasskeyCredential{{
-			CredentialID: []byte(credentialID),
+			CredentialID: credentialID[:],
 		}},
-	}, nil
+	}
 }
 
 func signInFailure(err error) error {
