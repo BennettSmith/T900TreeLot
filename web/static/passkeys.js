@@ -239,8 +239,8 @@
         }).then(function (body) {
           window.location.assign((body && body.redirectTo) || "/");
         }).catch(function (error) {
-          if (error && error.name === "AbortError") {
-            showPasskeyError(container, "Passkey sign-in was canceled.");
+          if (error && (error.name === "AbortError" || error.name === "NotAllowedError")) {
+            showPasskeyError(container, "Passkey sign-in was canceled or timed out. Try again.");
             return;
           }
           showPasskeyError(container, (error && error.message) || "Sign-in could not be completed. Try again.");
