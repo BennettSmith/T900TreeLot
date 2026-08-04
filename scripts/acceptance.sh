@@ -12,12 +12,18 @@ fi
 COMPOSE="$DOCKER compose"
 IMAGE="${IMAGE:-treelot:local}"
 
+WEB_PORT="${ACCEPTANCE_WEB_PORT:-18080}"
+PRODUCTION_PORT="${ACCEPTANCE_PRODUCTION_PORT:-18081}"
+STUB_PORT="${ACCEPTANCE_STUB_PORT:-18090}"
 DB_URL="${ACCEPTANCE_DATABASE_URL:-postgres://treelot:treelot@127.0.0.1:5433/treelot?sslmode=disable}"
 UNMIGRATED_DB_URL="${ACCEPTANCE_UNMIGRATED_DATABASE_URL:-postgres://treelot:treelot@127.0.0.1:5433/treelot_unmigrated?sslmode=disable}"
-BASE_URL="${ACCEPTANCE_BASE_URL:-http://127.0.0.1:8080}"
-PRODUCTION_BASE_URL="${ACCEPTANCE_PRODUCTION_BASE_URL:-http://127.0.0.1:8081}"
-STUB_BASE_URL="${ACCEPTANCE_STUB_BASE_URL:-http://127.0.0.1:8090}"
+BASE_URL="${ACCEPTANCE_BASE_URL:-http://127.0.0.1:$WEB_PORT}"
+PRODUCTION_BASE_URL="${ACCEPTANCE_PRODUCTION_BASE_URL:-http://127.0.0.1:$PRODUCTION_PORT}"
+STUB_BASE_URL="${ACCEPTANCE_STUB_BASE_URL:-http://127.0.0.1:$STUB_PORT}"
 TEST_CONTROL_KEY="${ACCEPTANCE_TEST_CONTROL_KEY:-acceptance-test-control-key}"
+export ACCEPTANCE_WEB_PORT="$WEB_PORT"
+export ACCEPTANCE_PRODUCTION_PORT="$PRODUCTION_PORT"
+export ACCEPTANCE_STUB_PORT="$STUB_PORT"
 
 default_bootstrap_expiry() {
   if [[ "$(uname -s)" == "Darwin" ]]; then
@@ -100,7 +106,7 @@ $DOCKER run --rm --network host --entrypoint /app/migrate \
 $DOCKER run -d --name treelot-acceptance-web --network host --entrypoint /app/web \
   "${common_env[@]}" \
   -e APP_ENV=acceptance \
-  -e PORT=8080 \
+  -e PORT="$WEB_PORT" \
   -e DATABASE_URL="$DB_URL" \
   -e PUBLIC_BASE_URL=https://treelot.test \
   -e TEST_CONTROL_KEY="$TEST_CONTROL_KEY" \
@@ -117,13 +123,13 @@ $DOCKER run -d --name treelot-acceptance-worker --network host --entrypoint /app
 $DOCKER run -d --name treelot-production-web --network host --entrypoint /app/web \
   "${common_env[@]}" \
   -e APP_ENV=production \
-  -e PORT=8081 \
+  -e PORT="$PRODUCTION_PORT" \
   -e DATABASE_URL="$DB_URL" \
   -e PUBLIC_BASE_URL=https://treelot.troop900livermore.org \
   "$IMAGE"
 
 $DOCKER run -d --name treelot-acceptance-stub --network host --entrypoint /app/provider-stubs \
-  -e PORT=8090 \
+  -e PORT="$STUB_PORT" \
   "$IMAGE"
 
 echo "Waiting for acceptance and production web readiness..."

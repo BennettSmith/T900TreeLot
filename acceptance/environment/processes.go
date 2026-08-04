@@ -35,7 +35,7 @@ func (p *ProcessDriver) RejectsUnmigratedDatabaseWithoutSchemaChange() error {
 		cmd := p.dockerCommand("run", "--rm", "--network", "host",
 			"--entrypoint", entrypoint,
 			"-e", "APP_ENV=acceptance",
-			"-e", "PORT=18080",
+			"-e", "PORT=18082",
 			"-e", "DATABASE_URL="+p.config.UnmigratedDBURL,
 			"-e", "TREE_LOT_TIME_ZONE=America/Los_Angeles",
 			"-e", "PUBLIC_BASE_URL=https://treelot.test",

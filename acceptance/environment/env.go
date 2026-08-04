@@ -24,15 +24,15 @@ type Config struct {
 func Load() Config {
 	baseURL := os.Getenv("ACCEPTANCE_BASE_URL")
 	if baseURL == "" {
-		baseURL = "http://127.0.0.1:8080"
+		baseURL = "http://127.0.0.1:18080"
 	}
 	productionURL := os.Getenv("ACCEPTANCE_PRODUCTION_BASE_URL")
 	if productionURL == "" {
-		productionURL = "http://127.0.0.1:8081"
+		productionURL = "http://127.0.0.1:18081"
 	}
 	stubURL := os.Getenv("ACCEPTANCE_STUB_BASE_URL")
 	if stubURL == "" {
-		stubURL = "http://127.0.0.1:8090"
+		stubURL = "http://127.0.0.1:18090"
 	}
 	databaseURL := os.Getenv("ACCEPTANCE_DATABASE_URL")
 	if databaseURL == "" {
