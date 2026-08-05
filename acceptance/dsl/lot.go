@@ -745,6 +745,12 @@ func (s *SignIn) EmailHintDoesNotRevealAccount(token, knownEmail, unknownEmail s
 	bootstrap.completeEnrollment(s.lot.web, token, knownEmail, "Hinted Manager")
 	s.setRole(knownEmail, "family_manager")
 
+	type hintOutcome struct {
+		allowCredentials json.RawMessage
+		credentialCount  int
+	}
+	outcomes := make(map[string]hintOutcome, 2)
+
 	for label, email := range map[string]string{"known": knownEmail, "unknown": unknownEmail} {
 		client, err := web.NewClient(s.lot.config.BaseURL)
 		if err != nil {
@@ -766,7 +772,8 @@ func (s *SignIn) EmailHintDoesNotRevealAccount(token, knownEmail, unknownEmail s
 		if err != nil || status != http.StatusOK {
 			s.lot.t.Fatalf("%s hint status=%d err=%v body=%q", label, status, err, body)
 		}
-		if _, err := webauthndriver.ParseBeginPayload(body); err != nil {
+		begin, err := webauthndriver.ParseBeginPayload(body)
+		if err != nil {
 			s.lot.t.Fatalf("%s hint payload: %v", label, err)
 		}
 		lowerBody := strings.ToLower(body)
@@ -776,6 +783,23 @@ func (s *SignIn) EmailHintDoesNotRevealAccount(token, knownEmail, unknownEmail s
 			strings.Contains(lowerBody, "unknown account") {
 			s.lot.t.Fatalf("%s hint disclosed account existence: %q", label, body)
 		}
+		allowCredentials, count, err := webauthndriver.AllowCredentialsShape(begin.PublicKey)
+		if err != nil {
+			s.lot.t.Fatalf("%s hint allowCredentials: %v", label, err)
+		}
+		outcomes[label] = hintOutcome{allowCredentials: allowCredentials, credentialCount: count}
+	}
+
+	known := outcomes["known"]
+	unknown := outcomes["unknown"]
+	if known.credentialCount != unknown.credentialCount {
+		s.lot.t.Fatalf("allowCredentials length oracle: known=%d unknown=%d", known.credentialCount, unknown.credentialCount)
+	}
+	if known.credentialCount != 0 {
+		s.lot.t.Fatalf("email-hint begin must use empty allowCredentials, got count=%d", known.credentialCount)
+	}
+	if string(known.allowCredentials) != string(unknown.allowCredentials) {
+		s.lot.t.Fatalf("allowCredentials shape differs: known=%s unknown=%s", known.allowCredentials, unknown.allowCredentials)
 	}
 }
 

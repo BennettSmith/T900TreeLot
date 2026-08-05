@@ -3,7 +3,6 @@ package application
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"time"
@@ -113,40 +112,37 @@ func (s *SignInService) BeginSignIn(ctx context.Context, command BeginSignInComm
 	}
 	var result BeginSignInResult
 	err = s.UnitOfWork.WithinSignInTx(ctx, func(txCtx context.Context, repos SignInRepositories) error {
-		var identity *SignInIdentity
+		// Public assertion options are always discoverable so email hints cannot
+		// leak credential IDs (known vs unknown) via allowCredentials.
+		var hintedIdentityID string
+		var hintedUserHandle []byte
 		if command.EmailHint != "" {
 			email, err := domain.NewEmail(command.EmailHint)
 			if err == nil {
 				found, findErr := repos.FindSignInIdentityByEmail(txCtx, email.Normalized())
 				switch {
 				case findErr == nil:
-					identity = &found
+					hintedIdentityID = found.ID
+					hintedUserHandle = append([]byte(nil), found.UserHandle...)
 				case errors.Is(findErr, ErrSignInIdentityNotFound):
-					identity = decoyIdentity(email.Normalized())
+					// Unknown emails get the same public options as known ones.
 				default:
 					return fmt.Errorf("%w: %v", domain.ErrCeremonyFailed, findErr)
 				}
-			} else {
-				identity = decoyIdentity(domain.NormalizeEmail(command.EmailHint))
-				err = nil
 			}
-			if err != nil {
-				return fmt.Errorf("%w: %v", domain.ErrCeremonyFailed, err)
-			}
+			// Malformed hints also stay discoverable with no ceremony binding.
 		}
-		options, err := s.Passkeys.BeginAssertion(txCtx, identity)
+		options, err := s.Passkeys.BeginAssertion(txCtx, nil)
 		if err != nil {
 			return fmt.Errorf("%w: %v", domain.ErrCeremonyFailed, err)
 		}
 		ceremony := AssertionCeremony{
-			ID:        ceremonyID,
-			SessionID: command.SessionID,
-			Challenge: options.Challenge,
-			ExpiresAt: s.now().Add(15 * time.Minute),
-		}
-		if identity != nil {
-			ceremony.IdentityID = identity.ID
-			ceremony.UserHandle = append([]byte(nil), identity.UserHandle...)
+			ID:         ceremonyID,
+			SessionID:  command.SessionID,
+			Challenge:  options.Challenge,
+			IdentityID: hintedIdentityID,
+			UserHandle: hintedUserHandle,
+			ExpiresAt:  s.now().Add(15 * time.Minute),
 		}
 		if err := repos.StoreAssertionCeremony(txCtx, ceremony); err != nil {
 			return err
@@ -182,7 +178,7 @@ func (s *SignInService) FinishSignIn(ctx context.Context, command FinishSignInCo
 		verified, err := s.Passkeys.VerifyAssertion(txCtx, AssertionVerification{
 			Challenge:    ceremony.Challenge,
 			Identity:     identity,
-			Discoverable: ceremony.IdentityID == "",
+			Discoverable: true,
 			Response:     command.PasskeyResponse,
 		})
 		if err != nil || !bytes.Equal(verified.CredentialID, credentialID) {
@@ -253,17 +249,6 @@ func (s *SignInService) rateLimitWindow() time.Duration {
 		return 15 * time.Minute
 	}
 	return s.AuthRateLimitWindow
-}
-
-func decoyIdentity(normalizedHint string) *SignInIdentity {
-	userHandle := sha256.Sum256([]byte("sign-in-decoy-user:" + normalizedHint))
-	credentialID := sha256.Sum256([]byte("sign-in-decoy-credential:" + normalizedHint))
-	return &SignInIdentity{
-		UserHandle: userHandle[:],
-		Credentials: []PasskeyCredential{{
-			CredentialID: credentialID[:],
-		}},
-	}
 }
 
 func signInFailure(err error) error {

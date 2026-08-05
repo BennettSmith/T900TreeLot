@@ -52,6 +52,32 @@ func ParseBeginPayload(body string) (BeginPayload, error) {
 	return begin, nil
 }
 
+// AllowCredentialsShape extracts the public allowCredentials field for
+// account-existence oracle checks without decoding credential IDs as secrets.
+func AllowCredentialsShape(publicKey json.RawMessage) (json.RawMessage, int, error) {
+	var wrapped struct {
+		PublicKey json.RawMessage `json:"publicKey"`
+	}
+	raw := publicKey
+	if err := json.Unmarshal(publicKey, &wrapped); err == nil && len(wrapped.PublicKey) > 0 {
+		raw = wrapped.PublicKey
+	}
+	var options struct {
+		AllowCredentials json.RawMessage `json:"allowCredentials"`
+	}
+	if err := json.Unmarshal(raw, &options); err != nil {
+		return nil, 0, fmt.Errorf("decode assertion publicKey: %w", err)
+	}
+	if len(options.AllowCredentials) == 0 || string(options.AllowCredentials) == "null" {
+		return json.RawMessage("[]"), 0, nil
+	}
+	var credentials []json.RawMessage
+	if err := json.Unmarshal(options.AllowCredentials, &credentials); err != nil {
+		return nil, 0, fmt.Errorf("decode allowCredentials: %w", err)
+	}
+	return options.AllowCredentials, len(credentials), nil
+}
+
 // CreateAttestationResponse builds a navigator.credentials.create-shaped
 // attestation response for the supplied begin payload.
 func CreateAttestationResponse(rp RelyingParty, publicKey json.RawMessage) (string, error) {

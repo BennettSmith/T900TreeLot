@@ -45,7 +45,7 @@ func TestBeginSignInStoresDiscoverableCeremonyAfterRateLimit(t *testing.T) {
 	}
 }
 
-func TestBeginSignInUsesDecoyCredentialForUnknownEmailHint(t *testing.T) {
+func TestBeginSignInUnknownEmailHintUsesDiscoverableOptions(t *testing.T) {
 	repos := &fakeSignInRepositories{findByEmailErr: application.ErrSignInIdentityNotFound}
 	passkeys := &fakeAssertions{}
 	service := application.SignInService{
@@ -55,7 +55,7 @@ func TestBeginSignInUsesDecoyCredentialForUnknownEmailHint(t *testing.T) {
 		},
 		Passkeys: passkeys,
 		Clock:    fakeClock{now: signInNow},
-		IDs:      &fakeIDs{values: []string{"ceremony-1", "decoy-handle", "decoy-credential"}},
+		IDs:      &fakeIDs{values: []string{"ceremony-1"}},
 	}
 
 	if _, err := service.BeginSignIn(context.Background(), application.BeginSignInCommand{
@@ -65,15 +65,15 @@ func TestBeginSignInUsesDecoyCredentialForUnknownEmailHint(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("BeginSignIn: %v", err)
 	}
-	if passkeys.beginIdentity == nil || passkeys.beginIdentity.ID != "" || len(passkeys.beginIdentity.Credentials) != 1 {
-		t.Fatalf("decoy identity = %#v", passkeys.beginIdentity)
+	if passkeys.beginIdentity != nil {
+		t.Fatalf("unknown hint must use discoverable begin, got identity %#v", passkeys.beginIdentity)
 	}
-	if repos.ceremony.IdentityID != "" {
-		t.Fatalf("decoy ceremony exposed identity = %#v", repos.ceremony)
+	if repos.ceremony.IdentityID != "" || len(repos.ceremony.UserHandle) != 0 {
+		t.Fatalf("unknown hint ceremony must not bind identity = %#v", repos.ceremony)
 	}
 }
 
-func TestBeginSignInUsesKnownEmailHintWithoutReturningIdentityDetails(t *testing.T) {
+func TestBeginSignInKnownEmailHintBindsCeremonyWithoutCredentialOptions(t *testing.T) {
 	repos := &fakeSignInRepositories{identity: application.SignInIdentity{
 		ID: "identity-1", UserHandle: []byte("user"),
 		Credentials: []application.PasskeyCredential{{CredentialID: []byte("credential")}},
@@ -93,15 +93,18 @@ func TestBeginSignInUsesKnownEmailHintWithoutReturningIdentityDetails(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.CeremonyID != "ceremony-1" || passkeys.beginIdentity == nil || passkeys.beginIdentity.ID != "identity-1" {
-		t.Fatalf("result/identity = %#v / %#v", result, passkeys.beginIdentity)
+	if result.CeremonyID != "ceremony-1" {
+		t.Fatalf("result = %#v", result)
+	}
+	if passkeys.beginIdentity != nil {
+		t.Fatalf("known hint must use discoverable begin, got identity %#v", passkeys.beginIdentity)
 	}
 	if repos.ceremony.IdentityID != "identity-1" || string(repos.ceremony.UserHandle) != "user" {
 		t.Fatalf("ceremony = %#v", repos.ceremony)
 	}
 }
 
-func TestBeginSignInMasksMalformedEmailHintWithDecoy(t *testing.T) {
+func TestBeginSignInMalformedEmailHintUsesDiscoverableOptions(t *testing.T) {
 	repos := &fakeSignInRepositories{}
 	passkeys := &fakeAssertions{}
 	service := application.SignInService{
@@ -117,40 +120,50 @@ func TestBeginSignInMasksMalformedEmailHintWithDecoy(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if passkeys.beginIdentity == nil || passkeys.beginIdentity.ID != "" || len(passkeys.beginIdentity.Credentials) != 1 {
-		t.Fatalf("decoy identity = %#v", passkeys.beginIdentity)
+	if passkeys.beginIdentity != nil {
+		t.Fatalf("malformed hint must use discoverable begin, got identity %#v", passkeys.beginIdentity)
+	}
+	if repos.ceremony.IdentityID != "" {
+		t.Fatalf("malformed hint ceremony must not bind identity = %#v", repos.ceremony)
 	}
 }
 
-func TestUnknownEmailHintUsesStableOpaqueDecoy(t *testing.T) {
-	repos := &fakeSignInRepositories{findByEmailErr: application.ErrSignInIdentityNotFound}
-	passkeys := &fakeAssertions{}
-	service := application.SignInService{
-		UnitOfWork:  fakeSignInUnitOfWork{repos: repos},
+func TestBeginSignInEmailHintsAreStructurallyIndistinguishable(t *testing.T) {
+	knownRepos := &fakeSignInRepositories{identity: application.SignInIdentity{
+		ID: "identity-1", UserHandle: []byte("user"),
+		Credentials: []application.PasskeyCredential{{CredentialID: []byte("real-credential-id")}},
+	}}
+	unknownRepos := &fakeSignInRepositories{findByEmailErr: application.ErrSignInIdentityNotFound}
+	knownPasskeys := &fakeAssertions{}
+	unknownPasskeys := &fakeAssertions{}
+	knownService := application.SignInService{
+		UnitOfWork:  fakeSignInUnitOfWork{repos: knownRepos},
 		RateLimiter: &fakeRateLimiter{allowed: true},
-		Passkeys:    passkeys,
+		Passkeys:    knownPasskeys,
 		Clock:       fakeClock{now: signInNow},
-		IDs:         &fakeIDs{values: []string{"ceremony-1", "decoy-handle-1", "decoy-credential-1", "ceremony-2", "decoy-handle-2", "decoy-credential-2"}},
+		IDs:         &fakeIDs{values: []string{"ceremony-known"}},
 	}
-	command := application.BeginSignInCommand{
-		SessionID:    41,
-		RateLimitKey: "sign-in:127.0.0.1",
-		EmailHint:    "missing@example.org",
+	unknownService := application.SignInService{
+		UnitOfWork:  fakeSignInUnitOfWork{repos: unknownRepos},
+		RateLimiter: &fakeRateLimiter{allowed: true},
+		Passkeys:    unknownPasskeys,
+		Clock:       fakeClock{now: signInNow},
+		IDs:         &fakeIDs{values: []string{"ceremony-unknown"}},
 	}
 
-	if _, err := service.BeginSignIn(context.Background(), command); err != nil {
+	if _, err := knownService.BeginSignIn(context.Background(), application.BeginSignInCommand{
+		SessionID: 41, RateLimitKey: "sign-in:1", EmailHint: "known@example.org",
+	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.BeginSignIn(context.Background(), command); err != nil {
+	if _, err := unknownService.BeginSignIn(context.Background(), application.BeginSignInCommand{
+		SessionID: 42, RateLimitKey: "sign-in:2", EmailHint: "missing@example.org",
+	}); err != nil {
 		t.Fatal(err)
 	}
-	if len(passkeys.beginIdentities) != 2 {
-		t.Fatalf("begin identities = %#v", passkeys.beginIdentities)
-	}
-	first := passkeys.beginIdentities[0].Credentials[0].CredentialID
-	second := passkeys.beginIdentities[1].Credentials[0].CredentialID
-	if string(first) != string(second) {
-		t.Fatalf("decoy credential changed between identical hints: %x != %x", first, second)
+	if knownPasskeys.beginIdentity != nil || unknownPasskeys.beginIdentity != nil {
+		t.Fatalf("email hints must both use discoverable begin; known=%#v unknown=%#v",
+			knownPasskeys.beginIdentity, unknownPasskeys.beginIdentity)
 	}
 }
 
@@ -226,6 +239,90 @@ func TestFinishSignInVerifiesAssertionUpdatesCredentialAuditsAndRotatesSession(t
 	}
 	if passkeys.verification.Discoverable != true || passkeys.verification.Identity.ID != "identity-1" {
 		t.Fatalf("verification = %#v", passkeys.verification)
+	}
+}
+
+func TestFinishSignInEnforcesHintedIdentityWithoutNonDiscoverableVerify(t *testing.T) {
+	repos := &fakeSignInRepositories{
+		ceremony: application.AssertionCeremony{
+			SessionID:  41,
+			Challenge:  []byte("challenge"),
+			IdentityID: "identity-1",
+			UserHandle: []byte("user-handle"),
+			ExpiresAt:  signInNow.Add(time.Minute),
+		},
+		identity: application.SignInIdentity{
+			ID:         "identity-1",
+			PersonID:   "person-1",
+			UserHandle: []byte("user-handle"),
+			Roles:      []domain.Role{domain.RoleFamilyManager},
+			Credentials: []application.PasskeyCredential{{
+				ID:           "credential-1",
+				CredentialID: []byte("credential-id"),
+			}},
+		},
+	}
+	passkeys := &fakeAssertions{
+		credentialID: []byte("credential-id"),
+		verified: application.VerifiedAssertion{
+			CredentialID: []byte("credential-id"),
+			SignCount:    1,
+		},
+	}
+	service := application.SignInService{
+		UnitOfWork: fakeSignInUnitOfWork{repos: repos},
+		Passkeys:   passkeys,
+		Clock:      fakeClock{now: signInNow},
+	}
+
+	if _, err := service.FinishSignIn(context.Background(), application.FinishSignInCommand{
+		SessionID:         41,
+		PasskeyCeremonyID: "ceremony-1",
+		PasskeyResponse:   []byte(`{}`),
+	}); err != nil {
+		t.Fatalf("FinishSignIn: %v", err)
+	}
+	if !passkeys.verification.Discoverable {
+		t.Fatal("hinted sign-in must verify as discoverable because begin options are discoverable")
+	}
+}
+
+func TestFinishSignInRejectsMismatchedHintedIdentity(t *testing.T) {
+	repos := &fakeSignInRepositories{
+		ceremony: application.AssertionCeremony{
+			SessionID:  41,
+			Challenge:  []byte("challenge"),
+			IdentityID: "identity-hinted",
+			ExpiresAt:  signInNow.Add(time.Minute),
+		},
+		identity: application.SignInIdentity{
+			ID:    "identity-other",
+			Roles: []domain.Role{domain.RoleFamilyManager},
+			Credentials: []application.PasskeyCredential{{
+				ID:           "credential-1",
+				CredentialID: []byte("credential-id"),
+			}},
+		},
+	}
+	service := application.SignInService{
+		UnitOfWork: fakeSignInUnitOfWork{repos: repos},
+		Passkeys: &fakeAssertions{
+			credentialID: []byte("credential-id"),
+			verified:     application.VerifiedAssertion{CredentialID: []byte("credential-id")},
+		},
+		Clock: fakeClock{now: signInNow},
+	}
+
+	_, err := service.FinishSignIn(context.Background(), application.FinishSignInCommand{
+		SessionID:         41,
+		PasskeyCeremonyID: "ceremony-1",
+		PasskeyResponse:   []byte(`{}`),
+	})
+	if !errors.Is(err, domain.ErrCeremonyFailed) {
+		t.Fatalf("error = %v, want ErrCeremonyFailed", err)
+	}
+	if repos.consumed || repos.rotations != 0 {
+		t.Fatalf("mismatched hint changed state: %#v", repos)
 	}
 }
 
