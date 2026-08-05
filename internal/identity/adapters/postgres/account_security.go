@@ -122,7 +122,7 @@ func (r *txRepositories) StoreAccountRegistrationCeremony(ctx context.Context, c
 			id, session_id, purpose, challenge, identity_id, user_handle,
 			expires_at, consumed_at, created_at
 		)
-		VALUES ($1, $2, 'account_registration', $3, $4, $5, $6, NULL, now())
+		VALUES ($1, NULLIF($2, 0), 'account_registration', $3, $4, $5, $6, NULL, now())
 	`, ceremony.ID, ceremony.SessionID, ceremony.Challenge, ceremony.IdentityID, userHandle, ceremony.ExpiresAt)
 	if err != nil {
 		return fmt.Errorf("store account registration ceremony: %w", err)
@@ -202,6 +202,28 @@ func (r *txRepositories) ActiveEmail(ctx context.Context, identityID string) (do
 }
 
 func (r *txRepositories) ReplaceActiveEmail(ctx context.Context, identityID, email, normalized string, at time.Time) error {
+	taken, err := r.EmailTaken(ctx, normalized)
+	if err != nil {
+		return err
+	}
+	if taken {
+		// Another active identity already claims this address.
+		var current string
+		err := r.tx.QueryRow(ctx, `
+			SELECT email_normalized
+			FROM identity_emails
+			WHERE identity_id = $1 AND active
+			ORDER BY created_at
+			LIMIT 1
+		`, identityID).Scan(&current)
+		if err == nil && current == normalized {
+			return nil
+		}
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("load current email for replace: %w", err)
+		}
+		return domain.ErrEmailTaken
+	}
 	tag, err := r.tx.Exec(ctx, `
 		UPDATE identity_emails
 		SET active = false, updated_at = $2

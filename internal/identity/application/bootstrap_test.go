@@ -598,9 +598,13 @@ func (c fakeClock) Now() time.Time {
 
 type fakeIDs struct {
 	values []string
+	err    error
 }
 
 func (g *fakeIDs) NewID() (string, error) {
+	if g.err != nil {
+		return "", g.err
+	}
 	next := g.values[0]
 	g.values = g.values[1:]
 	return next, nil

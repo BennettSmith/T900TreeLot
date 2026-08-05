@@ -76,3 +76,11 @@ func (r *fakeFixtureRepositories) RevokeSessionsForIdentity(_ context.Context, i
 func (r *fakeFixtureRepositories) SeedConflictingIdentity(_ context.Context, _, _, _ string) error {
 	return nil
 }
+
+func TestFixtureServiceSeedsConflictingIdentity(t *testing.T) {
+	repos := &fakeFixtureRepositories{identityID: "identity-1"}
+	service := application.TestFixtureService{UnitOfWork: fakeFixtureUnitOfWork{repos: repos}}
+	if err := service.SeedConflictingIdentity(context.Background(), "id-2", "person-2", " Taken@Example.org "); err != nil {
+		t.Fatalf("SeedConflictingIdentity: %v", err)
+	}
+}

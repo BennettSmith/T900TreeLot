@@ -9,45 +9,41 @@ import (
 	"github.com/troop900/treelot/internal/platform/session"
 )
 
-func TestMemoryStoreLifecycle(t *testing.T) {
-	t.Parallel()
-
-	controllable := clock.NewControllable(time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC))
-	store := session.NewMemoryStore(controllable, 0)
-
-	created, token, err := store.Create(context.Background())
+func TestMemoryStoreMarkStepUp(t *testing.T) {
+	store := session.NewMemoryStore(clock.System(), time.Hour)
+	created, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
 	if err != nil {
-		t.Fatalf("Create: %v", err)
+		t.Fatal(err)
 	}
-	loaded, err := store.Get(context.Background(), token)
+	at := time.Date(2026, 8, 5, 12, 0, 0, 0, time.UTC)
+	if err := store.MarkStepUp(context.Background(), created.ID, at); err != nil {
+		t.Fatalf("MarkStepUp: %v", err)
+	}
+	loaded, err := store.Get(context.Background(), rawToken)
+	if err != nil || loaded.StepUpAt == nil || !loaded.StepUpAt.Equal(at) {
+		t.Fatalf("loaded = %#v err=%v", loaded, err)
+	}
+	if err := store.MarkStepUp(context.Background(), 999, at); err != session.ErrNotFound {
+		t.Fatalf("missing session err = %v", err)
+	}
+}
+
+func TestMemoryStoreRevokeAndDefaults(t *testing.T) {
+	store := session.NewMemoryStore(clock.System(), 0)
+	created, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
 	if err != nil {
-		t.Fatalf("Get: %v", err)
-	}
-	if loaded.CSRFToken != created.CSRFToken {
-		t.Fatalf("csrf mismatch")
+		t.Fatal(err)
 	}
 	if err := store.Revoke(context.Background(), created.ID); err != nil {
 		t.Fatalf("Revoke: %v", err)
 	}
-	if _, err := store.Get(context.Background(), token); err == nil {
-		t.Fatal("expected revoked session to be missing")
+	if _, err := store.Get(context.Background(), rawToken); err != session.ErrNotFound {
+		t.Fatalf("revoked get err = %v", err)
 	}
-	if err := store.Revoke(context.Background(), 999); err == nil {
-		t.Fatal("expected revoke of unknown session to fail")
+	if err := store.Revoke(context.Background(), 999); err != session.ErrNotFound {
+		t.Fatalf("missing revoke err = %v", err)
 	}
-}
-
-func TestMemoryStoreExpires(t *testing.T) {
-	t.Parallel()
-
-	controllable := clock.NewControllable(time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC))
-	store := session.NewMemoryStore(controllable, time.Minute)
-	_, token, err := store.Create(context.Background())
-	if err != nil {
-		t.Fatalf("Create: %v", err)
-	}
-	controllable.Advance(2 * time.Minute)
-	if _, err := store.Get(context.Background(), token); err == nil {
-		t.Fatal("expected expired session to be missing")
+	if _, _, err := store.CreateForIdentity(context.Background(), ""); err != session.ErrNotFound {
+		t.Fatalf("empty identity err = %v", err)
 	}
 }

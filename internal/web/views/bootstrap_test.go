@@ -103,3 +103,22 @@ func TestAccountPageRendersAdminWelcome(t *testing.T) {
 		}
 	}
 }
+
+func TestAccountSecurityPageRendersStepUp(t *testing.T) {
+	renderer, err := views.NewRenderer()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	if err := renderer.AccountSecurity(context.Background(), &output, views.AccountSecurityPage{
+		PageTitle: "Account security", Brand: "Troop 900 Tree Lot", DisplayName: "Ada",
+		PrimaryEmail: "ada@example.org", CSRFToken: "csrf-token", StepUpRequired: true,
+		Navigation: []views.Link{{Label: "Security", Href: "/account/security", Current: true}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	body := output.String()
+	if !strings.Contains(body, `data-account-step-up`) || strings.Contains(body, `data-account-passkeys`) {
+		t.Fatalf("body=%q", body)
+	}
+}

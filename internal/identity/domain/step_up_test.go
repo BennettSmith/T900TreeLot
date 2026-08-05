@@ -40,3 +40,12 @@ func TestRequireRecentStepUpRejectsNonPositiveTTL(t *testing.T) {
 		t.Fatalf("error = %v, want ErrStepUpRequired", err)
 	}
 }
+
+func TestRequireRecentStepUpRejectsFutureTimestamp(t *testing.T) {
+	now := time.Date(2026, 8, 5, 12, 0, 0, 0, time.UTC)
+	stepUpAt := now.Add(time.Minute)
+	err := domain.RequireRecentStepUp(&stepUpAt, now, 5*time.Minute)
+	if !errors.Is(err, domain.ErrStepUpRequired) {
+		t.Fatalf("error = %v, want ErrStepUpRequired", err)
+	}
+}
