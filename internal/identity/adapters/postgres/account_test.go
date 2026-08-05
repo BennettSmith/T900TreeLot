@@ -10,8 +10,8 @@ import (
 	"github.com/troop900/treelot/internal/identity/application"
 	"github.com/troop900/treelot/internal/identity/domain"
 	"github.com/troop900/treelot/internal/platform/clock"
-	"github.com/troop900/treelot/internal/platform/session"
 	platformpostgres "github.com/troop900/treelot/internal/platform/postgres"
+	"github.com/troop900/treelot/internal/platform/session"
 	"github.com/troop900/treelot/internal/platform/testdb"
 )
 
