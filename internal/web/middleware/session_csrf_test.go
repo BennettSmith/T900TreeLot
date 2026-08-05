@@ -1,6 +1,8 @@
 package middleware_test
 
 import (
+	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +15,21 @@ import (
 	"github.com/troop900/treelot/internal/platform/session"
 	"github.com/troop900/treelot/internal/web/middleware"
 )
+
+type failingSessionStore struct {
+	getErr error
+}
+
+func (s failingSessionStore) Create(ctx context.Context) (session.Session, string, error) {
+	_ = ctx
+	return session.Session{}, "", errors.New("create should not be called")
+}
+
+func (s failingSessionStore) Get(ctx context.Context, rawToken string) (session.Session, error) {
+	_ = ctx
+	_ = rawToken
+	return session.Session{}, s.getErr
+}
 
 func TestSessionCSRFProtectsStateChangingRequests(t *testing.T) {
 	store := session.NewMemoryStore(clock.System(), time.Hour)
@@ -76,6 +93,44 @@ func TestSessionCSRFProtectsStateChangingRequests(t *testing.T) {
 	}
 	if !strings.Contains(jsonPost.Body.String(), csrfToken) {
 		t.Fatal("handler could not read body after JSON CSRF validation")
+	}
+}
+
+func TestSessionCSRFDoesNotReplaceCookieOnStoreFailure(t *testing.T) {
+	store := failingSessionStore{getErr: errors.New("database unavailable")}
+	handler := middleware.SessionCSRF(store, false, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Fatal("handler should not run when session lookup fails")
+	}))
+
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/", nil)
+	request.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: "existing-session-token"})
+	handler.ServeHTTP(response, request)
+
+	if response.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503", response.Code)
+	}
+	if cookie := firstCookie(response, middleware.SessionCookieName); cookie != nil {
+		t.Fatalf("unexpected session cookie replacement: %#v", cookie)
+	}
+}
+
+func TestSessionCSRFCreatesSessionWhenMissing(t *testing.T) {
+	store := session.NewMemoryStore(clock.System(), time.Hour)
+	handler := middleware.SessionCSRF(store, false, http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		response.WriteHeader(http.StatusNoContent)
+	}))
+
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/", nil)
+	request.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: "stale-unknown-token"})
+	handler.ServeHTTP(response, request)
+
+	if response.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204", response.Code)
+	}
+	if cookie := firstCookie(response, middleware.SessionCookieName); cookie == nil || cookie.Value == "" {
+		t.Fatal("expected a new session cookie for unknown token")
 	}
 }
 

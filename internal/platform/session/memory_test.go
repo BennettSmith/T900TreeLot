@@ -2,6 +2,7 @@ package session_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -37,13 +38,19 @@ func TestMemoryStoreRevokeAndDefaults(t *testing.T) {
 	if err := store.Revoke(context.Background(), created.ID); err != nil {
 		t.Fatalf("Revoke: %v", err)
 	}
-	if _, err := store.Get(context.Background(), rawToken); err != session.ErrNotFound {
-		t.Fatalf("revoked get err = %v", err)
+	if _, err := store.Get(context.Background(), rawToken); !errors.Is(err, session.ErrNotFound) {
+		t.Fatalf("revoked get err = %v, want ErrNotFound", err)
 	}
-	if err := store.Revoke(context.Background(), 999); err != session.ErrNotFound {
-		t.Fatalf("missing revoke err = %v", err)
+	if _, err := store.Get(context.Background(), ""); !errors.Is(err, session.ErrNotFound) {
+		t.Fatalf("empty token get err = %v, want ErrNotFound", err)
 	}
-	if _, _, err := store.CreateForIdentity(context.Background(), ""); err != session.ErrNotFound {
-		t.Fatalf("empty identity err = %v", err)
+	if _, err := store.Get(context.Background(), "missing-token"); !errors.Is(err, session.ErrNotFound) {
+		t.Fatalf("missing token get err = %v, want ErrNotFound", err)
+	}
+	if err := store.Revoke(context.Background(), 999); !errors.Is(err, session.ErrNotFound) {
+		t.Fatalf("missing revoke err = %v, want ErrNotFound", err)
+	}
+	if _, _, err := store.CreateForIdentity(context.Background(), ""); !errors.Is(err, session.ErrNotFound) {
+		t.Fatalf("empty identity err = %v, want ErrNotFound", err)
 	}
 }

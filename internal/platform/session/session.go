@@ -99,8 +99,11 @@ func (s *Store) Get(ctx context.Context, rawToken string) (Session, error) {
 		  AND revoked_at IS NULL
 		  AND expires_at > $2
 	`, hash[:], s.clock.Now()).Scan(&session.ID, &session.CSRFToken, &session.ExpiresAt, &identityID, &authenticatedAt, &stepUpAt)
-	if err != nil {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return Session{}, ErrNotFound
+	}
+	if err != nil {
+		return Session{}, fmt.Errorf("get session: %w", err)
 	}
 	if identityID != nil {
 		session.IdentityID = *identityID

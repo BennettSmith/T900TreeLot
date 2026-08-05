@@ -2,6 +2,7 @@ package session_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -43,8 +44,41 @@ func TestStoreRejectsRevokedSession(t *testing.T) {
 	if err := store.Revoke(context.Background(), created.ID); err != nil {
 		t.Fatalf("Revoke: %v", err)
 	}
-	if _, err := store.Get(context.Background(), rawToken); err == nil {
-		t.Fatal("Get succeeded for revoked session")
+	if _, err := store.Get(context.Background(), rawToken); !errors.Is(err, session.ErrNotFound) {
+		t.Fatalf("Get revoked error = %v, want ErrNotFound", err)
+	}
+}
+
+func TestStoreGetUnknownTokenReturnsErrNotFound(t *testing.T) {
+	db := testdb.OpenMigrated(t)
+	store := session.NewStore(db, clock.System(), time.Hour)
+
+	if _, err := store.Get(context.Background(), ""); !errors.Is(err, session.ErrNotFound) {
+		t.Fatalf("Get empty token error = %v, want ErrNotFound", err)
+	}
+	if _, err := store.Get(context.Background(), "missing-token"); !errors.Is(err, session.ErrNotFound) {
+		t.Fatalf("Get missing token error = %v, want ErrNotFound", err)
+	}
+}
+
+func TestStoreGetPropagatesDatabaseErrors(t *testing.T) {
+	db := testdb.OpenMigrated(t)
+	store := session.NewStore(db, clock.System(), time.Hour)
+
+	_, rawToken, err := store.Create(context.Background())
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	_, err = store.Get(context.Background(), rawToken)
+	if err == nil {
+		t.Fatal("Get succeeded after database close")
+	}
+	if errors.Is(err, session.ErrNotFound) {
+		t.Fatalf("Get mapped infrastructure failure to ErrNotFound: %v", err)
 	}
 }
 
