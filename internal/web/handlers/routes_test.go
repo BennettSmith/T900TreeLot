@@ -111,6 +111,35 @@ func TestInfrastructureRoutesAndBrowserHeaders(t *testing.T) {
 	}
 }
 
+func TestCanonicalHostRedirectIsWiredIntoRootHandler(t *testing.T) {
+	t.Parallel()
+
+	canonical, err := url.Parse("https://treelot.troop900livermore.org")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	server := newServer(t, handlers.Options{CanonicalBaseURL: canonical})
+
+	request := httptest.NewRequest(http.MethodGet, "/bootstrap", nil)
+	request.Host = "treelot-web.onrender.com"
+	response := httptest.NewRecorder()
+	server.ServeHTTP(response, request)
+	if response.Code != http.StatusMovedPermanently {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusMovedPermanently)
+	}
+	if got := response.Header().Get("Location"); got != "https://treelot.troop900livermore.org/bootstrap" {
+		t.Fatalf("Location = %q", got)
+	}
+
+	health := httptest.NewRequest(http.MethodGet, "/health/ready", nil)
+	health.Host = "treelot-web.onrender.com"
+	healthResponse := httptest.NewRecorder()
+	server.ServeHTTP(healthResponse, health)
+	if healthResponse.Code != http.StatusOK {
+		t.Fatalf("health status = %d, want 200", healthResponse.Code)
+	}
+}
+
 func TestHomeAndSmokeJourney(t *testing.T) {
 	t.Parallel()
 

@@ -59,7 +59,15 @@ $DOCKER rm -f \
 
 bash ./scripts/preflight.sh acceptance
 
-$DOCKER build -t "$IMAGE" .
+if [[ -z "${ACCEPTANCE_SKIP_BUILD:-}" ]]; then
+  $DOCKER build -t "$IMAGE" .
+elif ! $DOCKER image inspect "$IMAGE" >/dev/null 2>&1; then
+  echo "ACCEPTANCE_SKIP_BUILD is set but image $IMAGE is not available locally." >&2
+  echo "Pull or load the candidate image before re-running acceptance." >&2
+  exit 1
+else
+  echo "Using existing image $IMAGE (ACCEPTANCE_SKIP_BUILD=1)."
+fi
 $COMPOSE up -d postgres
 
 echo "Waiting for PostgreSQL on host port 5433..."

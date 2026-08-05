@@ -1,0 +1,162 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_production:
+        description: Deploy the accepted digest to Render production after approval
+        type: boolean
+        default: false
+      predecessor_digest:
+        description: Optional prior accepted digest retained for rollback evidence
+        type: string
+        required: false
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  publish-and-accept:
+    name: publish and accept image digest
+    runs-on: ubuntu-latest
+    outputs:
+      image_digest: ${{ steps.digest.outputs.digest }}
+      image_ref: ${{ steps.digest.outputs.ref }}
+      source_sha: ${{ github.sha }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Normalize image name
+        id: image
+        run: |
+          name="$(echo "${IMAGE_NAME}" | tr '[:upper:]' '[:lower:]')"
+          echo "name=${name}" >> "$GITHUB_OUTPUT"
+          echo "tag=${REGISTRY}/${name}:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push candidate image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.image.outputs.tag }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+      - name: Resolve immutable digest
+        id: digest
+        run: |
+          digest="${{ steps.build.outputs.digest }}"
+          if [[ -z "$digest" ]]; then
+            digest="$(docker buildx imagetools inspect "${{ steps.image.outputs.tag }}" --format '{{json .Manifest.Digest}}' | tr -d '"')"
+          fi
+          ref="${REGISTRY}/${{ steps.image.outputs.name }}@${digest}"
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+          echo "ref=${ref}" >> "$GITHUB_OUTPUT"
+          echo "Accepted candidate digest ${digest} for commit ${GITHUB_SHA}"
+
+      - name: Pull candidate digest for acceptance
+        run: docker pull "${{ steps.digest.outputs.ref }}"
+
+      - name: Tag candidate for local acceptance runner
+        run: docker tag "${{ steps.digest.outputs.ref }}" treelot:candidate
+
+      - name: Run whole-system acceptance against digest
+        env:
+          IMAGE: treelot:candidate
+          ACCEPTANCE_SKIP_BUILD: "1"
+        run: make acceptance
+
+      - name: Record predecessor digest input
+        if: ${{ inputs.predecessor_digest != '' }}
+        run: |
+          echo "Predecessor digest retained for rollback: ${{ inputs.predecessor_digest }}"
+
+      - name: Upload acceptance evidence summary
+        run: |
+          {
+            echo "source_sha=${GITHUB_SHA}"
+            echo "image_digest=${{ steps.digest.outputs.digest }}"
+            echo "image_ref=${{ steps.digest.outputs.ref }}"
+            echo "predecessor_digest=${{ inputs.predecessor_digest }}"
+          } > acceptance-image.txt
+          cat acceptance-image.txt
+
+      - name: Persist acceptance image metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: acceptance-image
+          path: acceptance-image.txt
+
+  deploy-production:
+    name: deploy accepted digest to Render
+    needs: publish-and-accept
+    if: ${{ inputs.deploy_production }}
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Install Render CLI
+        run: |
+          curl -fsSL -o render.zip https://github.com/render-oss/cli/releases/download/v1.1.0/cli_1.1.0_linux_amd64.zip
+          unzip render.zip
+          sudo mv cli_v1.1.0 /usr/local/bin/render
+          render --version
+
+      - name: Deploy web and worker digests
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_WEB_SERVICE_ID: ${{ secrets.RENDER_WEB_SERVICE_ID }}
+          RENDER_WORKER_SERVICE_ID: ${{ secrets.RENDER_WORKER_SERVICE_ID }}
+          IMAGE_REF: ${{ needs.publish-and-accept.outputs.image_ref }}
+          CI: "true"
+        run: |
+          set -euo pipefail
+          test -n "${RENDER_API_KEY}"
+          test -n "${RENDER_WEB_SERVICE_ID}"
+          test -n "${RENDER_WORKER_SERVICE_ID}"
+          echo "Deploying ${IMAGE_REF} to web ${RENDER_WEB_SERVICE_ID}"
+          web_json="$(render deploys create "${RENDER_WEB_SERVICE_ID}" --image "${IMAGE_REF}" --output json --confirm --wait)"
+          echo "${web_json}"
+          echo "Deploying ${IMAGE_REF} to worker ${RENDER_WORKER_SERVICE_ID}"
+          worker_json="$(render deploys create "${RENDER_WORKER_SERVICE_ID}" --image "${IMAGE_REF}" --output json --confirm --wait)"
+          echo "${worker_json}"
+          {
+            echo "source_sha=${{ needs.publish-and-accept.outputs.source_sha }}"
+            echo "image_digest=${{ needs.publish-and-accept.outputs.image_digest }}"
+            echo "image_ref=${IMAGE_REF}"
+            echo "web_deploy=$(echo "${web_json}" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("id",""))' 2>/dev/null || true)"
+            echo "worker_deploy=$(echo "${worker_json}" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("id",""))' 2>/dev/null || true)"
+          } > render-deploy.txt
+          cat render-deploy.txt
+
+      - name: Persist Render deploy metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: render-deploy
+          path: render-deploy.txt

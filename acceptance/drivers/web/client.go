@@ -16,17 +16,25 @@ import (
 // Client drives browser-visible HTTP interactions.
 type Client struct {
 	baseURL    string
+	hostHeader string
 	httpClient *http.Client
 }
 
 // NewClient constructs an HTTP driver rooted at baseURL.
 func NewClient(baseURL string) (*Client, error) {
+	return NewClientWithHost(baseURL, "")
+}
+
+// NewClientWithHost constructs an HTTP driver that sends an explicit Host header.
+// Use this when the TCP endpoint differs from the application canonical hostname.
+func NewClientWithHost(baseURL, hostHeader string) (*Client, error) {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		return nil, err
 	}
 	return &Client{
-		baseURL: strings.TrimRight(baseURL, "/"),
+		baseURL:    strings.TrimRight(baseURL, "/"),
+		hostHeader: hostHeader,
 		httpClient: &http.Client{
 			Jar:     jar,
 			Timeout: 10 * time.Second,
@@ -37,9 +45,20 @@ func NewClient(baseURL string) (*Client, error) {
 	}, nil
 }
 
+func (c *Client) prepare(request *http.Request) {
+	if c.hostHeader != "" {
+		request.Host = c.hostHeader
+	}
+}
+
 // Get performs a GET and returns status and body.
 func (c *Client) Get(path string) (int, string, error) {
-	response, err := c.httpClient.Get(c.baseURL + path)
+	request, err := http.NewRequest(http.MethodGet, c.baseURL+path, nil)
+	if err != nil {
+		return 0, "", err
+	}
+	c.prepare(request)
+	response, err := c.httpClient.Do(request)
 	if err != nil {
 		return 0, "", err
 	}
@@ -51,6 +70,31 @@ func (c *Client) Get(path string) (int, string, error) {
 	return response.StatusCode, string(body), nil
 }
 
+// GetWithHost performs a GET with an override Host header.
+func (c *Client) GetWithHost(path, host string) (int, string, http.Header, error) {
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	request, err := http.NewRequest(http.MethodGet, c.baseURL+path, nil)
+	if err != nil {
+		return 0, "", nil, err
+	}
+	request.Host = host
+	response, err := client.Do(request)
+	if err != nil {
+		return 0, "", nil, err
+	}
+	defer response.Body.Close()
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return response.StatusCode, "", response.Header, err
+	}
+	return response.StatusCode, string(body), response.Header.Clone(), nil
+}
+
 // GetWithHeaders performs a GET without a cookie jar so Set-Cookie attributes
 // remain observable even for Secure cookies over plain HTTP.
 func (c *Client) GetWithHeaders(path string) (int, string, http.Header, error) {
@@ -60,7 +104,12 @@ func (c *Client) GetWithHeaders(path string) (int, string, http.Header, error) {
 			return http.ErrUseLastResponse
 		},
 	}
-	response, err := client.Get(c.baseURL + path)
+	request, err := http.NewRequest(http.MethodGet, c.baseURL+path, nil)
+	if err != nil {
+		return 0, "", nil, err
+	}
+	c.prepare(request)
+	response, err := client.Do(request)
 	if err != nil {
 		return 0, "", nil, err
 	}
@@ -74,7 +123,13 @@ func (c *Client) GetWithHeaders(path string) (int, string, http.Header, error) {
 
 // PostForm posts an application/x-www-form-urlencoded body.
 func (c *Client) PostForm(path string, values url.Values) (int, string, http.Header, error) {
-	response, err := c.httpClient.PostForm(c.baseURL+path, values)
+	request, err := http.NewRequest(http.MethodPost, c.baseURL+path, strings.NewReader(values.Encode()))
+	if err != nil {
+		return 0, "", nil, err
+	}
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	c.prepare(request)
+	response, err := c.httpClient.Do(request)
 	if err != nil {
 		return 0, "", nil, err
 	}
@@ -96,6 +151,7 @@ func (c *Client) PostJSON(path, body string, headers map[string]string) (int, st
 	for name, value := range headers {
 		request.Header.Set(name, value)
 	}
+	c.prepare(request)
 	response, err := c.httpClient.Do(request)
 	if err != nil {
 		return 0, "", nil, err
@@ -118,6 +174,7 @@ func (c *Client) PostFormWithHeaders(path string, values url.Values, headers map
 	for name, value := range headers {
 		request.Header.Set(name, value)
 	}
+	c.prepare(request)
 	response, err := c.httpClient.Do(request)
 	if err != nil {
 		return 0, "", nil, err
