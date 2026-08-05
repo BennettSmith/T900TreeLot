@@ -249,7 +249,131 @@
     });
   }
 
+  function installAccountStepUpForm() {
+    var container = document.querySelector("[data-account-step-up]");
+    if (!container) {
+      return;
+    }
+    var form = container.querySelector("[data-step-up-form]");
+    if (!form) {
+      return;
+    }
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      if (!window.PublicKeyCredential || !navigator.credentials || !navigator.credentials.get) {
+        showPasskeyError(container, "This browser does not support passkey confirmation.");
+        return;
+      }
+      var csrf = formValue(form, "csrf_token");
+      fetch(container.dataset.beginUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
+        credentials: "same-origin",
+        body: "{}"
+      }).then(function (response) {
+        if (!response.ok) {
+          return response.json().then(function (body) {
+            throw new Error((body && body.error) || "Passkey confirmation could not be started.");
+          });
+        }
+        return response.json();
+      }).then(function (payload) {
+        return navigator.credentials.get(credentialRequestOptions(payload.publicKey)).then(function (credential) {
+          return { ceremonyId: payload.ceremonyId, credential: credential };
+        });
+      }).then(function (asserted) {
+        return fetch(container.dataset.finishUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
+          credentials: "same-origin",
+          body: JSON.stringify({
+            ceremonyId: asserted.ceremonyId,
+            credential: assertionToJSON(asserted.credential)
+          })
+        });
+      }).then(function (response) {
+        if (!response.ok) {
+          return response.json().then(function (body) {
+            throw new Error((body && body.error) || "Passkey confirmation could not be completed.");
+          });
+        }
+        return response.json();
+      }).then(function (body) {
+        window.location.assign((body && body.redirectTo) || "/account/security");
+      }).catch(function (error) {
+        if (error && (error.name === "AbortError" || error.name === "NotAllowedError")) {
+          showPasskeyError(container, "Passkey confirmation was canceled or timed out. Try again.");
+          return;
+        }
+        showPasskeyError(container, (error && error.message) || "Passkey confirmation could not be completed.");
+      });
+    });
+  }
+
+  function installAddPasskeyForm() {
+    var container = document.querySelector("[data-account-passkeys]");
+    if (!container) {
+      return;
+    }
+    var form = container.querySelector("[data-add-passkey-form]");
+    if (!form) {
+      return;
+    }
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      if (!window.PublicKeyCredential || !navigator.credentials || !navigator.credentials.create) {
+        showPasskeyError(container, "This browser does not support passkey registration.");
+        return;
+      }
+      var csrf = formValue(form, "csrf_token");
+      fetch(container.dataset.beginUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
+        credentials: "same-origin",
+        body: "{}"
+      }).then(function (response) {
+        if (!response.ok) {
+          return response.json().then(function (body) {
+            throw new Error((body && body.error) || "Passkey registration could not be started.");
+          });
+        }
+        return response.json();
+      }).then(function (payload) {
+        return navigator.credentials.create(credentialCreationOptions(payload.publicKey)).then(function (credential) {
+          return { ceremonyId: payload.ceremonyId, credential: credential };
+        });
+      }).then(function (created) {
+        return fetch(container.dataset.finishUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
+          credentials: "same-origin",
+          body: JSON.stringify({
+            ceremonyId: created.ceremonyId,
+            credential: credentialToJSON(created.credential)
+          })
+        });
+      }).then(function (response) {
+        if (!response.ok) {
+          return response.json().then(function (body) {
+            throw new Error((body && body.error) || "Passkey registration could not be completed.");
+          });
+        }
+        return response.json();
+      }).then(function (body) {
+        window.location.assign((body && body.redirectTo) || "/account/security");
+      }).catch(function (error) {
+        if (error && error.name === "AbortError") {
+          showPasskeyError(container, "Passkey registration was canceled.");
+          return;
+        }
+        showPasskeyError(container, (error && error.message) || "Passkey registration could not be completed.");
+      });
+    });
+  }
+
   captureBootstrapToken();
   installPasskeyForm();
   installSignInForms();
+  installAccountStepUpForm();
+  installAddPasskeyForm();
 }());

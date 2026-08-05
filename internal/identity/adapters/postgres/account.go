@@ -57,6 +57,51 @@ func NewAccountQueries(db *platformpostgres.DB) *AccountQueries {
 	return &AccountQueries{db: db}
 }
 
+func (q *AccountQueries) ListPasskeys(ctx context.Context, identityID string) ([]application.PasskeyCredential, error) {
+	rows, err := q.db.Query(ctx, `
+		SELECT id, credential_id, public_key, attestation_type, aaguid,
+		       sign_count, transports, authenticator_flags, created_at, last_used_at
+		FROM passkey_credentials
+		WHERE identity_id = $1
+		ORDER BY created_at, id
+	`, identityID)
+	if err != nil {
+		return nil, fmt.Errorf("list passkeys: %w", err)
+	}
+	defer rows.Close()
+	var credentials []application.PasskeyCredential
+	for rows.Next() {
+		var credential application.PasskeyCredential
+		var signCount int64
+		var authenticatorFlags *int16
+		if err := rows.Scan(
+			&credential.ID,
+			&credential.CredentialID,
+			&credential.PublicKey,
+			&credential.AttestationType,
+			&credential.AAGUID,
+			&signCount,
+			&credential.Transports,
+			&authenticatorFlags,
+			&credential.CreatedAt,
+			&credential.LastUsedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan passkey: %w", err)
+		}
+		credential.IdentityID = identityID
+		credential.SignCount = uint32(signCount)
+		if authenticatorFlags != nil {
+			credential.AuthenticatorFlags = uint8(*authenticatorFlags)
+			credential.FlagsKnown = true
+		}
+		credentials = append(credentials, credential)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate passkeys: %w", err)
+	}
+	return credentials, nil
+}
+
 func (q *AccountQueries) FindAccountProfile(ctx context.Context, identityID string) (application.AccountProfile, error) {
 	var profile application.AccountProfile
 	err := q.db.QueryRow(ctx, `

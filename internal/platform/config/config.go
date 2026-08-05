@@ -128,6 +128,14 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("AUTH_RATE_LIMIT_WINDOW must be positive")
 	}
 
+	stepUpTTL, err := durationEnv("TREE_LOT_STEP_UP_TTL", 5*time.Minute)
+	if err != nil {
+		return Config{}, err
+	}
+	if stepUpTTL <= 0 {
+		return Config{}, fmt.Errorf("TREE_LOT_STEP_UP_TTL must be positive")
+	}
+
 	groupsIOEnabled := false
 	if raw := strings.TrimSpace(os.Getenv("GROUPS_IO_ENABLED")); raw != "" {
 		groupsIOEnabled, err = strconv.ParseBool(raw)
@@ -155,11 +163,12 @@ func Load() (Config, error) {
 		WebAuthnOrigins:          []string{webAuthnOrigin},
 		AuthRateLimitMax:         authRateLimitMax,
 		AuthRateLimitWindow:      authRateLimitWindow,
+		StepUpTTL:                stepUpTTL,
 		GroupsIOEnabled:          groupsIOEnabled,
 		SecureCookies:            appEnv == EnvProduction,
 		TestControlEnabled:       testControlEnabled,
 		TestControlKey:           testControlKey,
-		ExpectedSchema:           5,
+		ExpectedSchema:           6,
 	}, nil
 }
 

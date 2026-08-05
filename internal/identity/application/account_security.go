@@ -375,6 +375,13 @@ func (s *AccountSecurityService) ChangeEmail(ctx context.Context, command Change
 		if err := s.requireStepUp(txCtx, repos, command.SessionID, command.IdentityID); err != nil {
 			return err
 		}
+		current, err := repos.ActiveEmail(txCtx, command.IdentityID)
+		if err != nil {
+			return err
+		}
+		if current.Normalized() == email.Normalized() {
+			return nil
+		}
 		taken, err := repos.EmailTaken(txCtx, email.Normalized())
 		if err != nil {
 			return err

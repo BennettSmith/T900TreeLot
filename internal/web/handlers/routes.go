@@ -33,13 +33,16 @@ type Options struct {
 	Clock              clock.Clock
 	ControllableClock  *clock.Controllable
 	Outbox             OutboxControl
-	Bootstrap          BootstrapService
-	SignIn             SignInService
-	SignOut            SignOutService
-	Accounts           AccountReader
-	Landings           LandingReader
-	BootstrapReset     BootstrapResetControl
-	IdentityFixture    IdentityFixtureControl
+	Bootstrap              BootstrapService
+	SignIn                 SignInService
+	SignOut                SignOutService
+	Accounts               AccountReader
+	Landings               LandingReader
+	AccountSecurity        AccountSecurityService
+	AccountSecurityReader  AccountSecurityReader
+	StepUpTTL              time.Duration
+	BootstrapReset         BootstrapResetControl
+	IdentityFixture        IdentityFixtureControl
 }
 
 type BootstrapService interface {
@@ -83,14 +86,17 @@ type Server struct {
 	controllableClock *clock.Controllable
 	clock             clock.Clock
 	outbox            OutboxControl
-	bootstrap         BootstrapService
-	signIn            SignInService
-	signOut           SignOutService
-	accounts          AccountReader
-	landings          LandingReader
-	bootstrapReset    BootstrapResetControl
-	identityFixture   IdentityFixtureControl
-	secureCookies     bool
+	bootstrap              BootstrapService
+	signIn                 SignInService
+	signOut                SignOutService
+	accounts               AccountReader
+	landings               LandingReader
+	securityService        AccountSecurityService
+	securityReader         AccountSecurityReader
+	stepUpTTL              time.Duration
+	bootstrapReset         BootstrapResetControl
+	identityFixture        IdentityFixtureControl
+	secureCookies          bool
 }
 
 type renderer interface {
@@ -99,6 +105,7 @@ type renderer interface {
 	SignIn(context.Context, io.Writer, views.SignInPage) error
 	Landing(context.Context, io.Writer, views.LandingPage) error
 	Account(context.Context, io.Writer, views.AccountPage) error
+	AccountSecurity(context.Context, io.Writer, views.AccountSecurityPage) error
 	ComponentGallery(context.Context, io.Writer, views.Gallery) error
 	ParityResult(context.Context, io.Writer, views.Gallery) error
 }
@@ -125,14 +132,20 @@ func New(viewRenderer renderer, options Options) http.Handler {
 		controllableClock: options.ControllableClock,
 		clock:             clk,
 		outbox:            options.Outbox,
-		bootstrap:         options.Bootstrap,
-		signIn:            options.SignIn,
-		signOut:           options.SignOut,
-		accounts:          options.Accounts,
-		landings:          options.Landings,
-		bootstrapReset:    options.BootstrapReset,
-		identityFixture:   options.IdentityFixture,
-		secureCookies:     options.SecureCookies,
+		bootstrap:             options.Bootstrap,
+		signIn:                options.SignIn,
+		signOut:               options.SignOut,
+		accounts:              options.Accounts,
+		landings:              options.Landings,
+		securityService: options.AccountSecurity,
+		securityReader:  options.AccountSecurityReader,
+		stepUpTTL:       options.StepUpTTL,
+		bootstrapReset:        options.BootstrapReset,
+		identityFixture:       options.IdentityFixture,
+		secureCookies:         options.SecureCookies,
+	}
+	if server.stepUpTTL <= 0 {
+		server.stepUpTTL = 5 * time.Minute
 	}
 
 	mux := http.NewServeMux()
@@ -154,6 +167,13 @@ func New(viewRenderer renderer, options Options) http.Handler {
 	browser.HandleFunc("GET /family", server.familyLanding)
 	browser.HandleFunc("GET /scout/schedule", server.scoutLanding)
 	browser.HandleFunc("GET /account", server.account)
+	browser.HandleFunc("GET /account/security", server.accountSecurityPage)
+	browser.HandleFunc("POST /account/security/step-up/begin", server.accountStepUpBegin)
+	browser.HandleFunc("POST /account/security/step-up/finish", server.accountStepUpFinish)
+	browser.HandleFunc("POST /account/security/passkeys/begin", server.accountPasskeyBegin)
+	browser.HandleFunc("POST /account/security/passkeys/finish", server.accountPasskeyFinish)
+	browser.HandleFunc("POST /account/security/passkeys/remove", server.accountPasskeyRemove)
+	browser.HandleFunc("POST /account/email", server.accountChangeEmail)
 	browser.HandleFunc("POST /smoke", server.smoke)
 	if options.Development {
 		browser.HandleFunc("GET /_dev/components", server.gallery)
