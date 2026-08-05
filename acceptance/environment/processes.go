@@ -29,24 +29,31 @@ func (p *ProcessDriver) dockerCommand(args ...string) *exec.Cmd {
 }
 
 // RejectsUnmigratedDatabaseWithoutSchemaChange runs web and worker against an
-// empty database and verifies they exit non-zero without creating schema_migrations.
+// empty database and verifies they exit non-zero due to schema incompatibility
+// without creating schema_migrations.
 func (p *ProcessDriver) RejectsUnmigratedDatabaseWithoutSchemaChange() error {
+	envPairs := UnmigratedAppProcessEnv(
+		p.config.UnmigratedDBURL,
+		p.config.TestControlKey,
+		BootstrapTokenExpiresAtForProbe(),
+	)
+	dockerEnv := make([]string, 0, len(envPairs)*2)
+	for _, pair := range envPairs {
+		dockerEnv = append(dockerEnv, "-e", pair)
+	}
+
 	for _, entrypoint := range []string{"/app/web", "/app/worker"} {
-		cmd := p.dockerCommand("run", "--rm", "--network", "host",
-			"--entrypoint", entrypoint,
-			"-e", "APP_ENV=acceptance",
-			"-e", "PORT=18082",
-			"-e", "DATABASE_URL="+p.config.UnmigratedDBURL,
-			"-e", "TREE_LOT_TIME_ZONE=America/Los_Angeles",
-			"-e", "PUBLIC_BASE_URL=https://treelot.test",
-			"-e", "SESSION_KEY=0123456789abcdef0123456789abcdef",
-			"-e", "GROUPS_IO_ENABLED=false",
-			"-e", "TEST_CONTROL_KEY="+p.config.TestControlKey,
-			p.config.Image,
-		)
+		args := []string{"run", "--rm", "--network", "host", "--entrypoint", entrypoint}
+		args = append(args, dockerEnv...)
+		args = append(args, p.config.Image)
+		cmd := p.dockerCommand(args...)
 		output, err := cmd.CombinedOutput()
 		if err == nil {
 			return fmt.Errorf("%s started against unmigrated database; output=%s", entrypoint, output)
+		}
+		if !ReportsSchemaIncompatibility(string(output)) {
+			return fmt.Errorf("%s exited before schema compatibility check; want %q in output=%s",
+				entrypoint, schemaIncompatibleLogSignal, output)
 		}
 	}
 
