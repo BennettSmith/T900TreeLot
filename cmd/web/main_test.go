@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"errors"
+	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -76,7 +78,7 @@ func TestRunReportsListenerOutcome(t *testing.T) {
 		{name: "listener failure", listen: func(*http.Server) error { return errors.New("bind failed") }, wantStatus: 1},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if status := run(logger, test.listen); status != test.wantStatus {
+			if status := run(context.Background(), logger, test.listen); status != test.wantStatus {
 				t.Errorf("run status = %d, want %d", status, test.wantStatus)
 			}
 		})
@@ -89,8 +91,69 @@ func TestRunRejectsIncompatibleSchema(t *testing.T) {
 	_, _ = db.Exec(context.Background(), `DELETE FROM schema_migrations`)
 	_, _ = db.Exec(context.Background(), `INSERT INTO schema_migrations (version) VALUES (99)`)
 
-	status := run(slog.New(slog.DiscardHandler), func(*http.Server) error { return nil })
+	status := run(context.Background(), slog.New(slog.DiscardHandler), func(*http.Server) error { return nil })
 	if status != 1 {
 		t.Fatalf("status = %d, want 1", status)
+	}
+}
+
+func TestRunShutsDownWhenContextCanceled(t *testing.T) {
+	_ = testdb.OpenMigrated(t)
+	_ = testConfig(t)
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	started := make(chan struct{})
+	done := make(chan int, 1)
+	go func() {
+		done <- run(ctx, slog.New(slog.DiscardHandler), func(server *http.Server) error {
+			close(started)
+			return server.Serve(ln)
+		})
+	}()
+
+	select {
+	case <-started:
+	case <-time.After(2 * time.Second):
+		cancel()
+		t.Fatal("server did not start listening")
+	}
+
+	liveURL := "http://" + ln.Addr().String() + "/health/live"
+	client := &http.Client{Timeout: 200 * time.Millisecond}
+	var response *http.Response
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		response, err = client.Get(liveURL)
+		if err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			cancel()
+			t.Fatalf("liveness before shutdown: %v", err)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	body, _ := io.ReadAll(response.Body)
+	_ = response.Body.Close()
+	if response.StatusCode != http.StatusOK || string(body) != "ok\n" {
+		cancel()
+		t.Fatalf("liveness before shutdown: status=%d body=%q", response.StatusCode, body)
+	}
+
+	cancel()
+
+	select {
+	case status := <-done:
+		if status != 0 {
+			t.Fatalf("run status = %d, want 0 after graceful shutdown", status)
+		}
+	case <-time.After(2 * time.Second):
+		_ = ln.Close()
+		t.Fatal("run did not return after context cancel; expected http.Server.Shutdown")
 	}
 }
