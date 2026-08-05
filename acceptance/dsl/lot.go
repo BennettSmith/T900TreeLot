@@ -104,6 +104,9 @@ func (l *Lot) Bootstrap() *Bootstrap { return &Bootstrap{lot: l} }
 // SignIn exposes authenticated passkey sign-in checks.
 func (l *Lot) SignIn() *SignIn { return &SignIn{lot: l} }
 
+// AccountSecurity exposes self-service credential and email management checks.
+func (l *Lot) AccountSecurity() *AccountSecurity { return &AccountSecurity{lot: l} }
+
 // Presence captures anonymous visitor checks.
 type Presence struct{ lot *Lot }
 
@@ -926,5 +929,56 @@ func (s *SignIn) setRole(email, role string) {
 	status, response, _, err := s.lot.web.PostJSON("/_test/identity/role", string(body), map[string]string{"X-Test-Control-Key": s.lot.config.TestControlKey})
 	if err != nil || status != http.StatusOK {
 		s.lot.t.Fatalf("set fixture role status=%d err=%v body=%q", status, err, response)
+	}
+}
+
+// AccountSecurity captures self-service passkey and claimed-email management.
+type AccountSecurity struct{ lot *Lot }
+
+// RequiresStepUpBeforeCredentialChanges proves account security gates credential changes.
+func (a *AccountSecurity) RequiresStepUpBeforeCredentialChanges(token, email string) {
+	a.lot.t.Helper()
+	bootstrap := a.lot.Bootstrap()
+	bootstrap.reset()
+	passkey := webauthndriver.NewPasskey(webauthndriver.RelyingParty{
+		Name: "Troop 900 Tree Lot", ID: "treelot.test", Origin: "https://treelot.test",
+	})
+	bootstrap.completeEnrollmentWithPasskey(a.lot.web, token, email, "Security Admin", passkey)
+
+	status, body, err := a.lot.web.Get("/account/security")
+	if err != nil || status != http.StatusOK {
+		a.lot.t.Fatalf("account security status=%d err=%v body=%q", status, err, body)
+	}
+	if !strings.Contains(body, `data-account-step-up`) {
+		a.lot.t.Fatalf("account security missing passkey step-up requirement")
+	}
+	if strings.Contains(body, `data-account-passkeys`) || strings.Contains(body, `data-account-change-email`) {
+		a.lot.t.Fatalf("credential controls visible before step-up")
+	}
+
+	csrf, err := web.CSRFToken(body)
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	newEmail := fmt.Sprintf("changed-%d@example.org", time.Now().UTC().UnixNano())
+	status, body, _, err = a.lot.web.PostForm("/account/email", url.Values{
+		"csrf_token": {csrf},
+		"email":      {newEmail},
+	})
+	if err != nil || (status != http.StatusForbidden && status != http.StatusBadRequest && status != http.StatusSeeOther) {
+		a.lot.t.Fatalf("email change without step-up status=%d err=%v body=%q", status, err, body)
+	}
+	if status == http.StatusSeeOther {
+		status, body, err = a.lot.web.Get("/account/security")
+		if err != nil || status != http.StatusOK {
+			a.lot.t.Fatalf("reload after denied email change status=%d err=%v", status, err)
+		}
+	}
+	if strings.Contains(body, newEmail) {
+		a.lot.t.Fatalf("email changed without step-up: body=%q", body)
+	}
+	status, accountBody, err := a.lot.web.Get("/account")
+	if err != nil || status != http.StatusOK || !strings.Contains(accountBody, email) {
+		a.lot.t.Fatalf("original email not preserved status=%d err=%v body=%q", status, err, accountBody)
 	}
 }
