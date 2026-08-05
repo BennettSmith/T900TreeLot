@@ -31,6 +31,7 @@ type Config struct {
 	WebAuthnOrigins          []string
 	AuthRateLimitMax         int
 	AuthRateLimitWindow      time.Duration
+	StepUpTTL                time.Duration
 	GroupsIOEnabled          bool
 	SecureCookies            bool
 	TestControlEnabled       bool
