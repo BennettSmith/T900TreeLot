@@ -47,11 +47,61 @@ func (r *txRepositories) LoadIdentity(ctx context.Context, identityID string) (a
 }
 
 func (r *txRepositories) ListPasskeys(ctx context.Context, identityID string) ([]application.PasskeyCredential, error) {
-	identity, err := r.loadSignInIdentity(ctx, identityID)
+	// Lock credential rows so RemovePasskey's count check and delete cannot race
+	// with a concurrent removal for the same identity (UC-2B last-passkey invariant).
+	rows, err := r.tx.Query(ctx, `
+		SELECT id, credential_id, public_key, attestation_type, aaguid,
+		       sign_count, transports, authenticator_flags, created_at, last_used_at
+		FROM passkey_credentials
+		WHERE identity_id = $1
+		ORDER BY id
+		FOR UPDATE
+	`, identityID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list passkeys for update: %w", err)
 	}
-	return identity.Credentials, nil
+	defer rows.Close()
+
+	var credentials []application.PasskeyCredential
+	for rows.Next() {
+		var credential application.PasskeyCredential
+		var signCount int64
+		var authenticatorFlags *int16
+		if err := rows.Scan(
+			&credential.ID,
+			&credential.CredentialID,
+			&credential.PublicKey,
+			&credential.AttestationType,
+			&credential.AAGUID,
+			&signCount,
+			&credential.Transports,
+			&authenticatorFlags,
+			&credential.CreatedAt,
+			&credential.LastUsedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan passkey for update: %w", err)
+		}
+		credential.SignCount = uint32(signCount)
+		if authenticatorFlags != nil {
+			credential.AuthenticatorFlags = uint8(*authenticatorFlags)
+			credential.FlagsKnown = true
+		}
+		credentials = append(credentials, credential)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate passkeys for update: %w", err)
+	}
+	if len(credentials) == 0 {
+		// Distinguish unknown identity from an identity that truly has no credentials.
+		var exists bool
+		if err := r.tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM identities WHERE id = $1)`, identityID).Scan(&exists); err != nil {
+			return nil, fmt.Errorf("check identity for passkeys: %w", err)
+		}
+		if !exists {
+			return nil, fmt.Errorf("load sign-in identity: %w", pgx.ErrNoRows)
+		}
+	}
+	return credentials, nil
 }
 
 func (r *txRepositories) StoreStepUpCeremony(ctx context.Context, ceremony application.AssertionCeremony) error {

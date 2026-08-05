@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -273,5 +274,105 @@ func TestAccountSecurityListPasskeysUnknownIdentity(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected list passkeys failure")
+	}
+}
+
+// TestConcurrentPasskeyRemovalCannotLeaveZeroCredentials proves UC-2B's last-passkey
+// invariant holds when two removals race with two credentials.
+func TestConcurrentPasskeyRemovalCannotLeaveZeroCredentials(t *testing.T) {
+	db := testdb.OpenMigrated(t)
+	now := time.Date(2026, 8, 5, 12, 0, 0, 0, time.UTC)
+	seedIdentity(t, db, "identity-1", "person-1", "Ada", "Admin", "Ada", "ada@example.org")
+
+	var sessionA, sessionB int64
+	if err := db.QueryRow(context.Background(), `
+		INSERT INTO sessions (token_hash, csrf_token, expires_at, last_seen_at, identity_id, authenticated_at, step_up_at)
+		VALUES ('\x31'::bytea, 'csrf-a', $2, $1, 'identity-1', $1, $1)
+		RETURNING id
+	`, now, now.Add(time.Hour)).Scan(&sessionA); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRow(context.Background(), `
+		INSERT INTO sessions (token_hash, csrf_token, expires_at, last_seen_at, identity_id, authenticated_at, step_up_at)
+		VALUES ('\x32'::bytea, 'csrf-b', $2, $1, 'identity-1', $1, $1)
+		RETURNING id
+	`, now, now.Add(time.Hour)).Scan(&sessionB); err != nil {
+		t.Fatal(err)
+	}
+
+	unit := identitypostgres.NewUnitOfWork(db, clock.NewControllable(now))
+	service := &application.AccountSecurityService{
+		UnitOfWork: unit,
+		Clock:      clock.NewControllable(now),
+		StepUpTTL:  time.Hour,
+	}
+
+	// Repeat to catch intermittent TOCTOU wins under the unlocked list-then-delete path.
+	const rounds = 40
+	for round := 0; round < rounds; round++ {
+		if _, err := db.Exec(context.Background(), `
+			DELETE FROM passkey_credentials WHERE identity_id = 'identity-1'
+		`); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := db.Exec(context.Background(), `
+			INSERT INTO passkey_credentials (
+				id, identity_id, credential_id, public_key, attestation_type, aaguid, sign_count, created_at
+			) VALUES
+				('cred-1', 'identity-1', '\x01'::bytea, '\x02'::bytea, 'none', 'aaguid', 0, $1),
+				('cred-2', 'identity-1', '\x03'::bytea, '\x04'::bytea, 'none', 'aaguid', 0, $1)
+		`, now); err != nil {
+			t.Fatal(err)
+		}
+
+		start := make(chan struct{})
+		errs := make([]error, 2)
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			<-start
+			errs[0] = service.RemovePasskey(context.Background(), application.RemovePasskeyCommand{
+				IdentityID: "identity-1", SessionID: sessionA, CredentialID: "cred-1",
+			})
+		}()
+		go func() {
+			defer wg.Done()
+			<-start
+			errs[1] = service.RemovePasskey(context.Background(), application.RemovePasskeyCommand{
+				IdentityID: "identity-1", SessionID: sessionB, CredentialID: "cred-2",
+			})
+		}()
+		close(start)
+		wg.Wait()
+
+		var count int
+		if err := db.QueryRow(context.Background(), `
+			SELECT count(*) FROM passkey_credentials WHERE identity_id = 'identity-1'
+		`).Scan(&count); err != nil {
+			t.Fatal(err)
+		}
+		if count < 1 {
+			t.Fatalf("round %d left zero passkeys (lockout); errs=%v %v", round, errs[0], errs[1])
+		}
+		if count != 1 {
+			t.Fatalf("round %d count=%d, want 1; errs=%v %v", round, count, errs[0], errs[1])
+		}
+
+		lastPasskeyDenials := 0
+		successes := 0
+		for i, err := range errs {
+			switch {
+			case err == nil:
+				successes++
+			case errors.Is(err, domain.ErrLastPasskey):
+				lastPasskeyDenials++
+			default:
+				t.Fatalf("round %d errs[%d]=%v, want nil or ErrLastPasskey", round, i, err)
+			}
+		}
+		if successes != 1 || lastPasskeyDenials != 1 {
+			t.Fatalf("round %d successes=%d denials=%d errs=%v %v", round, successes, lastPasskeyDenials, errs[0], errs[1])
+		}
 	}
 }
