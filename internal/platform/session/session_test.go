@@ -14,7 +14,7 @@ import (
 
 func TestStoreCreatesAndLoadsSession(t *testing.T) {
 	db := testdb.OpenMigrated(t)
-	store := session.NewStore(db, clock.System(), 0)
+	store := session.NewStore(db, clock.System(), 0, session.TestKey)
 
 	created, rawToken, err := store.Create(context.Background())
 	if err != nil {
@@ -33,9 +33,42 @@ func TestStoreCreatesAndLoadsSession(t *testing.T) {
 	}
 }
 
+func TestHashTokenDependsOnSessionKey(t *testing.T) {
+	raw := "opaque-session-token"
+	first := session.HashToken(session.TestKey, raw)
+	second := session.HashToken([]byte("ffffffffffffffffffffffffffffffff"), raw)
+	if first == second {
+		t.Fatal("token hashes must differ when SESSION_KEY differs")
+	}
+	if session.HashToken(session.TestKey, raw) != first {
+		t.Fatal("token hash must be stable for the same SESSION_KEY")
+	}
+}
+
+func TestSessionKeyRotationInvalidatesLookup(t *testing.T) {
+	db := testdb.OpenMigrated(t)
+	original := session.NewStore(db, clock.System(), time.Hour, session.TestKey)
+	_, rawToken, err := original.Create(context.Background())
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if _, err := original.Get(context.Background(), rawToken); err != nil {
+		t.Fatalf("Get with original key: %v", err)
+	}
+
+	rotated := session.NewStore(db, clock.System(), time.Hour, []byte("ffffffffffffffffffffffffffffffff"))
+	if _, err := rotated.Get(context.Background(), rawToken); err != session.ErrNotFound {
+		t.Fatalf("Get after SESSION_KEY rotation = %v, want ErrNotFound", err)
+	}
+
+	if _, err := original.Get(context.Background(), rawToken); err != nil {
+		t.Fatalf("Get with original key after failed rotated lookup: %v", err)
+	}
+}
+
 func TestStoreRejectsRevokedSession(t *testing.T) {
 	db := testdb.OpenMigrated(t)
-	store := session.NewStore(db, clock.System(), time.Hour)
+	store := session.NewStore(db, clock.System(), time.Hour, session.TestKey)
 
 	created, rawToken, err := store.Create(context.Background())
 	if err != nil {
@@ -51,7 +84,7 @@ func TestStoreRejectsRevokedSession(t *testing.T) {
 
 func TestStoreGetUnknownTokenReturnsErrNotFound(t *testing.T) {
 	db := testdb.OpenMigrated(t)
-	store := session.NewStore(db, clock.System(), time.Hour)
+	store := session.NewStore(db, clock.System(), time.Hour, session.TestKey)
 
 	if _, err := store.Get(context.Background(), ""); !errors.Is(err, session.ErrNotFound) {
 		t.Fatalf("Get empty token error = %v, want ErrNotFound", err)
@@ -63,7 +96,7 @@ func TestStoreGetUnknownTokenReturnsErrNotFound(t *testing.T) {
 
 func TestStoreGetPropagatesDatabaseErrors(t *testing.T) {
 	db := testdb.OpenMigrated(t)
-	store := session.NewStore(db, clock.System(), time.Hour)
+	store := session.NewStore(db, clock.System(), time.Hour, session.TestKey)
 
 	_, rawToken, err := store.Create(context.Background())
 	if err != nil {
@@ -84,7 +117,7 @@ func TestStoreGetPropagatesDatabaseErrors(t *testing.T) {
 
 func TestStoreRotatesSessionForIdentity(t *testing.T) {
 	db := testdb.OpenMigrated(t)
-	store := session.NewStore(db, clock.System(), time.Hour)
+	store := session.NewStore(db, clock.System(), time.Hour, session.TestKey)
 	ctx := context.Background()
 
 	seedIdentity(t, db, "identity-1")
@@ -117,7 +150,7 @@ func TestStoreRotatesSessionForIdentity(t *testing.T) {
 
 func TestStoreCreatesAndBindsIdentitySessions(t *testing.T) {
 	db := testdb.OpenMigrated(t)
-	store := session.NewStore(db, clock.System(), time.Hour)
+	store := session.NewStore(db, clock.System(), time.Hour, session.TestKey)
 	ctx := context.Background()
 	seedIdentity(t, db, "identity-1")
 
@@ -147,7 +180,7 @@ func TestStoreCreatesAndBindsIdentitySessions(t *testing.T) {
 
 func TestStoreIdentitySessionValidationErrors(t *testing.T) {
 	db := testdb.OpenMigrated(t)
-	store := session.NewStore(db, clock.System(), time.Hour)
+	store := session.NewStore(db, clock.System(), time.Hour, session.TestKey)
 	ctx := context.Background()
 
 	if _, _, err := store.CreateForIdentity(ctx, ""); err == nil {

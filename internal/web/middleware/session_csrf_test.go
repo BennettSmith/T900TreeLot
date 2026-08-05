@@ -32,7 +32,7 @@ func (s failingSessionStore) Get(ctx context.Context, rawToken string) (session.
 }
 
 func TestSessionCSRFProtectsStateChangingRequests(t *testing.T) {
-	store := session.NewMemoryStore(clock.System(), time.Hour)
+	store := session.NewMemoryStore(clock.System(), time.Hour, session.TestKey)
 	var sawSession bool
 	handler := middleware.SessionCSRF(store, false, http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		current := middleware.FromContext(request.Context())
@@ -116,7 +116,7 @@ func TestSessionCSRFDoesNotReplaceCookieOnStoreFailure(t *testing.T) {
 }
 
 func TestSessionCSRFCreatesSessionWhenMissing(t *testing.T) {
-	store := session.NewMemoryStore(clock.System(), time.Hour)
+	store := session.NewMemoryStore(clock.System(), time.Hour, session.TestKey)
 	handler := middleware.SessionCSRF(store, false, http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		response.WriteHeader(http.StatusNoContent)
 	}))

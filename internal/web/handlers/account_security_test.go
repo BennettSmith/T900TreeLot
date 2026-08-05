@@ -18,7 +18,7 @@ import (
 )
 
 func TestAccountSecurityPageRequiresStepUpBeforeCredentialControls(t *testing.T) {
-	store := session.NewMemoryStore(clock.System(), time.Hour)
+	store := session.NewMemoryStore(clock.System(), time.Hour, session.TestKey)
 	current, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
 	if err != nil {
 		t.Fatal(err)
@@ -48,7 +48,7 @@ func TestAccountSecurityPageRequiresStepUpBeforeCredentialControls(t *testing.T)
 }
 
 func TestAccountSecurityPageShowsControlsAfterStepUp(t *testing.T) {
-	store := session.NewMemoryStore(clock.System(), time.Hour)
+	store := session.NewMemoryStore(clock.System(), time.Hour, session.TestKey)
 	current, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
 	if err != nil {
 		t.Fatal(err)
@@ -77,7 +77,7 @@ func TestAccountSecurityPageShowsControlsAfterStepUp(t *testing.T) {
 }
 
 func TestAccountChangeEmailRejectsWithoutStepUp(t *testing.T) {
-	store := session.NewMemoryStore(clock.System(), time.Hour)
+	store := session.NewMemoryStore(clock.System(), time.Hour, session.TestKey)
 	current, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
 	if err != nil {
 		t.Fatal(err)
@@ -95,7 +95,7 @@ func TestAccountChangeEmailRejectsWithoutStepUp(t *testing.T) {
 }
 
 func TestAccountChangeEmailSuccessClearsSession(t *testing.T) {
-	store := session.NewMemoryStore(clock.System(), time.Hour)
+	store := session.NewMemoryStore(clock.System(), time.Hour, session.TestKey)
 	current, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
 	if err != nil {
 		t.Fatal(err)
@@ -119,7 +119,7 @@ func TestAccountChangeEmailSuccessClearsSession(t *testing.T) {
 }
 
 func TestAccountStepUpAndPasskeyJSONEndpoints(t *testing.T) {
-	store := session.NewMemoryStore(clock.System(), time.Hour)
+	store := session.NewMemoryStore(clock.System(), time.Hour, session.TestKey)
 	current, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
 	if err != nil {
 		t.Fatal(err)
@@ -181,7 +181,7 @@ func TestAccountSecurityJSONUnauthorizedWithoutIdentity(t *testing.T) {
 }
 
 func TestAccountSecurityErrorMapping(t *testing.T) {
-	store := session.NewMemoryStore(clock.System(), time.Hour)
+	store := session.NewMemoryStore(clock.System(), time.Hour, session.TestKey)
 	current, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
 	if err != nil {
 		t.Fatal(err)
@@ -266,7 +266,7 @@ func (f *fakeAccountSecurityService) ChangeEmail(_ context.Context, command appl
 }
 
 func TestAccountPasskeyRemoveLastPasskeyMessage(t *testing.T) {
-	store := session.NewMemoryStore(clock.System(), time.Hour)
+	store := session.NewMemoryStore(clock.System(), time.Hour, session.TestKey)
 	current, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
 	if err != nil {
 		t.Fatal(err)
@@ -307,7 +307,7 @@ func TestSeedConflictingIdentityFixtureEndpoint(t *testing.T) {
 }
 
 func TestAccountSecurityUnavailableAndMalformedJSON(t *testing.T) {
-	store := session.NewMemoryStore(clock.System(), time.Hour)
+	store := session.NewMemoryStore(clock.System(), time.Hour, session.TestKey)
 	current, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
 	if err != nil {
 		t.Fatal(err)
@@ -354,7 +354,7 @@ func TestAccountSecurityUnavailableAndMalformedJSON(t *testing.T) {
 }
 
 func TestAccountSecurityPageUnavailableReader(t *testing.T) {
-	store := session.NewMemoryStore(clock.System(), time.Hour)
+	store := session.NewMemoryStore(clock.System(), time.Hour, session.TestKey)
 	_, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
 	if err != nil {
 		t.Fatal(err)
@@ -368,7 +368,7 @@ func TestAccountSecurityPageUnavailableReader(t *testing.T) {
 }
 
 func TestAccountPasskeyFinishAndRemoveUnavailable(t *testing.T) {
-	store := session.NewMemoryStore(clock.System(), time.Hour)
+	store := session.NewMemoryStore(clock.System(), time.Hour, session.TestKey)
 	current, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
 	if err != nil {
 		t.Fatal(err)
@@ -397,7 +397,7 @@ func TestAccountPasskeyFinishAndRemoveUnavailable(t *testing.T) {
 }
 
 func TestAccountPasskeyFinishMalformedAndError(t *testing.T) {
-	store := session.NewMemoryStore(clock.System(), time.Hour)
+	store := session.NewMemoryStore(clock.System(), time.Hour, session.TestKey)
 	current, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
 	if err != nil {
 		t.Fatal(err)
@@ -420,7 +420,7 @@ func TestAccountPasskeyFinishMalformedAndError(t *testing.T) {
 }
 
 func TestAccountSecurityPageNotFoundProfile(t *testing.T) {
-	store := session.NewMemoryStore(clock.System(), time.Hour)
+	store := session.NewMemoryStore(clock.System(), time.Hour, session.TestKey)
 	_, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
 	if err != nil {
 		t.Fatal(err)
@@ -435,7 +435,7 @@ func TestAccountSecurityPageNotFoundProfile(t *testing.T) {
 }
 
 func TestAccountSecurityPageReaderErrors(t *testing.T) {
-	store := session.NewMemoryStore(clock.System(), time.Hour)
+	store := session.NewMemoryStore(clock.System(), time.Hour, session.TestKey)
 	_, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
 	if err != nil {
 		t.Fatal(err)
@@ -478,7 +478,7 @@ func TestAccountSecurityAnonymousMutationsRedirect(t *testing.T) {
 }
 
 func TestAccountStepUpFinishServiceError(t *testing.T) {
-	store := session.NewMemoryStore(clock.System(), time.Hour)
+	store := session.NewMemoryStore(clock.System(), time.Hour, session.TestKey)
 	current, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
 	if err != nil {
 		t.Fatal(err)

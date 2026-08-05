@@ -20,7 +20,7 @@ import (
 func TestBootstrapUnitOfWorkPersistsFirstAdmin(t *testing.T) {
 	db := testdb.OpenMigrated(t)
 	clk := clock.NewControllable(time.Date(2026, 7, 31, 23, 0, 0, 0, time.UTC))
-	sessionStore := session.NewStore(db, clk, time.Hour)
+	sessionStore := session.NewStore(db, clk, time.Hour, session.TestKey)
 	oldSession, oldToken, err := sessionStore.Create(context.Background())
 	if err != nil {
 		t.Fatalf("create old session: %v", err)
@@ -45,7 +45,7 @@ func TestBootstrapUnitOfWorkPersistsFirstAdmin(t *testing.T) {
 	}
 
 	service := &application.BootstrapService{
-		UnitOfWork:          identitypostgres.NewUnitOfWork(db, clk),
+		UnitOfWork:          identitypostgres.NewUnitOfWork(db, clk, session.TestKey),
 		Tokens:              validToken{},
 		RateLimiter:         allowAll{},
 		Passkeys:            fakePasskeys{},
@@ -101,7 +101,7 @@ func TestBootstrapUnitOfWorkRollsBackVerifiedRegistrationWhenSessionRotationFail
 	if err != nil {
 		t.Fatalf("NewRegistrationCeremony: %v", err)
 	}
-	sessionStore := session.NewStore(db, clk, time.Hour)
+	sessionStore := session.NewStore(db, clk, time.Hour, session.TestKey)
 	rollbackSession, _, err := sessionStore.Create(ctx)
 	if err != nil {
 		t.Fatalf("create rollback session: %v", err)
@@ -142,7 +142,7 @@ func TestBootstrapUnitOfWorkRollsBackVerifiedRegistrationWhenSessionRotationFail
 	)
 
 	service := &application.BootstrapService{
-		UnitOfWork:          identitypostgres.NewUnitOfWork(db, clk),
+		UnitOfWork:          identitypostgres.NewUnitOfWork(db, clk, session.TestKey),
 		Tokens:              validToken{},
 		RateLimiter:         allowAll{},
 		Passkeys:            passkeys,
@@ -218,7 +218,7 @@ func TestBootstrapUnitOfWorkRejectsFinishProfileDifferentFromPersistedCeremony(t
 	}
 
 	service := &application.BootstrapService{
-		UnitOfWork:          identitypostgres.NewUnitOfWork(db, clk),
+		UnitOfWork:          identitypostgres.NewUnitOfWork(db, clk, session.TestKey),
 		Tokens:              validToken{},
 		RateLimiter:         allowAll{},
 		Passkeys:            passkeys,
@@ -288,7 +288,7 @@ func TestBootstrapUnitOfWorkRejectsConsumedRegistrationCeremonyReplay(t *testing
 	); err != nil {
 		t.Fatalf("seed registration ceremony: %v", err)
 	}
-	uow := identitypostgres.NewUnitOfWork(db, clock.NewControllable(now))
+	uow := identitypostgres.NewUnitOfWork(db, clock.NewControllable(now), session.TestKey)
 	if err := uow.WithinTx(ctx, func(txCtx context.Context, repos application.Repositories) error {
 		if _, err := repos.LockRegistrationCeremony(txCtx, "ceremony-replay"); err != nil {
 			return err
@@ -309,7 +309,7 @@ func TestBootstrapUnitOfWorkRejectsConsumedRegistrationCeremonyReplay(t *testing
 
 func TestBootstrapUnitOfWorkMapsDuplicateActiveEmail(t *testing.T) {
 	db := testdb.OpenMigrated(t)
-	uow := identitypostgres.NewUnitOfWork(db, clock.System())
+	uow := identitypostgres.NewUnitOfWork(db, clock.System(), session.TestKey)
 	ctx := context.Background()
 	now := time.Date(2026, 7, 31, 23, 10, 0, 0, time.UTC)
 

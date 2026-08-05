@@ -380,7 +380,7 @@ func (s *BootstrapService) FinishBootstrap(ctx context.Context, command FinishBo
 			TargetType:    "identity",
 			TargetID:      identityID,
 			CorrelationID: credentialID,
-			Payload:       map[string]any{"email_normalized": email.Normalized()},
+			Payload:       map[string]any{},
 			CreatedAt:     now,
 		}); err != nil {
 			return err

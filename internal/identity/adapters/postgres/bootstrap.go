@@ -24,8 +24,8 @@ type UnitOfWork struct {
 	sessions *session.Store
 }
 
-func NewUnitOfWork(db *platformpostgres.DB, clk clock.Clock) *UnitOfWork {
-	return &UnitOfWork{db: db, sessions: session.NewStore(db, clk, 24*time.Hour)}
+func NewUnitOfWork(db *platformpostgres.DB, clk clock.Clock, sessionKey []byte) *UnitOfWork {
+	return &UnitOfWork{db: db, sessions: session.NewStore(db, clk, 24*time.Hour, sessionKey)}
 }
 
 func (u *UnitOfWork) WithinTx(ctx context.Context, fn func(context.Context, application.Repositories) error) error {

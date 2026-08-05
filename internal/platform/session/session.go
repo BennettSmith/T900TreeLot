@@ -3,6 +3,7 @@ package session
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -19,6 +20,9 @@ import (
 // ErrNotFound indicates the session token is unknown, expired, or revoked.
 var ErrNotFound = errors.New("session not found")
 
+// TestKey is a fixed ≥32-byte SESSION_KEY for focused unit tests.
+var TestKey = []byte("0123456789abcdef0123456789abcdef")
+
 // Session is a durable anonymous browser session used for CSRF protection.
 type Session struct {
 	ID              int64
@@ -31,17 +35,19 @@ type Session struct {
 
 // Store reads and writes session rows.
 type Store struct {
-	db    *postgres.DB
-	clock clock.Clock
-	ttl   time.Duration
+	db         *postgres.DB
+	clock      clock.Clock
+	ttl        time.Duration
+	sessionKey []byte
 }
 
-// NewStore constructs a session store.
-func NewStore(db *postgres.DB, clk clock.Clock, ttl time.Duration) *Store {
+// NewStore constructs a session store. sessionKey is the HMAC key used to hash
+// opaque cookie tokens; rotating it invalidates existing sessions.
+func NewStore(db *postgres.DB, clk clock.Clock, ttl time.Duration, sessionKey []byte) *Store {
 	if ttl <= 0 {
 		ttl = 24 * time.Hour
 	}
-	return &Store{db: db, clock: clk, ttl: ttl}
+	return &Store{db: db, clock: clk, ttl: ttl, sessionKey: append([]byte(nil), sessionKey...)}
 }
 
 // Create inserts a new session and returns the raw cookie token.
@@ -68,7 +74,7 @@ func (s *Store) create(ctx context.Context, exec sessionExecutor, identityID str
 		return Session{}, "", err
 	}
 	expiresAt := s.clock.Now().Add(s.ttl)
-	hash := hashToken(rawToken)
+	hash := HashToken(s.sessionKey, rawToken)
 
 	var id int64
 	err = exec.QueryRow(ctx, `
@@ -87,7 +93,7 @@ func (s *Store) Get(ctx context.Context, rawToken string) (Session, error) {
 	if rawToken == "" {
 		return Session{}, ErrNotFound
 	}
-	hash := hashToken(rawToken)
+	hash := HashToken(s.sessionKey, rawToken)
 	var session Session
 	var identityID *string
 	var authenticatedAt *time.Time
@@ -202,8 +208,14 @@ func (s *Store) Revoke(ctx context.Context, id int64) error {
 	return nil
 }
 
-func hashToken(raw string) [32]byte {
-	return sha256.Sum256([]byte(raw))
+// HashToken returns the HMAC-SHA256 digest of a raw session token under sessionKey.
+// Rotating sessionKey changes the digest and invalidates stored lookups.
+func HashToken(sessionKey []byte, raw string) [32]byte {
+	mac := hmac.New(sha256.New, sessionKey)
+	_, _ = mac.Write([]byte(raw))
+	var out [32]byte
+	copy(out[:], mac.Sum(nil))
+	return out
 }
 
 func randomToken(size int) (string, error) {

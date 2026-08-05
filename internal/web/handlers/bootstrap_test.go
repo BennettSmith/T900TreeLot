@@ -303,7 +303,7 @@ func TestAccountHandlesMissingAndFailedProfileLookup(t *testing.T) {
 		{name: "failed", err: errors.New("database down"), status: http.StatusInternalServerError},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			store := session.NewMemoryStore(clock.System(), time.Hour)
+			store := session.NewMemoryStore(clock.System(), time.Hour, session.TestKey)
 			_, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
 			if err != nil {
 				t.Fatalf("CreateForIdentity: %v", err)
@@ -323,7 +323,7 @@ func TestAccountHandlesMissingAndFailedProfileLookup(t *testing.T) {
 func TestAccountWelcomesAuthenticatedAdmin(t *testing.T) {
 	t.Parallel()
 
-	store := session.NewMemoryStore(clock.System(), time.Hour)
+	store := session.NewMemoryStore(clock.System(), time.Hour, session.TestKey)
 	created, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
 	if err != nil {
 		t.Fatalf("CreateForIdentity: %v", err)
