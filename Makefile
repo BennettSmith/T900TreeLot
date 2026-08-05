@@ -8,7 +8,8 @@ COMPOSE = $(DOCKER) compose
 IMAGE ?= treelot:local
 
 .PHONY: help doctor acceptance-preflight install-hooks commit-messages assets assets-watch assets-check \
-	showcase format format-check lint test-db test coverage traceability ci image up down migrate logs ps acceptance
+	showcase format format-check lint test-db test coverage traceability ci image up down migrate logs ps acceptance \
+	render-setup-checklist
 
 help: ## List available targets and explain when to use them.
 	@awk 'BEGIN {FS = ":.*## "; printf "Usage: make <target>\n\nTargets:\n"} /^[[:alnum:]_.-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -139,3 +140,7 @@ ps: ## Show Docker Compose service status.
 acceptance: ## Build the production image and run foundation acceptance specs.
 	@chmod +x ./scripts/acceptance.sh
 	@./scripts/acceptance.sh
+
+render-setup-checklist: ## Print the EW-001 Render first-time operator checklist.
+	@chmod +x ./scripts/render-setup-checklist.sh
+	@./scripts/render-setup-checklist.sh

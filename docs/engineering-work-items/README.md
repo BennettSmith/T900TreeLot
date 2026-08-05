@@ -27,4 +27,4 @@ addition to the engineering work item.
 ## Work items
 
 - [EW-001: Render production deployment rehearsal](ew-001-render-production-deployment-rehearsal.md)
-  — `planned`; release gate after INC-02 and before INC-03
+  — `in_progress`; release gate after INC-02 and before INC-03

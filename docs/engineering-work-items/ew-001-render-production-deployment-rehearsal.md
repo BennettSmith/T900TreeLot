@@ -1,10 +1,10 @@
 # EW-001: Render production deployment rehearsal
 
-- **Status:** `planned`
+- **Status:** `in_progress`
 - **Release gate:** After INC-02 and before INC-03
 - **Prerequisite:** INC-02 is verified against the local production-shaped
   acceptance environment
-- **Implementation PR:** To be recorded when completed
+- **Implementation PR:** To be recorded when opened
 
 ## Goal
 
@@ -68,14 +68,19 @@ meets the architecture's production objectives.
   `PUBLIC_BASE_URL=https://treelot.troop900livermore.org`,
   `TREE_LOT_TIME_ZONE=America/Los_Angeles`, and
   `GROUPS_IO_ENABLED=false`.
-- Supply `DATABASE_URL`, session key material, the one-time bootstrap secret,
-  and WebAuthn relying-party configuration through secret environment
-  settings. No secret is committed, embedded in the image, or included in
-  logs or completion evidence.
+- Supply `DATABASE_URL`, `SESSION_KEY` (HMAC key for hashing opaque session
+  cookie tokens), the one-time bootstrap secret, and WebAuthn relying-party
+  configuration through secret environment settings. No secret is committed,
+  embedded in the image, or included in logs or completion evidence.
 - Configure the WebAuthn relying-party ID and allowed origin for the canonical
   hostname.
 - Point troop-managed DNS at the Render web service and verify Render-managed
   TLS for the canonical hostname.
+
+Operator procedures for first setup, digest promotion, DNS/TLS, rollback, and
+isolated PITR live in
+[`docs/runbooks/render-production.md`](../runbooks/render-production.md).
+Infrastructure as code lives in [`render.yaml`](../../render.yaml).
 
 ### Deployment and recovery rehearsal
 
@@ -94,6 +99,22 @@ meets the architecture's production objectives.
   and document the measured recovery procedure. Do not overwrite production
   during the rehearsal.
 
+## Implementation progress
+
+- Status set to `in_progress` after INC-02 verification on `main`.
+- Application hardening: production-only canonical-host redirect with health
+  exemptions; graceful web shutdown already present on `main`; `SESSION_KEY`
+  remains required and is used to HMAC-hash opaque session tokens.
+- Immutable delivery: `ACCEPTANCE_SKIP_BUILD` acceptance path, Release workflow
+  publishing GHCR digests with gated Render promotion, and `render.yaml`.
+- Operator guide: [`docs/runbooks/render-production.md`](../runbooks/render-production.md)
+  and `make render-setup-checklist`.
+- Local gates for this candidate: `make ci` and `make acceptance` passed,
+  including `ACCEPTANCE_SKIP_BUILD=1` against a local predecessor-tagged image.
+
+Operator-owned remaining steps (Render account, DNS, real passkey, PITR) are
+listed in the runbook and must complete before status becomes `completed`.
+
 ## Completion evidence
 
 Before changing the status to `completed`, record:
@@ -110,6 +131,17 @@ Before changing the status to `completed`, record:
   measured restore duration, and verification result.
 - Successful `make ci` and whole-system acceptance runs for the deployed
   candidate.
+
+### Recorded so far
+
+| Evidence | Value |
+|---|---|
+| Implementation PR | To be filled after PR open |
+| Local `make ci` | Passed on candidate branch |
+| Local `make acceptance` | Passed on candidate branch |
+| Skip-build acceptance | Passed with `IMAGE=treelot:predecessor` |
+| GHCR digest / Render deploy ids | Pending Release workflow + operator approval |
+| Canonical TLS / real passkey / PITR | Pending operator rehearsal |
 
 ## Non-goals
 

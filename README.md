@@ -142,6 +142,17 @@ make acceptance
 from the production image (host networking), then executes the suite. Set
 `ACCEPTANCE_KEEP=1` to leave containers running after the suite.
 
+To reuse an already built or pulled candidate without rebuilding:
+
+```sh
+ACCEPTANCE_SKIP_BUILD=1 IMAGE=treelot:candidate make acceptance
+```
+
+Production deployment uses the **Release** GitHub Actions workflow to build
+once, push to GHCR, accept by digest, and optionally promote that digest to
+Render. Operator steps are in
+[`docs/runbooks/render-production.md`](docs/runbooks/render-production.md).
+
 The acceptance runner removes its own previous containers and then runs a
 non-destructive preflight before building. The preflight checks required tools
 and ports `5433`, `18080`, `18081`, and `18090`. Override the three application

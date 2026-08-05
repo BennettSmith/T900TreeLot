@@ -56,10 +56,23 @@ func TestNewHTTPServerBuildsProductionAdapter(t *testing.T) {
 		t.Error("server timeouts do not match hardened defaults")
 	}
 	request := httptest.NewRequest(http.MethodGet, "/_dev/components", nil)
+	request.Host = cfg.PublicBaseURL.Hostname()
 	response := httptest.NewRecorder()
 	server.Handler.ServeHTTP(response, request)
 	if response.Code != http.StatusNotFound {
 		t.Errorf("production gallery status = %d, want %d", response.Code, http.StatusNotFound)
+	}
+}
+
+func TestCanonicalBaseURLOnlyEnabledInProduction(t *testing.T) {
+	cfg := testConfig(t)
+	cfg.AppEnv = config.EnvAcceptance
+	if got := canonicalBaseURL(cfg); got != nil {
+		t.Fatalf("acceptance canonical URL = %v, want nil", got)
+	}
+	cfg.AppEnv = config.EnvProduction
+	if got := canonicalBaseURL(cfg); got == nil || got.String() != cfg.PublicBaseURL.String() {
+		t.Fatalf("production canonical URL = %v", got)
 	}
 }
 

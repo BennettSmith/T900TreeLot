@@ -554,6 +554,11 @@ Secrets are stored in Render's secret environment configuration or a dedicated s
 
 Non-secret production configuration includes `PUBLIC_BASE_URL=https://treelot.troop900livermore.org`, `TREE_LOT_TIME_ZONE` set to the IANA time zone for the physical tree-lot location, and `GROUPS_IO_ENABLED=false` by default.
 
+Production Render topology, digest promotion, DNS/TLS, rollback, and isolated
+PITR procedures are documented in
+[`docs/runbooks/render-production.md`](runbooks/render-production.md) and
+[`render.yaml`](../render.yaml).
+
 ## 13. Security and privacy
 
 The baseline controls are:

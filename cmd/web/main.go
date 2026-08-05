@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -165,6 +166,7 @@ func newHTTPServer(cfg config.Config, db *postgres.DB, appClock clock.Clock, con
 		Ready:                 db.Ping,
 		Sessions:              store,
 		SecureCookies:         cfg.SecureCookies,
+		CanonicalBaseURL:      canonicalBaseURL(cfg),
 		TestControlEnabled:    cfg.TestControlEnabled,
 		TestControlKey:        cfg.TestControlKey,
 		Clock:                 appClock,
@@ -189,4 +191,11 @@ func newHTTPServer(cfg config.Config, db *postgres.DB, appClock clock.Clock, con
 		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}, nil
+}
+
+func canonicalBaseURL(cfg config.Config) *url.URL {
+	if cfg.AppEnv != config.EnvProduction {
+		return nil
+	}
+	return cfg.PublicBaseURL
 }

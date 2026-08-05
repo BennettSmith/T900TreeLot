@@ -40,7 +40,7 @@ func NewLot(t *testing.T) *Lot {
 	if err != nil {
 		t.Fatalf("web client: %v", err)
 	}
-	production, err := web.NewClient(config.ProductionBaseURL)
+	production, err := web.NewClientWithHost(config.ProductionBaseURL, "treelot.troop900livermore.org")
 	if err != nil {
 		t.Fatalf("production web client: %v", err)
 	}
@@ -232,6 +232,46 @@ func (p *Platform) IssuesSecureSessionCookiesInProduction() {
 	}
 	if !secure {
 		p.lot.t.Fatal("production session cookie missing Secure attribute")
+	}
+}
+
+// RedirectsNoncanonicalHostsToCanonicalOrigin proves Host-based redirect safety.
+func (p *Platform) RedirectsNoncanonicalHostsToCanonicalOrigin() {
+	p.lot.t.Helper()
+	status, _, headers, err := p.lot.production.GetWithHost("/sign-in?next=%2Ffamily", "treelot-web.onrender.com")
+	if err != nil {
+		p.lot.t.Fatalf("noncanonical host probe: %v", err)
+	}
+	if status != http.StatusMovedPermanently {
+		p.lot.t.Fatalf("noncanonical host status=%d, want %d", status, http.StatusMovedPermanently)
+	}
+	location := headers.Get("Location")
+	want := "https://treelot.troop900livermore.org/sign-in?next=%2Ffamily"
+	if location != want {
+		p.lot.t.Fatalf("Location=%q, want %q", location, want)
+	}
+}
+
+// ServesHealthChecksOnNoncanonicalHosts proves Render health probes are not redirected.
+func (p *Platform) ServesHealthChecksOnNoncanonicalHosts() {
+	p.lot.t.Helper()
+	for _, path := range []string{"/health/live", "/health/ready"} {
+		status, body, headers, err := p.lot.production.GetWithHost(path, "treelot-web.onrender.com")
+		if err != nil {
+			p.lot.t.Fatalf("%s noncanonical probe: %v", path, err)
+		}
+		if status != http.StatusOK {
+			p.lot.t.Fatalf("%s noncanonical status=%d, want 200", path, status)
+		}
+		if location := headers.Get("Location"); location != "" {
+			p.lot.t.Fatalf("%s unexpectedly redirected to %q", path, location)
+		}
+		if path == "/health/live" && !strings.Contains(body, "ok") {
+			p.lot.t.Fatalf("%s body=%q", path, body)
+		}
+		if path == "/health/ready" && !strings.Contains(body, "ready") {
+			p.lot.t.Fatalf("%s body=%q", path, body)
+		}
 	}
 }
 

@@ -28,6 +28,7 @@ type Options struct {
 	Ready                 func(context.Context) error
 	Sessions              middleware.Sessions
 	SecureCookies         bool
+	CanonicalBaseURL      *url.URL
 	TestControlEnabled    bool
 	TestControlKey        string
 	Clock                 clock.Clock
@@ -197,7 +198,7 @@ func New(viewRenderer renderer, options Options) http.Handler {
 	}
 	mux.Handle("/", browserHandler)
 
-	return middleware.BrowserHeaders(mux)
+	return middleware.CanonicalHost(options.CanonicalBaseURL, middleware.BrowserHeaders(mux))
 }
 
 func (s *Server) setFixtureIdentityRole(response http.ResponseWriter, request *http.Request) {

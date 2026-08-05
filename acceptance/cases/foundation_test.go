@@ -48,6 +48,13 @@ func TestTestControlIsAbsentAndCookiesAreSecureOutsideAcceptance(t *testing.T) {
 }
 
 // Trace: INC-01
+func TestProductionRedirectsNoncanonicalHostsWithoutBreakingHealth(t *testing.T) {
+	lot := dsl.NewLot(t)
+	lot.Platform().RedirectsNoncanonicalHostsToCanonicalOrigin()
+	lot.Platform().ServesHealthChecksOnNoncanonicalHosts()
+}
+
+// Trace: INC-01
 func TestDeployedWorkerDeliversOutboxMessage(t *testing.T) {
 	lot := dsl.NewLot(t)
 	lot.Worker().DeliversEnqueuedOutboxMessage("acceptance-outbox-" + time.Now().UTC().Format("20060102T150405.000000000"))
