@@ -23,23 +23,26 @@ import (
 
 // Options configures the HTTP adapter.
 type Options struct {
-	Development        bool
-	Logger             *slog.Logger
-	Ready              func(context.Context) error
-	Sessions           middleware.Sessions
-	SecureCookies      bool
-	TestControlEnabled bool
-	TestControlKey     string
-	Clock              clock.Clock
-	ControllableClock  *clock.Controllable
-	Outbox             OutboxControl
-	Bootstrap          BootstrapService
-	SignIn             SignInService
-	SignOut            SignOutService
-	Accounts           AccountReader
-	Landings           LandingReader
-	BootstrapReset     BootstrapResetControl
-	IdentityFixture    IdentityFixtureControl
+	Development           bool
+	Logger                *slog.Logger
+	Ready                 func(context.Context) error
+	Sessions              middleware.Sessions
+	SecureCookies         bool
+	TestControlEnabled    bool
+	TestControlKey        string
+	Clock                 clock.Clock
+	ControllableClock     *clock.Controllable
+	Outbox                OutboxControl
+	Bootstrap             BootstrapService
+	SignIn                SignInService
+	SignOut               SignOutService
+	Accounts              AccountReader
+	Landings              LandingReader
+	AccountSecurity       AccountSecurityService
+	AccountSecurityReader AccountSecurityReader
+	StepUpTTL             time.Duration
+	BootstrapReset        BootstrapResetControl
+	IdentityFixture       IdentityFixtureControl
 }
 
 type BootstrapService interface {
@@ -73,6 +76,7 @@ type BootstrapResetControl interface {
 type IdentityFixtureControl interface {
 	SetRole(context.Context, application.SetFixtureRoleCommand) error
 	RevokeSessions(context.Context, string) error
+	SeedConflictingIdentity(context.Context, string, string, string) error
 }
 
 type Server struct {
@@ -88,6 +92,9 @@ type Server struct {
 	signOut           SignOutService
 	accounts          AccountReader
 	landings          LandingReader
+	securityService   AccountSecurityService
+	securityReader    AccountSecurityReader
+	stepUpTTL         time.Duration
 	bootstrapReset    BootstrapResetControl
 	identityFixture   IdentityFixtureControl
 	secureCookies     bool
@@ -99,6 +106,7 @@ type renderer interface {
 	SignIn(context.Context, io.Writer, views.SignInPage) error
 	Landing(context.Context, io.Writer, views.LandingPage) error
 	Account(context.Context, io.Writer, views.AccountPage) error
+	AccountSecurity(context.Context, io.Writer, views.AccountSecurityPage) error
 	ComponentGallery(context.Context, io.Writer, views.Gallery) error
 	ParityResult(context.Context, io.Writer, views.Gallery) error
 }
@@ -130,9 +138,15 @@ func New(viewRenderer renderer, options Options) http.Handler {
 		signOut:           options.SignOut,
 		accounts:          options.Accounts,
 		landings:          options.Landings,
+		securityService:   options.AccountSecurity,
+		securityReader:    options.AccountSecurityReader,
+		stepUpTTL:         options.StepUpTTL,
 		bootstrapReset:    options.BootstrapReset,
 		identityFixture:   options.IdentityFixture,
 		secureCookies:     options.SecureCookies,
+	}
+	if server.stepUpTTL <= 0 {
+		server.stepUpTTL = 5 * time.Minute
 	}
 
 	mux := http.NewServeMux()
@@ -154,6 +168,13 @@ func New(viewRenderer renderer, options Options) http.Handler {
 	browser.HandleFunc("GET /family", server.familyLanding)
 	browser.HandleFunc("GET /scout/schedule", server.scoutLanding)
 	browser.HandleFunc("GET /account", server.account)
+	browser.HandleFunc("GET /account/security", server.accountSecurityPage)
+	browser.HandleFunc("POST /account/security/step-up/begin", server.accountStepUpBegin)
+	browser.HandleFunc("POST /account/security/step-up/finish", server.accountStepUpFinish)
+	browser.HandleFunc("POST /account/security/passkeys/begin", server.accountPasskeyBegin)
+	browser.HandleFunc("POST /account/security/passkeys/finish", server.accountPasskeyFinish)
+	browser.HandleFunc("POST /account/security/passkeys/remove", server.accountPasskeyRemove)
+	browser.HandleFunc("POST /account/email", server.accountChangeEmail)
 	browser.HandleFunc("POST /smoke", server.smoke)
 	if options.Development {
 		browser.HandleFunc("GET /_dev/components", server.gallery)
@@ -167,6 +188,7 @@ func New(viewRenderer renderer, options Options) http.Handler {
 		mux.HandleFunc("POST /_test/bootstrap/reset", server.resetBootstrap)
 		mux.HandleFunc("POST /_test/identity/role", server.setFixtureIdentityRole)
 		mux.HandleFunc("POST /_test/identity/revoke", server.revokeFixtureIdentitySessions)
+		mux.HandleFunc("POST /_test/identity/conflict-email", server.seedFixtureConflictingIdentity)
 	}
 
 	var browserHandler http.Handler = browser
@@ -222,6 +244,38 @@ func (s *Server) revokeFixtureIdentitySessions(response http.ResponseWriter, req
 	}
 	response.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(response).Encode(map[string]string{"status": "revoked"})
+}
+
+func (s *Server) seedFixtureConflictingIdentity(response http.ResponseWriter, request *http.Request) {
+	if !s.authorizeTestControl(request) {
+		http.Error(response, "forbidden", http.StatusForbidden)
+		return
+	}
+	if s.identityFixture == nil {
+		http.Error(response, "identity fixture unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	var payload struct {
+		IdentityID string `json:"identityId"`
+		PersonID   string `json:"personId"`
+		Email      string `json:"email"`
+	}
+	if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
+		http.Error(response, "invalid body", http.StatusBadRequest)
+		return
+	}
+	if payload.IdentityID == "" {
+		payload.IdentityID = "conflict-identity"
+	}
+	if payload.PersonID == "" {
+		payload.PersonID = "conflict-person"
+	}
+	if err := s.identityFixture.SeedConflictingIdentity(request.Context(), payload.IdentityID, payload.PersonID, payload.Email); err != nil {
+		http.Error(response, "unable to seed conflicting identity", http.StatusBadRequest)
+		return
+	}
+	response.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(response).Encode(map[string]string{"status": "seeded"})
 }
 
 func (s *Server) live(response http.ResponseWriter, _ *http.Request) {

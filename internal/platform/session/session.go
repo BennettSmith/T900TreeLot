@@ -26,6 +26,7 @@ type Session struct {
 	ExpiresAt       time.Time
 	IdentityID      string
 	AuthenticatedAt *time.Time
+	StepUpAt        *time.Time
 }
 
 // Store reads and writes session rows.
@@ -90,13 +91,14 @@ func (s *Store) Get(ctx context.Context, rawToken string) (Session, error) {
 	var session Session
 	var identityID *string
 	var authenticatedAt *time.Time
+	var stepUpAt *time.Time
 	err := s.db.QueryRow(ctx, `
-		SELECT id, csrf_token, expires_at, identity_id, authenticated_at
+		SELECT id, csrf_token, expires_at, identity_id, authenticated_at, step_up_at
 		FROM sessions
 		WHERE token_hash = $1
 		  AND revoked_at IS NULL
 		  AND expires_at > $2
-	`, hash[:], s.clock.Now()).Scan(&session.ID, &session.CSRFToken, &session.ExpiresAt, &identityID, &authenticatedAt)
+	`, hash[:], s.clock.Now()).Scan(&session.ID, &session.CSRFToken, &session.ExpiresAt, &identityID, &authenticatedAt, &stepUpAt)
 	if err != nil {
 		return Session{}, ErrNotFound
 	}
@@ -104,6 +106,7 @@ func (s *Store) Get(ctx context.Context, rawToken string) (Session, error) {
 		session.IdentityID = *identityID
 	}
 	session.AuthenticatedAt = authenticatedAt
+	session.StepUpAt = stepUpAt
 	_, _ = s.db.Exec(ctx, `UPDATE sessions SET last_seen_at = $2 WHERE id = $1`, session.ID, s.clock.Now())
 	return session, nil
 }

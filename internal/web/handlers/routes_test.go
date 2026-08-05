@@ -386,10 +386,13 @@ func request(t *testing.T, handler http.Handler, method, target, body string, he
 }
 
 type fakeIdentityFixture struct {
-	command      application.SetFixtureRoleCommand
-	revokedEmail string
-	setRoleErr   error
-	revokeErr    error
+	command        application.SetFixtureRoleCommand
+	revokedEmail   string
+	setRoleErr     error
+	revokeErr      error
+	seedEmail      string
+	seedIdentityID string
+	seedPersonID   string
 }
 
 func (f *fakeIdentityFixture) SetRole(_ context.Context, command application.SetFixtureRoleCommand) error {
@@ -400,4 +403,11 @@ func (f *fakeIdentityFixture) SetRole(_ context.Context, command application.Set
 func (f *fakeIdentityFixture) RevokeSessions(_ context.Context, email string) error {
 	f.revokedEmail = email
 	return f.revokeErr
+}
+
+func (f *fakeIdentityFixture) SeedConflictingIdentity(_ context.Context, identityID, personID, email string) error {
+	f.seedEmail = email
+	f.seedIdentityID = identityID
+	f.seedPersonID = personID
+	return nil
 }

@@ -88,6 +88,21 @@ func (u *UnitOfWork) WithinSignOutTx(ctx context.Context, fn func(context.Contex
 	return nil
 }
 
+func (u *UnitOfWork) WithinAccountSecurityTx(ctx context.Context, fn func(context.Context, application.AccountSecurityRepositories) error) error {
+	tx, err := u.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin account-security transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := fn(ctx, &txRepositories{tx: tx, sessions: u.sessions}); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit account-security transaction: %w", err)
+	}
+	return nil
+}
+
 type txRepositories struct {
 	tx       pgx.Tx
 	sessions *session.Store
@@ -142,6 +157,29 @@ func (r *txRepositories) FindIdentityByEmail(ctx context.Context, normalized str
 		return "", fmt.Errorf("find identity by email: %w", err)
 	}
 	return identityID, nil
+}
+
+func (r *txRepositories) SeedConflictingIdentity(ctx context.Context, identityID, personID, emailRaw string) error {
+	email, err := domain.NewEmail(emailRaw)
+	if err != nil {
+		return err
+	}
+	now := time.Now().UTC()
+	if err := r.CreatePersonalProfile(ctx, application.PersonalProfile{
+		ID: personID, FirstName: "Conflict", LastName: "Person", PreferredDisplayName: "Conflict Person",
+		CreatedAt: now, UpdatedAt: now,
+	}); err != nil {
+		return err
+	}
+	if err := r.CreateIdentity(ctx, application.IdentityRecord{
+		ID: identityID, PersonID: personID, CreatedAt: now, UpdatedAt: now,
+	}); err != nil {
+		return err
+	}
+	return r.AddEmail(ctx, application.IdentityEmail{
+		IdentityID: identityID, Email: email.String(), Normalized: email.Normalized(),
+		Active: true, CreatedAt: now, UpdatedAt: now,
+	})
 }
 
 func (r *txRepositories) ReplaceRoles(ctx context.Context, identityID string, roles []domain.Role) error {

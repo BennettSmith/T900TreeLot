@@ -430,3 +430,7 @@ func (failingRenderer) Landing(context.Context, io.Writer, views.LandingPage) er
 func (failingRenderer) Account(context.Context, io.Writer, views.AccountPage) error {
 	return errors.New("representative render failure")
 }
+
+func (failingRenderer) AccountSecurity(context.Context, io.Writer, views.AccountSecurityPage) error {
+	return errors.New("representative render failure")
+}

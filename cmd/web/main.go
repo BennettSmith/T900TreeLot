@@ -109,6 +109,14 @@ func newHTTPServer(cfg config.Config, db *postgres.DB, appClock clock.Clock, con
 		UnitOfWork: identitypostgres.NewUnitOfWork(db, appClock),
 		Clock:      appClock,
 	}
+	accountSecurityService := &identityapp.AccountSecurityService{
+		UnitOfWork:   identitypostgres.NewUnitOfWork(db, appClock),
+		Passkeys:     assertions,
+		Registration: platformwebauthn.NewAccountRegistration(passkeys),
+		Clock:        appClock,
+		IDs:          ids.NewGenerator(),
+		StepUpTTL:    cfg.StepUpTTL,
+	}
 	var outboxControl handlers.OutboxControl
 	var bootstrapReset handlers.BootstrapResetControl
 	var identityFixture handlers.IdentityFixtureControl
@@ -119,23 +127,26 @@ func newHTTPServer(cfg config.Config, db *postgres.DB, appClock clock.Clock, con
 	}
 	accountQueries := identitypostgres.NewAccountQueries(db)
 	handler := handlers.New(renderer, handlers.Options{
-		Development:        cfg.AppEnv == config.EnvDevelopment,
-		Logger:             logger,
-		Ready:              db.Ping,
-		Sessions:           store,
-		SecureCookies:      cfg.SecureCookies,
-		TestControlEnabled: cfg.TestControlEnabled,
-		TestControlKey:     cfg.TestControlKey,
-		Clock:              appClock,
-		ControllableClock:  controllable,
-		Outbox:             outboxControl,
-		Bootstrap:          bootstrapService,
-		SignIn:             signInService,
-		SignOut:            signOutService,
-		Accounts:           accountQueries,
-		Landings:           accountQueries,
-		BootstrapReset:     bootstrapReset,
-		IdentityFixture:    identityFixture,
+		Development:           cfg.AppEnv == config.EnvDevelopment,
+		Logger:                logger,
+		Ready:                 db.Ping,
+		Sessions:              store,
+		SecureCookies:         cfg.SecureCookies,
+		TestControlEnabled:    cfg.TestControlEnabled,
+		TestControlKey:        cfg.TestControlKey,
+		Clock:                 appClock,
+		ControllableClock:     controllable,
+		Outbox:                outboxControl,
+		Bootstrap:             bootstrapService,
+		SignIn:                signInService,
+		SignOut:               signOutService,
+		Accounts:              accountQueries,
+		Landings:              accountQueries,
+		AccountSecurity:       accountSecurityService,
+		AccountSecurityReader: accountQueries,
+		StepUpTTL:             cfg.StepUpTTL,
+		BootstrapReset:        bootstrapReset,
+		IdentityFixture:       identityFixture,
 	})
 	return &http.Server{
 		Addr:              cfg.ListenAddress,

@@ -113,6 +113,16 @@ func (r *Renderer) Account(ctx context.Context, output io.Writer, data AccountPa
 	return nil
 }
 
+func (r *Renderer) AccountSecurity(ctx context.Context, output io.Writer, data AccountSecurityPage) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := r.templates.ExecuteTemplate(output, "account-security", data); err != nil {
+		return fmt.Errorf("render account security: %w", err)
+	}
+	return nil
+}
+
 func (r *Renderer) ComponentGallery(ctx context.Context, output io.Writer, data Gallery) error {
 	if err := ctx.Err(); err != nil {
 		return err

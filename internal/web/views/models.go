@@ -259,6 +259,24 @@ type AccountPage struct {
 	Navigation   []Link
 }
 
+type AccountPasskeyView struct {
+	ID        string
+	CreatedAt string
+}
+
+type AccountSecurityPage struct {
+	PageTitle      string
+	Brand          string
+	DisplayName    string
+	PrimaryEmail   string
+	CSRFToken      string
+	Navigation     []Link
+	StepUpRequired bool
+	Passkeys       []AccountPasskeyView
+	Message        string
+	ErrorMessage   string
+}
+
 type Gallery struct {
 	PageTitle      string
 	Season         string

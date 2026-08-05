@@ -384,9 +384,11 @@ func (r *fakeSignInRepositories) RotateForIdentity(_ context.Context, _ int64, i
 type fakeAssertions struct {
 	beginIdentity   *application.SignInIdentity
 	beginIdentities []*application.SignInIdentity
+	beginErr        error
 	credentialID    []byte
 	credentialIDErr error
 	verified        application.VerifiedAssertion
+	verifyErr       error
 	verification    application.AssertionVerification
 }
 
@@ -400,6 +402,9 @@ func (a *fakeAssertions) BeginAssertion(_ context.Context, identity *application
 	} else {
 		a.beginIdentities = append(a.beginIdentities, nil)
 	}
+	if a.beginErr != nil {
+		return application.AssertionOptions{}, a.beginErr
+	}
 	return application.AssertionOptions{PublicKey: []byte("options"), Challenge: []byte("challenge")}, nil
 }
 
@@ -409,5 +414,8 @@ func (a *fakeAssertions) CredentialID([]byte) ([]byte, error) {
 
 func (a *fakeAssertions) VerifyAssertion(_ context.Context, verification application.AssertionVerification) (application.VerifiedAssertion, error) {
 	a.verification = verification
+	if a.verifyErr != nil {
+		return application.VerifiedAssertion{}, a.verifyErr
+	}
 	return a.verified, nil
 }

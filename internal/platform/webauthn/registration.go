@@ -83,6 +83,7 @@ func (c *RegistrationCeremony) BeginRegistration(ctx context.Context, start appl
 	return application.RegistrationOptions{
 		CeremonyID: start.CeremonyID,
 		PublicKey:  creation,
+		Challenge:  []byte(sessionData.Challenge),
 		UserHandle: start.UserHandle,
 		ExpiresAt:  expiresAt,
 	}, nil

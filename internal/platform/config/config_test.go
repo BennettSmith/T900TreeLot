@@ -54,6 +54,9 @@ func TestLoadRequiresValidatedSettings(t *testing.T) {
 	if cfg.AuthRateLimitWindow != 15*60*1_000_000_000 {
 		t.Errorf("AuthRateLimitWindow = %v, want 15m", cfg.AuthRateLimitWindow)
 	}
+	if cfg.StepUpTTL != 5*time.Minute {
+		t.Errorf("StepUpTTL = %v, want 5m default", cfg.StepUpTTL)
+	}
 	if cfg.GroupsIOEnabled {
 		t.Error("GroupsIOEnabled = true, want false")
 	}
@@ -219,5 +222,30 @@ func TestLoadValidatesBootstrapAndAuthSettings(t *testing.T) {
 	}
 	if cfg.AuthRateLimitMax != 7 || cfg.AuthRateLimitWindow != 5*60*1_000_000_000 {
 		t.Errorf("rate limit = %d/%v, want 7/5m", cfg.AuthRateLimitMax, cfg.AuthRateLimitWindow)
+	}
+}
+
+func TestLoadStepUpTTLFromEnvironment(t *testing.T) {
+	t.Setenv("APP_ENV", "development")
+	t.Setenv("PORT", "8080")
+	t.Setenv("DATABASE_URL", "postgres://localhost/treelot")
+	t.Setenv("TREE_LOT_TIME_ZONE", "UTC")
+	t.Setenv("PUBLIC_BASE_URL", "http://localhost:8080")
+	t.Setenv("SESSION_KEY", "0123456789abcdef0123456789abcdef")
+	t.Setenv("BOOTSTRAP_ENROLLMENT_TOKEN", "bootstrap-enrollment-token-0001")
+	t.Setenv("BOOTSTRAP_TOKEN_EXPIRES_AT", "2026-08-06T16:00:00Z")
+	t.Setenv("TREE_LOT_STEP_UP_TTL", "10m")
+
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.StepUpTTL != 10*time.Minute {
+		t.Fatalf("StepUpTTL = %v, want 10m", cfg.StepUpTTL)
+	}
+
+	t.Setenv("TREE_LOT_STEP_UP_TTL", "0s")
+	if _, err := config.Load(); err == nil || !strings.Contains(err.Error(), "TREE_LOT_STEP_UP_TTL") {
+		t.Fatalf("expected TREE_LOT_STEP_UP_TTL error, got %v", err)
 	}
 }
