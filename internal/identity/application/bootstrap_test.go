@@ -51,6 +51,9 @@ func TestFinishBootstrapCreatesFirstAdminAndRotatesSessionAtomically(t *testing.
 	if len(fx.store.audit) != 1 || fx.store.audit[0].Action != "identity.bootstrap.completed" {
 		t.Fatalf("audit = %#v", fx.store.audit)
 	}
+	if payload := fx.store.audit[0].Payload; len(payload) != 0 {
+		t.Fatalf("bootstrap audit payload must omit email and other PII, got %#v", payload)
+	}
 }
 
 func TestFinishBootstrapRollsBackWhenCredentialPersistenceFails(t *testing.T) {

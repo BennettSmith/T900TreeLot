@@ -35,7 +35,7 @@ func TestSignInRoutesBeginAndFinishPasskeyAssertion(t *testing.T) {
 	}
 	server := newServer(t, handlers.Options{
 		SignIn:   service,
-		Sessions: session.NewMemoryStore(clock.System(), time.Hour),
+		Sessions: session.NewMemoryStore(clock.System(), time.Hour, session.TestKey),
 	})
 
 	entry := request(t, server, http.MethodGet, "/sign-in", "", nil, nil)
@@ -128,7 +128,7 @@ func TestSignInEndpointsRejectUnavailableMissingSessionAndMalformedRequests(t *t
 }
 
 func TestRoleLandingsRequireAuthenticatedMatchingRole(t *testing.T) {
-	store := session.NewMemoryStore(clock.System(), time.Hour)
+	store := session.NewMemoryStore(clock.System(), time.Hour, session.TestKey)
 	_, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
 	if err != nil {
 		t.Fatal(err)
@@ -178,7 +178,7 @@ func TestRoleLandingsRequireAuthenticatedMatchingRole(t *testing.T) {
 }
 
 func TestSignedInPersonCanPostSignOut(t *testing.T) {
-	store := session.NewMemoryStore(clock.System(), time.Hour)
+	store := session.NewMemoryStore(clock.System(), time.Hour, session.TestKey)
 	current, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
 	if err != nil {
 		t.Fatal(err)
@@ -219,7 +219,7 @@ func TestSignOutHandlesAnonymousUnavailableAndFailedSessions(t *testing.T) {
 		t.Fatalf("anonymous status=%d command=%#v", anonymous.Code, signOut.command)
 	}
 
-	store := session.NewMemoryStore(clock.System(), time.Hour)
+	store := session.NewMemoryStore(clock.System(), time.Hour, session.TestKey)
 	current, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
 	if err != nil {
 		t.Fatal(err)

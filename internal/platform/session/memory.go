@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"encoding/hex"
 	"sync"
 	"time"
 
@@ -10,28 +11,30 @@ import (
 
 // MemoryStore is an in-process session store for focused HTTP tests.
 type MemoryStore struct {
-	mu      sync.Mutex
-	clock   clock.Clock
-	ttl     time.Duration
-	nextID  int64
-	byToken map[string]memorySession
+	mu         sync.Mutex
+	clock      clock.Clock
+	ttl        time.Duration
+	sessionKey []byte
+	nextID     int64
+	byHash     map[string]memorySession
 }
 
 type memorySession struct {
 	Session
-	hashToken string
-	revoked   bool
+	revoked bool
 }
 
-// NewMemoryStore constructs an in-memory session store.
-func NewMemoryStore(clk clock.Clock, ttl time.Duration) *MemoryStore {
+// NewMemoryStore constructs an in-memory session store. sessionKey is the HMAC
+// key used to hash opaque cookie tokens, matching the PostgreSQL store.
+func NewMemoryStore(clk clock.Clock, ttl time.Duration, sessionKey []byte) *MemoryStore {
 	if ttl <= 0 {
 		ttl = time.Hour
 	}
 	return &MemoryStore{
-		clock:   clk,
-		ttl:     ttl,
-		byToken: make(map[string]memorySession),
+		clock:      clk,
+		ttl:        ttl,
+		sessionKey: append([]byte(nil), sessionKey...),
+		byHash:     make(map[string]memorySession),
 	}
 }
 
@@ -64,16 +67,21 @@ func (s *MemoryStore) create(identityID string, authenticatedAt *time.Time) (Ses
 	defer s.mu.Unlock()
 	s.nextID++
 	session := Session{ID: s.nextID, CSRFToken: csrfToken, ExpiresAt: s.clock.Now().Add(s.ttl), IdentityID: identityID, AuthenticatedAt: authenticatedAt}
-	s.byToken[rawToken] = memorySession{Session: session, hashToken: rawToken}
+	hash := HashToken(s.sessionKey, rawToken)
+	s.byHash[hex.EncodeToString(hash[:])] = memorySession{Session: session}
 	return session, rawToken, nil
 }
 
 // Get loads a valid in-memory session.
 func (s *MemoryStore) Get(ctx context.Context, rawToken string) (Session, error) {
 	_ = ctx
+	if rawToken == "" {
+		return Session{}, ErrNotFound
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	current, ok := s.byToken[rawToken]
+	hash := HashToken(s.sessionKey, rawToken)
+	current, ok := s.byHash[hex.EncodeToString(hash[:])]
 	if !ok || current.revoked || !current.ExpiresAt.After(s.clock.Now()) {
 		return Session{}, ErrNotFound
 	}
@@ -85,11 +93,11 @@ func (s *MemoryStore) MarkStepUp(ctx context.Context, id int64, at time.Time) er
 	_ = ctx
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for token, current := range s.byToken {
+	for token, current := range s.byHash {
 		if current.ID == id && !current.revoked {
 			stepUpAt := at.UTC()
 			current.StepUpAt = &stepUpAt
-			s.byToken[token] = current
+			s.byHash[token] = current
 			return nil
 		}
 	}
@@ -101,10 +109,10 @@ func (s *MemoryStore) Revoke(ctx context.Context, id int64) error {
 	_ = ctx
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for token, current := range s.byToken {
+	for token, current := range s.byHash {
 		if current.ID == id {
 			current.revoked = true
-			s.byToken[token] = current
+			s.byHash[token] = current
 			return nil
 		}
 	}

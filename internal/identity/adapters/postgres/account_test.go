@@ -10,6 +10,7 @@ import (
 	"github.com/troop900/treelot/internal/identity/application"
 	"github.com/troop900/treelot/internal/identity/domain"
 	"github.com/troop900/treelot/internal/platform/clock"
+	"github.com/troop900/treelot/internal/platform/session"
 	platformpostgres "github.com/troop900/treelot/internal/platform/postgres"
 	"github.com/troop900/treelot/internal/platform/testdb"
 )
@@ -59,7 +60,7 @@ func TestFixtureTransactionReplacesIdentityRoles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	unit := identitypostgres.NewUnitOfWork(db, clock.System())
+	unit := identitypostgres.NewUnitOfWork(db, clock.System(), session.TestKey)
 	err := unit.WithinTestFixtureTx(context.Background(), func(ctx context.Context, repos application.TestFixtureRepositories) error {
 		identityID, err := repos.FindIdentityByEmail(ctx, "ada@example.org")
 		if err != nil {

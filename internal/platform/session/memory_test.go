@@ -11,7 +11,7 @@ import (
 )
 
 func TestMemoryStoreMarkStepUp(t *testing.T) {
-	store := session.NewMemoryStore(clock.System(), time.Hour)
+	store := session.NewMemoryStore(clock.System(), time.Hour, session.TestKey)
 	created, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
 	if err != nil {
 		t.Fatal(err)
@@ -30,7 +30,7 @@ func TestMemoryStoreMarkStepUp(t *testing.T) {
 }
 
 func TestMemoryStoreRevokeAndDefaults(t *testing.T) {
-	store := session.NewMemoryStore(clock.System(), 0)
+	store := session.NewMemoryStore(clock.System(), 0, session.TestKey)
 	created, rawToken, err := store.CreateForIdentity(context.Background(), "identity-1")
 	if err != nil {
 		t.Fatal(err)

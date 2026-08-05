@@ -8,6 +8,7 @@ import (
 	identitypostgres "github.com/troop900/treelot/internal/identity/adapters/postgres"
 	"github.com/troop900/treelot/internal/identity/application"
 	"github.com/troop900/treelot/internal/platform/clock"
+	"github.com/troop900/treelot/internal/platform/session"
 	"github.com/troop900/treelot/internal/platform/testdb"
 )
 
@@ -23,7 +24,7 @@ func TestSignOutTransactionRevokesOwnedSessionAndWritesAudit(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	unit := identitypostgres.NewUnitOfWork(db, clock.NewControllable(now))
+	unit := identitypostgres.NewUnitOfWork(db, clock.NewControllable(now), session.TestKey)
 	err := unit.WithinSignOutTx(ctx, func(txCtx context.Context, repos application.SignOutRepositories) error {
 		if err := repos.RevokeCurrentSession(txCtx, 41, "identity-1", now); err != nil {
 			return err

@@ -20,7 +20,7 @@ func TestWriterPersistsAuditEvent(t *testing.T) {
 		TargetType:    "identity",
 		TargetID:      "identity-1",
 		CorrelationID: "credential-1",
-		Payload:       map[string]any{"email_normalized": "first@example.org"},
+		Payload:       map[string]any{"role": "admin"},
 		CreatedAt:     now,
 	})
 	if err != nil {
@@ -29,13 +29,13 @@ func TestWriterPersistsAuditEvent(t *testing.T) {
 
 	var action, payload string
 	if err := db.QueryRow(context.Background(), `
-		SELECT action, payload->>'email_normalized'
+		SELECT action, payload->>'role'
 		FROM audit_events
 		WHERE correlation_id = 'credential-1'
 	`).Scan(&action, &payload); err != nil {
 		t.Fatalf("read audit row: %v", err)
 	}
-	if action != "identity.bootstrap.completed" || payload != "first@example.org" {
+	if action != "identity.bootstrap.completed" || payload != "admin" {
 		t.Fatalf("audit row = %q/%q", action, payload)
 	}
 }

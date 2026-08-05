@@ -8,6 +8,7 @@ import (
 	identitypostgres "github.com/troop900/treelot/internal/identity/adapters/postgres"
 	"github.com/troop900/treelot/internal/identity/application"
 	"github.com/troop900/treelot/internal/platform/clock"
+	"github.com/troop900/treelot/internal/platform/session"
 	"github.com/troop900/treelot/internal/platform/testdb"
 )
 
@@ -29,7 +30,7 @@ func TestSignInTransactionPersistsAssertionAndRotatesSession(t *testing.T) {
 		}
 	}
 
-	unit := identitypostgres.NewUnitOfWork(db, clock.NewControllable(now))
+	unit := identitypostgres.NewUnitOfWork(db, clock.NewControllable(now), session.TestKey)
 	err := unit.WithinSignInTx(ctx, func(txCtx context.Context, repos application.SignInRepositories) error {
 		identity, err := repos.FindSignInIdentityByEmail(txCtx, "manager@example.org")
 		if err != nil {

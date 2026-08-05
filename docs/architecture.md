@@ -291,7 +291,7 @@ Shift signup must use a transaction with row locking or a conditional update so 
 
 ### 6.3 Sessions and sensitive values
 
-Browser sessions use opaque, cryptographically random tokens stored in `Secure`, `HttpOnly`, and `SameSite=Lax` cookies. PostgreSQL stores only a cryptographic hash of each session token, along with identity, creation, expiry, last-use, and revocation metadata.
+Browser sessions use opaque, cryptographically random tokens stored in `Secure`, `HttpOnly`, and `SameSite=Lax` cookies. PostgreSQL stores only an HMAC-SHA256 digest of each session token keyed by `SESSION_KEY`, along with identity, creation, expiry, last-use, and revocation metadata. Rotating `SESSION_KEY` changes the digest and therefore invalidates existing sessions.
 
 Invitation, household-link, recovery, bootstrap, and idempotency tokens are also random, expire, are single-use where required, and are stored hashed when the clear value does not need to be recovered. Bootstrap token expiry is configured as an absolute RFC 3339 instant so validator reconstruction or a process restart cannot extend the deadline.
 
@@ -544,7 +544,7 @@ Acceptance deployment is a rehearsal of production deployment. No image is rebui
 Secrets include:
 
 - Database connection string
-- Cookie/session signing or encryption keys
+- `SESSION_KEY` (HMAC key for hashing opaque session cookie tokens; rotation invalidates sessions)
 - Email uniqueness / blind-index keys when used
 - Bootstrap administrator enrollment token
 - Groups.io API credential and group identifier, only when `GROUPS_IO_ENABLED=true`

@@ -295,7 +295,7 @@ func TestRenderFailureReturnsGenericServerError(t *testing.T) {
 
 	server := handlers.New(failingRenderer{}, handlers.Options{
 		Development: true,
-		Sessions:    session.NewMemoryStore(clock.System(), time.Hour),
+		Sessions:    session.NewMemoryStore(clock.System(), time.Hour, session.TestKey),
 	})
 	response := request(t, server, http.MethodGet, "/_dev/components", "", nil, nil)
 
@@ -328,7 +328,7 @@ func newServer(t *testing.T, options handlers.Options) http.Handler {
 		t.Fatalf("NewRenderer: %v", err)
 	}
 	if options.Sessions == nil {
-		options.Sessions = session.NewMemoryStore(clock.System(), time.Hour)
+		options.Sessions = session.NewMemoryStore(clock.System(), time.Hour, session.TestKey)
 	}
 	return handlers.New(renderer, options)
 }

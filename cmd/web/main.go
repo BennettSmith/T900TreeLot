@@ -110,7 +110,7 @@ func newHTTPServer(cfg config.Config, db *postgres.DB, appClock clock.Clock, con
 	if err != nil {
 		return nil, err
 	}
-	store := session.NewStore(db, appClock, 24*time.Hour)
+	store := session.NewStore(db, appClock, 24*time.Hour, cfg.SessionKey)
 	passkeys, err := platformwebauthn.NewRegistrationCeremony(db, appClock, cfg.WebAuthnRPID, cfg.WebAuthnOrigins)
 	if err != nil {
 		return nil, err
@@ -120,7 +120,7 @@ func newHTTPServer(cfg config.Config, db *postgres.DB, appClock clock.Clock, con
 		return nil, err
 	}
 	bootstrapService := &identityapp.BootstrapService{
-		UnitOfWork:          identitypostgres.NewUnitOfWork(db, appClock),
+		UnitOfWork:          identitypostgres.NewUnitOfWork(db, appClock, cfg.SessionKey),
 		Tokens:              token.NewBootstrapValidator(cfg.BootstrapEnrollmentToken, cfg.BootstrapTokenExpiresAt),
 		RateLimiter:         ratelimit.NewBuckets(db, appClock),
 		Passkeys:            passkeys,
@@ -130,7 +130,7 @@ func newHTTPServer(cfg config.Config, db *postgres.DB, appClock clock.Clock, con
 		AuthRateLimitWindow: cfg.AuthRateLimitWindow,
 	}
 	signInService := &identityapp.SignInService{
-		UnitOfWork:          identitypostgres.NewUnitOfWork(db, appClock),
+		UnitOfWork:          identitypostgres.NewUnitOfWork(db, appClock, cfg.SessionKey),
 		RateLimiter:         ratelimit.NewBuckets(db, appClock),
 		Passkeys:            assertions,
 		Clock:               appClock,
@@ -139,11 +139,11 @@ func newHTTPServer(cfg config.Config, db *postgres.DB, appClock clock.Clock, con
 		AuthRateLimitWindow: cfg.AuthRateLimitWindow,
 	}
 	signOutService := &identityapp.SignOutService{
-		UnitOfWork: identitypostgres.NewUnitOfWork(db, appClock),
+		UnitOfWork: identitypostgres.NewUnitOfWork(db, appClock, cfg.SessionKey),
 		Clock:      appClock,
 	}
 	accountSecurityService := &identityapp.AccountSecurityService{
-		UnitOfWork:   identitypostgres.NewUnitOfWork(db, appClock),
+		UnitOfWork:   identitypostgres.NewUnitOfWork(db, appClock, cfg.SessionKey),
 		Passkeys:     assertions,
 		Registration: platformwebauthn.NewAccountRegistration(passkeys),
 		Clock:        appClock,
@@ -156,7 +156,7 @@ func newHTTPServer(cfg config.Config, db *postgres.DB, appClock clock.Clock, con
 	if cfg.TestControlEnabled {
 		outboxControl = outbox.NewStore(db, appClock)
 		bootstrapReset = identitypostgres.NewTestControl(db)
-		identityFixture = &identityapp.TestFixtureService{UnitOfWork: identitypostgres.NewUnitOfWork(db, appClock)}
+		identityFixture = &identityapp.TestFixtureService{UnitOfWork: identitypostgres.NewUnitOfWork(db, appClock, cfg.SessionKey)}
 	}
 	accountQueries := identitypostgres.NewAccountQueries(db)
 	handler := handlers.New(renderer, handlers.Options{

@@ -52,7 +52,7 @@ func TestOutboxTestControlUnavailableWithoutStore(t *testing.T) {
 	server := newServer(t, handlers.Options{
 		TestControlEnabled: true,
 		TestControlKey:     "secret",
-		Sessions:           session.NewMemoryStore(clock.System(), time.Hour),
+		Sessions:           session.NewMemoryStore(clock.System(), time.Hour, session.TestKey),
 	})
 	response := request(t, server, http.MethodPost, "/_test/outbox", `{"idempotency_key":"k"}`, map[string]string{
 		"Content-Type":       "application/json",
@@ -70,7 +70,7 @@ func TestOutboxTestControlRequiresKeyAndEnqueues(t *testing.T) {
 	server := newServer(t, handlers.Options{
 		TestControlEnabled: true,
 		TestControlKey:     "secret",
-		Sessions:           session.NewMemoryStore(clock.System(), time.Hour),
+		Sessions:           session.NewMemoryStore(clock.System(), time.Hour, session.TestKey),
 		Outbox:             control,
 	})
 
@@ -134,7 +134,7 @@ func TestBootstrapResetTestControlRequiresKeyAndResets(t *testing.T) {
 	server := newServer(t, handlers.Options{
 		TestControlEnabled: true,
 		TestControlKey:     "secret",
-		Sessions:           session.NewMemoryStore(clock.System(), time.Hour),
+		Sessions:           session.NewMemoryStore(clock.System(), time.Hour, session.TestKey),
 		BootstrapReset:     reset,
 	})
 
@@ -156,7 +156,7 @@ func TestBootstrapResetTestControlRequiresKeyAndResets(t *testing.T) {
 	unavailable := newServer(t, handlers.Options{
 		TestControlEnabled: true,
 		TestControlKey:     "secret",
-		Sessions:           session.NewMemoryStore(clock.System(), time.Hour),
+		Sessions:           session.NewMemoryStore(clock.System(), time.Hour, session.TestKey),
 	})
 	missingPort := request(t, unavailable, http.MethodPost, "/_test/bootstrap/reset", "", map[string]string{
 		"X-Test-Control-Key": "secret",

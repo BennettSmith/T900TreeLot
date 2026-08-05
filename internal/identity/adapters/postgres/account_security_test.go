@@ -12,6 +12,7 @@ import (
 	"github.com/troop900/treelot/internal/identity/application"
 	"github.com/troop900/treelot/internal/identity/domain"
 	"github.com/troop900/treelot/internal/platform/clock"
+	"github.com/troop900/treelot/internal/platform/session"
 	"github.com/troop900/treelot/internal/platform/testdb"
 )
 
@@ -37,7 +38,7 @@ func TestAccountSecurityPersistsStepUpAndPasskeyDelete(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	unit := identitypostgres.NewUnitOfWork(db, clock.NewControllable(now))
+	unit := identitypostgres.NewUnitOfWork(db, clock.NewControllable(now), session.TestKey)
 	err := unit.WithinAccountSecurityTx(context.Background(), func(ctx context.Context, repos application.AccountSecurityRepositories) error {
 		stepUpAt, err := repos.LoadSessionStepUp(ctx, sessionID, "identity-1")
 		if err != nil || stepUpAt != nil {
@@ -91,7 +92,7 @@ func TestAccountSecurityEmailReplaceAndConflict(t *testing.T) {
 	seedIdentity(t, db, "identity-1", "person-1", "Ada", "Admin", "Ada", "ada@example.org")
 	seedIdentity(t, db, "identity-2", "person-2", "Other", "Person", "Other", "taken@example.org")
 
-	unit := identitypostgres.NewUnitOfWork(db, clock.NewControllable(now))
+	unit := identitypostgres.NewUnitOfWork(db, clock.NewControllable(now), session.TestKey)
 	err := unit.WithinAccountSecurityTx(context.Background(), func(ctx context.Context, repos application.AccountSecurityRepositories) error {
 		taken, err := repos.EmailTaken(ctx, "taken@example.org")
 		if err != nil || !taken {
@@ -138,7 +139,7 @@ func TestAccountSecurityRegistrationCeremonyRoundTrip(t *testing.T) {
 	db := testdb.OpenMigrated(t)
 	now := time.Date(2026, 8, 5, 12, 0, 0, 0, time.UTC)
 	seedIdentity(t, db, "identity-1", "person-1", "Ada", "Admin", "Ada", "ada@example.org")
-	unit := identitypostgres.NewUnitOfWork(db, clock.NewControllable(now))
+	unit := identitypostgres.NewUnitOfWork(db, clock.NewControllable(now), session.TestKey)
 	err := unit.WithinAccountSecurityTx(context.Background(), func(ctx context.Context, repos application.AccountSecurityRepositories) error {
 		if err := repos.StoreAccountRegistrationCeremony(ctx, application.AccountRegistrationCeremony{
 			ID: "reg-1", SessionID: 0, IdentityID: "identity-1", Challenge: []byte("challenge"),
@@ -176,7 +177,7 @@ func TestAccountQueriesListsPasskeys(t *testing.T) {
 
 func TestFixtureSeedsConflictingIdentity(t *testing.T) {
 	db := testdb.OpenMigrated(t)
-	unit := identitypostgres.NewUnitOfWork(db, clock.System())
+	unit := identitypostgres.NewUnitOfWork(db, clock.System(), session.TestKey)
 	err := unit.WithinTestFixtureTx(context.Background(), func(ctx context.Context, repos application.TestFixtureRepositories) error {
 		return repos.SeedConflictingIdentity(ctx, "conflict-id", "conflict-person", "taken@example.org")
 	})
@@ -203,7 +204,7 @@ func TestAccountSecurityNotFoundPaths(t *testing.T) {
 	`, now, now.Add(time.Hour)).Scan(&sessionID); err != nil {
 		t.Fatal(err)
 	}
-	unit := identitypostgres.NewUnitOfWork(db, clock.NewControllable(now))
+	unit := identitypostgres.NewUnitOfWork(db, clock.NewControllable(now), session.TestKey)
 	err := unit.WithinAccountSecurityTx(context.Background(), func(ctx context.Context, repos application.AccountSecurityRepositories) error {
 		if _, err := repos.LoadSessionStepUp(ctx, 999, "identity-1"); !errors.Is(err, application.ErrAccountNotFound) {
 			t.Fatalf("LoadSessionStepUp err = %v", err)
@@ -255,7 +256,7 @@ func TestAccountSecurityReplaceSameEmailWhenTakenIsNoop(t *testing.T) {
 	db := testdb.OpenMigrated(t)
 	now := time.Date(2026, 8, 5, 12, 0, 0, 0, time.UTC)
 	seedIdentity(t, db, "identity-1", "person-1", "Ada", "Admin", "Ada", "ada@example.org")
-	unit := identitypostgres.NewUnitOfWork(db, clock.NewControllable(now))
+	unit := identitypostgres.NewUnitOfWork(db, clock.NewControllable(now), session.TestKey)
 	err := unit.WithinAccountSecurityTx(context.Background(), func(ctx context.Context, repos application.AccountSecurityRepositories) error {
 		return repos.ReplaceActiveEmail(ctx, "identity-1", "Ada@Example.org", "ada@example.org", now)
 	})
@@ -267,7 +268,7 @@ func TestAccountSecurityReplaceSameEmailWhenTakenIsNoop(t *testing.T) {
 func TestAccountSecurityListPasskeysUnknownIdentity(t *testing.T) {
 	db := testdb.OpenMigrated(t)
 	now := time.Date(2026, 8, 5, 12, 0, 0, 0, time.UTC)
-	unit := identitypostgres.NewUnitOfWork(db, clock.NewControllable(now))
+	unit := identitypostgres.NewUnitOfWork(db, clock.NewControllable(now), session.TestKey)
 	err := unit.WithinAccountSecurityTx(context.Background(), func(ctx context.Context, repos application.AccountSecurityRepositories) error {
 		_, err := repos.ListPasskeys(ctx, "missing")
 		return err
