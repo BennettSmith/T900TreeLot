@@ -42,7 +42,7 @@ func SessionCSRF(store Sessions, secureCookies bool, next http.Handler) http.Han
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		current, rawToken, err := loadOrCreate(request.Context(), store, request)
 		if err != nil {
-			http.Error(response, "Unable to establish a secure session.", http.StatusInternalServerError)
+			http.Error(response, "Unable to establish a secure session.", http.StatusServiceUnavailable)
 			return
 		}
 		if rawToken != "" {
