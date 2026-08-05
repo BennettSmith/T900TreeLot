@@ -4,7 +4,7 @@
 - **Release gate:** After INC-02 and before INC-03
 - **Prerequisite:** INC-02 is verified against the local production-shaped
   acceptance environment
-- **Implementation PR:** To be recorded when opened
+- **Implementation PR:** [#25](https://github.com/BennettSmith/T900TreeLot/pull/25)
 
 ## Goal
 
@@ -136,7 +136,7 @@ Before changing the status to `completed`, record:
 
 | Evidence | Value |
 |---|---|
-| Implementation PR | To be filled after PR open |
+| Implementation PR | [#25](https://github.com/BennettSmith/T900TreeLot/pull/25) |
 | Local `make ci` | Passed on candidate branch |
 | Local `make acceptance` | Passed on candidate branch |
 | Skip-build acceptance | Passed with `IMAGE=treelot:predecessor` |
