@@ -159,6 +159,29 @@ func (r *txRepositories) FindIdentityByEmail(ctx context.Context, normalized str
 	return identityID, nil
 }
 
+func (r *txRepositories) SeedConflictingIdentity(ctx context.Context, identityID, personID, emailRaw string) error {
+	email, err := domain.NewEmail(emailRaw)
+	if err != nil {
+		return err
+	}
+	now := time.Now().UTC()
+	if err := r.CreatePersonalProfile(ctx, application.PersonalProfile{
+		ID: personID, FirstName: "Conflict", LastName: "Person", PreferredDisplayName: "Conflict Person",
+		CreatedAt: now, UpdatedAt: now,
+	}); err != nil {
+		return err
+	}
+	if err := r.CreateIdentity(ctx, application.IdentityRecord{
+		ID: identityID, PersonID: personID, CreatedAt: now, UpdatedAt: now,
+	}); err != nil {
+		return err
+	}
+	return r.AddEmail(ctx, application.IdentityEmail{
+		IdentityID: identityID, Email: email.String(), Normalized: email.Normalized(),
+		Active: true, CreatedAt: now, UpdatedAt: now,
+	})
+}
+
 func (r *txRepositories) ReplaceRoles(ctx context.Context, identityID string, roles []domain.Role) error {
 	if _, err := r.tx.Exec(ctx, `DELETE FROM identity_roles WHERE identity_id = $1`, identityID); err != nil {
 		return fmt.Errorf("clear identity roles: %w", err)

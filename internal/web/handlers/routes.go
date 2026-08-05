@@ -23,26 +23,26 @@ import (
 
 // Options configures the HTTP adapter.
 type Options struct {
-	Development        bool
-	Logger             *slog.Logger
-	Ready              func(context.Context) error
-	Sessions           middleware.Sessions
-	SecureCookies      bool
-	TestControlEnabled bool
-	TestControlKey     string
-	Clock              clock.Clock
-	ControllableClock  *clock.Controllable
-	Outbox             OutboxControl
-	Bootstrap              BootstrapService
-	SignIn                 SignInService
-	SignOut                SignOutService
-	Accounts               AccountReader
-	Landings               LandingReader
-	AccountSecurity        AccountSecurityService
-	AccountSecurityReader  AccountSecurityReader
-	StepUpTTL              time.Duration
-	BootstrapReset         BootstrapResetControl
-	IdentityFixture        IdentityFixtureControl
+	Development           bool
+	Logger                *slog.Logger
+	Ready                 func(context.Context) error
+	Sessions              middleware.Sessions
+	SecureCookies         bool
+	TestControlEnabled    bool
+	TestControlKey        string
+	Clock                 clock.Clock
+	ControllableClock     *clock.Controllable
+	Outbox                OutboxControl
+	Bootstrap             BootstrapService
+	SignIn                SignInService
+	SignOut               SignOutService
+	Accounts              AccountReader
+	Landings              LandingReader
+	AccountSecurity       AccountSecurityService
+	AccountSecurityReader AccountSecurityReader
+	StepUpTTL             time.Duration
+	BootstrapReset        BootstrapResetControl
+	IdentityFixture       IdentityFixtureControl
 }
 
 type BootstrapService interface {
@@ -76,6 +76,7 @@ type BootstrapResetControl interface {
 type IdentityFixtureControl interface {
 	SetRole(context.Context, application.SetFixtureRoleCommand) error
 	RevokeSessions(context.Context, string) error
+	SeedConflictingIdentity(context.Context, string, string, string) error
 }
 
 type Server struct {
@@ -86,17 +87,17 @@ type Server struct {
 	controllableClock *clock.Controllable
 	clock             clock.Clock
 	outbox            OutboxControl
-	bootstrap              BootstrapService
-	signIn                 SignInService
-	signOut                SignOutService
-	accounts               AccountReader
-	landings               LandingReader
-	securityService        AccountSecurityService
-	securityReader         AccountSecurityReader
-	stepUpTTL              time.Duration
-	bootstrapReset         BootstrapResetControl
-	identityFixture        IdentityFixtureControl
-	secureCookies          bool
+	bootstrap         BootstrapService
+	signIn            SignInService
+	signOut           SignOutService
+	accounts          AccountReader
+	landings          LandingReader
+	securityService   AccountSecurityService
+	securityReader    AccountSecurityReader
+	stepUpTTL         time.Duration
+	bootstrapReset    BootstrapResetControl
+	identityFixture   IdentityFixtureControl
+	secureCookies     bool
 }
 
 type renderer interface {
@@ -132,17 +133,17 @@ func New(viewRenderer renderer, options Options) http.Handler {
 		controllableClock: options.ControllableClock,
 		clock:             clk,
 		outbox:            options.Outbox,
-		bootstrap:             options.Bootstrap,
-		signIn:                options.SignIn,
-		signOut:               options.SignOut,
-		accounts:              options.Accounts,
-		landings:              options.Landings,
-		securityService: options.AccountSecurity,
-		securityReader:  options.AccountSecurityReader,
-		stepUpTTL:       options.StepUpTTL,
-		bootstrapReset:        options.BootstrapReset,
-		identityFixture:       options.IdentityFixture,
-		secureCookies:         options.SecureCookies,
+		bootstrap:         options.Bootstrap,
+		signIn:            options.SignIn,
+		signOut:           options.SignOut,
+		accounts:          options.Accounts,
+		landings:          options.Landings,
+		securityService:   options.AccountSecurity,
+		securityReader:    options.AccountSecurityReader,
+		stepUpTTL:         options.StepUpTTL,
+		bootstrapReset:    options.BootstrapReset,
+		identityFixture:   options.IdentityFixture,
+		secureCookies:     options.SecureCookies,
 	}
 	if server.stepUpTTL <= 0 {
 		server.stepUpTTL = 5 * time.Minute
@@ -187,6 +188,7 @@ func New(viewRenderer renderer, options Options) http.Handler {
 		mux.HandleFunc("POST /_test/bootstrap/reset", server.resetBootstrap)
 		mux.HandleFunc("POST /_test/identity/role", server.setFixtureIdentityRole)
 		mux.HandleFunc("POST /_test/identity/revoke", server.revokeFixtureIdentitySessions)
+		mux.HandleFunc("POST /_test/identity/conflict-email", server.seedFixtureConflictingIdentity)
 	}
 
 	var browserHandler http.Handler = browser
@@ -242,6 +244,38 @@ func (s *Server) revokeFixtureIdentitySessions(response http.ResponseWriter, req
 	}
 	response.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(response).Encode(map[string]string{"status": "revoked"})
+}
+
+func (s *Server) seedFixtureConflictingIdentity(response http.ResponseWriter, request *http.Request) {
+	if !s.authorizeTestControl(request) {
+		http.Error(response, "forbidden", http.StatusForbidden)
+		return
+	}
+	if s.identityFixture == nil {
+		http.Error(response, "identity fixture unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	var payload struct {
+		IdentityID string `json:"identityId"`
+		PersonID   string `json:"personId"`
+		Email      string `json:"email"`
+	}
+	if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
+		http.Error(response, "invalid body", http.StatusBadRequest)
+		return
+	}
+	if payload.IdentityID == "" {
+		payload.IdentityID = "conflict-identity"
+	}
+	if payload.PersonID == "" {
+		payload.PersonID = "conflict-person"
+	}
+	if err := s.identityFixture.SeedConflictingIdentity(request.Context(), payload.IdentityID, payload.PersonID, payload.Email); err != nil {
+		http.Error(response, "unable to seed conflicting identity", http.StatusBadRequest)
+		return
+	}
+	response.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(response).Encode(map[string]string{"status": "seeded"})
 }
 
 func (s *Server) live(response http.ResponseWriter, _ *http.Request) {

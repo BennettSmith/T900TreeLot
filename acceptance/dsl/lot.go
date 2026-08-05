@@ -982,3 +982,271 @@ func (a *AccountSecurity) RequiresStepUpBeforeCredentialChanges(token, email str
 		a.lot.t.Fatalf("original email not preserved status=%d err=%v body=%q", status, err, accountBody)
 	}
 }
+
+// CompletesStepUpAndManagesPasskeys proves add/remove passkey after step-up.
+func (a *AccountSecurity) CompletesStepUpAndManagesPasskeys(token, email string) {
+	a.lot.t.Helper()
+	bootstrap := a.lot.Bootstrap()
+	bootstrap.reset()
+	passkey := webauthndriver.NewPasskey(webauthndriver.RelyingParty{
+		Name: "Troop 900 Tree Lot", ID: "treelot.test", Origin: "https://treelot.test",
+	})
+	bootstrap.completeEnrollmentWithPasskey(a.lot.web, token, email, "Passkey Admin", passkey)
+	a.completeStepUp(a.lot.web, passkey)
+
+	status, body, err := a.lot.web.Get("/account/security")
+	if err != nil || status != http.StatusOK || !strings.Contains(body, `data-account-passkeys`) {
+		a.lot.t.Fatalf("security after step-up status=%d err=%v body=%q", status, err, body)
+	}
+	csrf, err := web.CSRFToken(body)
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	second := webauthndriver.NewPasskey(webauthndriver.RelyingParty{
+		Name: "Troop 900 Tree Lot", ID: "treelot.test", Origin: "https://treelot.test",
+	})
+	status, body, _, err = a.lot.web.PostJSON("/account/security/passkeys/begin", `{}`, map[string]string{"X-CSRF-Token": csrf})
+	if err != nil || status != http.StatusOK {
+		a.lot.t.Fatalf("add passkey begin status=%d err=%v body=%q", status, err, body)
+	}
+	begin, err := webauthndriver.ParseBeginPayload(body)
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	attestation, err := second.CreateAttestationResponse(begin.PublicKey)
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	finishBody := fmt.Sprintf(`{"ceremonyId":%q,"credential":%s}`, begin.CeremonyID, attestation)
+	status, body, _, err = a.lot.web.PostJSON("/account/security/passkeys/finish", finishBody, map[string]string{"X-CSRF-Token": csrf})
+	if err != nil || status != http.StatusOK {
+		a.lot.t.Fatalf("add passkey finish status=%d err=%v body=%q", status, err, body)
+	}
+
+	// Sign in with the new passkey on a fresh client.
+	client, err := web.NewClient(a.lot.config.BaseURL)
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	status, body, err = client.Get("/sign-in")
+	if err != nil || status != http.StatusOK {
+		a.lot.t.Fatalf("sign-in entry status=%d err=%v", status, err)
+	}
+	csrf, err = web.CSRFToken(body)
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	status, body, _, err = client.PostJSON("/sign-in/passkey/begin", `{}`, map[string]string{"X-CSRF-Token": csrf})
+	if err != nil || status != http.StatusOK {
+		a.lot.t.Fatalf("sign-in begin status=%d err=%v body=%q", status, err, body)
+	}
+	begin, err = webauthndriver.ParseBeginPayload(body)
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	assertion, err := second.CreateAssertionResponse(begin.PublicKey)
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	status, body, _, err = client.PostJSON("/sign-in/passkey/finish", fmt.Sprintf(`{"ceremonyId":%q,"credential":%s}`, begin.CeremonyID, assertion), map[string]string{"X-CSRF-Token": csrf})
+	if err != nil || status != http.StatusOK {
+		a.lot.t.Fatalf("sign-in with new passkey status=%d err=%v body=%q", status, err, body)
+	}
+
+	// Remove the original passkey while another remains.
+	status, body, err = a.lot.web.Get("/account/security")
+	if err != nil || status != http.StatusOK {
+		a.lot.t.Fatalf("security for remove status=%d err=%v", status, err)
+	}
+	csrf, err = web.CSRFToken(body)
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	credentialID := firstPasskeyID(body)
+	if credentialID == "" {
+		a.lot.t.Fatalf("missing passkey id in %q", body)
+	}
+	status, _, headers, err := a.lot.web.PostForm("/account/security/passkeys/remove", url.Values{
+		"csrf_token":    {csrf},
+		"credential_id": {credentialID},
+	})
+	if err != nil || status != http.StatusSeeOther {
+		a.lot.t.Fatalf("remove passkey status=%d err=%v", status, err)
+	}
+	if loc := headers.Get("Location"); !strings.Contains(loc, "/account/security") {
+		a.lot.t.Fatalf("remove redirect=%q", loc)
+	}
+}
+
+// ChangesAccountEmailRevokesSessionsAndPreservesIdentity proves email replacement.
+func (a *AccountSecurity) ChangesAccountEmailRevokesSessionsAndPreservesIdentity(token, email, newEmail string) {
+	a.lot.t.Helper()
+	bootstrap := a.lot.Bootstrap()
+	bootstrap.reset()
+	passkey := webauthndriver.NewPasskey(webauthndriver.RelyingParty{
+		Name: "Troop 900 Tree Lot", ID: "treelot.test", Origin: "https://treelot.test",
+	})
+	bootstrap.completeEnrollmentWithPasskey(a.lot.web, token, email, "Email Admin", passkey)
+	a.completeStepUp(a.lot.web, passkey)
+
+	status, body, err := a.lot.web.Get("/account/security")
+	if err != nil || status != http.StatusOK || !strings.Contains(body, `data-account-change-email`) {
+		a.lot.t.Fatalf("security for email status=%d err=%v body=%q", status, err, body)
+	}
+	csrf, err := web.CSRFToken(body)
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	status, _, headers, err := a.lot.web.PostForm("/account/email", url.Values{
+		"csrf_token": {csrf},
+		"email":      {newEmail},
+	})
+	if err != nil || status != http.StatusSeeOther || headers.Get("Location") == "" {
+		a.lot.t.Fatalf("change email status=%d err=%v location=%q", status, err, headers.Get("Location"))
+	}
+	if !strings.Contains(headers.Get("Location"), "/sign-in") {
+		a.lot.t.Fatalf("expected sign-in redirect, got %q", headers.Get("Location"))
+	}
+	status, _, err = a.lot.web.Get("/account")
+	if err != nil || status != http.StatusSeeOther {
+		a.lot.t.Fatalf("old session after email change status=%d err=%v", status, err)
+	}
+
+	client, err := web.NewClient(a.lot.config.BaseURL)
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	status, body, err = client.Get("/sign-in")
+	if err != nil || status != http.StatusOK {
+		a.lot.t.Fatalf("sign-in after email change status=%d err=%v", status, err)
+	}
+	csrf, err = web.CSRFToken(body)
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	status, body, _, err = client.PostJSON("/sign-in/passkey/begin", `{}`, map[string]string{"X-CSRF-Token": csrf})
+	if err != nil || status != http.StatusOK {
+		a.lot.t.Fatalf("begin sign-in after email change status=%d err=%v body=%q", status, err, body)
+	}
+	begin, err := webauthndriver.ParseBeginPayload(body)
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	assertion, err := passkey.CreateAssertionResponse(begin.PublicKey)
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	status, body, _, err = client.PostJSON("/sign-in/passkey/finish", fmt.Sprintf(`{"ceremonyId":%q,"credential":%s}`, begin.CeremonyID, assertion), map[string]string{"X-CSRF-Token": csrf})
+	if err != nil || status != http.StatusOK {
+		a.lot.t.Fatalf("finish sign-in after email change status=%d err=%v body=%q", status, err, body)
+	}
+	status, body, err = client.Get("/account")
+	if err != nil || status != http.StatusOK || !strings.Contains(body, newEmail) || !strings.Contains(body, "Email Admin") {
+		a.lot.t.Fatalf("identity continuity status=%d err=%v body=%q", status, err, body)
+	}
+	if strings.Contains(body, email) {
+		a.lot.t.Fatalf("old email still shown after change: %q", body)
+	}
+}
+
+// RejectsTakenEmailWithoutRevealingOtherIdentity proves conflict non-enumeration.
+func (a *AccountSecurity) RejectsTakenEmailWithoutRevealingOtherIdentity(token, email, takenEmail string) {
+	a.lot.t.Helper()
+	bootstrap := a.lot.Bootstrap()
+	bootstrap.reset()
+	passkey := webauthndriver.NewPasskey(webauthndriver.RelyingParty{
+		Name: "Troop 900 Tree Lot", ID: "treelot.test", Origin: "https://treelot.test",
+	})
+	bootstrap.completeEnrollmentWithPasskey(a.lot.web, token, email, "Conflict Admin", passkey)
+	payload, err := json.Marshal(map[string]string{
+		"identityId": fmt.Sprintf("conflict-%d", time.Now().UTC().UnixNano()),
+		"personId":   fmt.Sprintf("conflict-person-%d", time.Now().UTC().UnixNano()),
+		"email":      takenEmail,
+	})
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	status, body, _, err := a.lot.web.PostJSON("/_test/identity/conflict-email", string(payload), map[string]string{"X-Test-Control-Key": a.lot.config.TestControlKey})
+	if err != nil || status != http.StatusOK {
+		a.lot.t.Fatalf("seed conflict status=%d err=%v body=%q", status, err, body)
+	}
+	a.completeStepUp(a.lot.web, passkey)
+	status, body, err = a.lot.web.Get("/account/security")
+	if err != nil || status != http.StatusOK {
+		a.lot.t.Fatalf("security status=%d err=%v", status, err)
+	}
+	csrf, err := web.CSRFToken(body)
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	status, body, headers, err := a.lot.web.PostForm("/account/email", url.Values{
+		"csrf_token": {csrf},
+		"email":      {takenEmail},
+	})
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	if status == http.StatusSeeOther && strings.Contains(headers.Get("Location"), "/sign-in") {
+		a.lot.t.Fatalf("taken email was accepted: location=%q", headers.Get("Location"))
+	}
+	combined := strings.ToLower(body + headers.Get("Location"))
+	if strings.Contains(combined, "household") || strings.Contains(combined, "conflict person") {
+		a.lot.t.Fatalf("conflict response leaked details status=%d body=%q location=%q", status, body, headers.Get("Location"))
+	}
+	status, accountBody, err := a.lot.web.Get("/account")
+	if err != nil || status != http.StatusOK || !strings.Contains(accountBody, email) {
+		a.lot.t.Fatalf("original email not preserved status=%d err=%v body=%q", status, err, accountBody)
+	}
+}
+
+func (a *AccountSecurity) completeStepUp(client *web.Client, passkey *webauthndriver.Passkey) {
+	a.lot.t.Helper()
+	status, body, err := client.Get("/account/security")
+	if err != nil || status != http.StatusOK || !strings.Contains(body, `data-account-step-up`) {
+		a.lot.t.Fatalf("step-up page status=%d err=%v body=%q", status, err, body)
+	}
+	csrf, err := web.CSRFToken(body)
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	status, body, _, err = client.PostJSON("/account/security/step-up/begin", `{}`, map[string]string{"X-CSRF-Token": csrf})
+	if err != nil || status != http.StatusOK {
+		a.lot.t.Fatalf("step-up begin status=%d err=%v body=%q", status, err, body)
+	}
+	begin, err := webauthndriver.ParseBeginPayload(body)
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	assertion, err := passkey.CreateAssertionResponse(begin.PublicKey)
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	status, body, _, err = client.PostJSON("/account/security/step-up/finish", fmt.Sprintf(`{"ceremonyId":%q,"credential":%s}`, begin.CeremonyID, assertion), map[string]string{"X-CSRF-Token": csrf})
+	if err != nil || status != http.StatusOK {
+		a.lot.t.Fatalf("step-up finish status=%d err=%v body=%q", status, err, body)
+	}
+	var finish struct {
+		RedirectTo string `json:"redirectTo"`
+	}
+	if err := json.Unmarshal([]byte(body), &finish); err != nil {
+		a.lot.t.Fatal(err)
+	}
+	status, body, err = client.Get(finish.RedirectTo)
+	if err != nil || status != http.StatusOK || strings.Contains(body, `data-account-step-up`) {
+		a.lot.t.Fatalf("after step-up status=%d err=%v body=%q", status, err, body)
+	}
+}
+
+func firstPasskeyID(body string) string {
+	const marker = `name="credential_id" value="`
+	idx := strings.Index(body, marker)
+	if idx < 0 {
+		return ""
+	}
+	rest := body[idx+len(marker):]
+	end := strings.Index(rest, `"`)
+	if end < 0 {
+		return ""
+	}
+	return rest[:end]
+}

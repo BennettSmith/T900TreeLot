@@ -16,6 +16,7 @@ type TestFixtureRepositories interface {
 	FindIdentityByEmail(context.Context, string) (string, error)
 	ReplaceRoles(context.Context, string, []domain.Role) error
 	RevokeSessionsForIdentity(context.Context, string) error
+	SeedConflictingIdentity(context.Context, string, string, string) error
 }
 
 // TestFixtureService establishes accepted-test preconditions through application ports.
@@ -57,5 +58,16 @@ func (s TestFixtureService) RevokeSessions(ctx context.Context, emailRaw string)
 			return err
 		}
 		return repos.RevokeSessionsForIdentity(txCtx, identityID)
+	})
+}
+
+// SeedConflictingIdentity creates another active claimed email for conflict checks.
+func (s TestFixtureService) SeedConflictingIdentity(ctx context.Context, identityID, personID, emailRaw string) error {
+	email, err := domain.NewEmail(emailRaw)
+	if err != nil {
+		return err
+	}
+	return s.UnitOfWork.WithinTestFixtureTx(ctx, func(txCtx context.Context, repos TestFixtureRepositories) error {
+		return repos.SeedConflictingIdentity(txCtx, identityID, personID, email.String())
 	})
 }

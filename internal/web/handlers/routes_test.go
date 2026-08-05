@@ -401,3 +401,7 @@ func (f *fakeIdentityFixture) RevokeSessions(_ context.Context, email string) er
 	f.revokedEmail = email
 	return f.revokeErr
 }
+
+func (*fakeIdentityFixture) SeedConflictingIdentity(context.Context, string, string, string) error {
+	return nil
+}

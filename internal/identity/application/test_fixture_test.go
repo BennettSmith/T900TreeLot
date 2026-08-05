@@ -72,3 +72,7 @@ func (r *fakeFixtureRepositories) RevokeSessionsForIdentity(_ context.Context, i
 	r.revokedIdentityID = identityID
 	return nil
 }
+
+func (r *fakeFixtureRepositories) SeedConflictingIdentity(_ context.Context, _, _, _ string) error {
+	return nil
+}
