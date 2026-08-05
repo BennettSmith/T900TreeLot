@@ -33,6 +33,14 @@ func TestAccountSecurityChangesEmailAndRevokesSessions(t *testing.T) {
 }
 
 // Trace: INC-02 UC-2B@r1 US-003@r1
+func TestAccountSecurityEmailChangeRevokesOtherSessions(t *testing.T) {
+	lot := dsl.NewLot(t)
+	email := fmt.Sprintf("email-other-session-%d@example.org", time.Now().UTC().UnixNano())
+	newEmail := fmt.Sprintf("email-other-changed-%d@example.org", time.Now().UTC().UnixNano())
+	lot.AccountSecurity().EmailChangeRevokesOtherActiveSessions(acceptanceBootstrapToken, email, newEmail)
+}
+
+// Trace: INC-02 UC-2B@r1 US-003@r1
 func TestAccountSecurityRejectsTakenEmailWithoutEnumeration(t *testing.T) {
 	lot := dsl.NewLot(t)
 	email := fmt.Sprintf("email-owner-%d@example.org", time.Now().UTC().UnixNano())

@@ -1149,6 +1149,54 @@ func (a *AccountSecurity) ChangesAccountEmailRevokesSessionsAndPreservesIdentity
 	}
 }
 
+// EmailChangeRevokesOtherActiveSessions proves every session for the identity ends.
+func (a *AccountSecurity) EmailChangeRevokesOtherActiveSessions(token, email, newEmail string) {
+	a.lot.t.Helper()
+	bootstrap := a.lot.Bootstrap()
+	bootstrap.reset()
+	passkey := webauthndriver.NewPasskey(webauthndriver.RelyingParty{
+		Name: "Troop 900 Tree Lot", ID: "treelot.test", Origin: "https://treelot.test",
+	})
+	bootstrap.completeEnrollmentWithPasskey(a.lot.web, token, email, "Multi Session Admin", passkey)
+
+	otherSession := a.signInWithPasskey(passkey)
+	status, body, err := otherSession.Get("/account")
+	if err != nil || status != http.StatusOK || !strings.Contains(body, email) {
+		a.lot.t.Fatalf("other session before change status=%d err=%v body=%q", status, err, body)
+	}
+
+	a.completeStepUp(a.lot.web, passkey)
+	status, body, err = otherSession.Get("/account")
+	if err != nil || status != http.StatusOK || !strings.Contains(body, email) {
+		a.lot.t.Fatalf("other session must remain valid after step-up status=%d err=%v body=%q", status, err, body)
+	}
+
+	status, body, err = a.lot.web.Get("/account/security")
+	if err != nil || status != http.StatusOK || !strings.Contains(body, `data-account-change-email`) {
+		a.lot.t.Fatalf("security for multi-session email status=%d err=%v body=%q", status, err, body)
+	}
+	csrf, err := web.CSRFToken(body)
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	status, _, headers, err := a.lot.web.PostForm("/account/email", url.Values{
+		"csrf_token": {csrf},
+		"email":      {newEmail},
+	})
+	if err != nil || status != http.StatusSeeOther || !strings.Contains(headers.Get("Location"), "/sign-in") {
+		a.lot.t.Fatalf("change email status=%d err=%v location=%q", status, err, headers.Get("Location"))
+	}
+
+	status, _, err = a.lot.web.Get("/account")
+	if err != nil || status != http.StatusSeeOther {
+		a.lot.t.Fatalf("changing session after email change status=%d err=%v", status, err)
+	}
+	status, _, err = otherSession.Get("/account")
+	if err != nil || status != http.StatusSeeOther {
+		a.lot.t.Fatalf("other session after email change status=%d err=%v", status, err)
+	}
+}
+
 // RejectsTakenEmailWithoutRevealingOtherIdentity proves conflict non-enumeration.
 func (a *AccountSecurity) RejectsTakenEmailWithoutRevealingOtherIdentity(token, email, takenEmail string) {
 	a.lot.t.Helper()
@@ -1197,6 +1245,43 @@ func (a *AccountSecurity) RejectsTakenEmailWithoutRevealingOtherIdentity(token, 
 	if err != nil || status != http.StatusOK || !strings.Contains(accountBody, email) {
 		a.lot.t.Fatalf("original email not preserved status=%d err=%v body=%q", status, err, accountBody)
 	}
+}
+
+func (a *AccountSecurity) signInWithPasskey(passkey *webauthndriver.Passkey) *web.Client {
+	a.lot.t.Helper()
+	client, err := web.NewClient(a.lot.config.BaseURL)
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	status, body, err := client.Get("/sign-in")
+	if err != nil || status != http.StatusOK {
+		a.lot.t.Fatalf("sign-in entry status=%d err=%v body=%q", status, err, body)
+	}
+	csrf, err := web.CSRFToken(body)
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	status, body, _, err = client.PostJSON("/sign-in/passkey/begin", `{}`, map[string]string{"X-CSRF-Token": csrf})
+	if err != nil || status != http.StatusOK {
+		a.lot.t.Fatalf("sign-in begin status=%d err=%v body=%q", status, err, body)
+	}
+	begin, err := webauthndriver.ParseBeginPayload(body)
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	assertion, err := passkey.CreateAssertionResponse(begin.PublicKey)
+	if err != nil {
+		a.lot.t.Fatal(err)
+	}
+	status, body, _, err = client.PostJSON(
+		"/sign-in/passkey/finish",
+		fmt.Sprintf(`{"ceremonyId":%q,"credential":%s}`, begin.CeremonyID, assertion),
+		map[string]string{"X-CSRF-Token": csrf},
+	)
+	if err != nil || status != http.StatusOK {
+		a.lot.t.Fatalf("sign-in finish status=%d err=%v body=%q", status, err, body)
+	}
+	return client
 }
 
 func (a *AccountSecurity) completeStepUp(client *web.Client, passkey *webauthndriver.Passkey) {
