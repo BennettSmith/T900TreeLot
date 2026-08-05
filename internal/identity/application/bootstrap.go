@@ -110,6 +110,7 @@ type RegistrationStart struct {
 type RegistrationOptions struct {
 	CeremonyID string
 	PublicKey  any
+	Challenge  []byte
 	UserHandle []byte
 	ExpiresAt  time.Time
 }
