@@ -9,7 +9,7 @@ Requirements baseline: use-case document version 3.13 at `c66a77ce6013a020374275
 | Increment | Delivery status | Implementation PR | Merge SHA |
 |---|---|---:|---|
 | INC-01 | verified | #4 | `b78cf9e` |
-| INC-02 | in_progress | — | — |
+| INC-02 | verified | #17 | pending merge |
 | INC-03 | planned | — | — |
 | INC-04 | planned | — | — |
 | INC-05 | planned | — | — |
@@ -25,7 +25,7 @@ Requirements baseline: use-case document version 3.13 at `c66a77ce6013a020374275
 |---|---|---|---|---|---:|---|
 | UC-0@r2 | US-001@r2 | INC-02 | accepted | verified | #10 | `04fdd22` |
 | UC-2@r2 | US-002@r2 | INC-02 | accepted | verified | #15 | `e7f7678` |
-| UC-2B@r1 | US-003@r1 | INC-02 | accepted | in_progress | — | — |
+| UC-2B@r1 | US-003@r1 | INC-02 | accepted | verified | #17 | pending merge |
 | UC-2B@r1 | US-004@r1 | INC-03 | accepted | planned | — | — |
 | UC-1@r1 | US-005@r1 | INC-03 | accepted | planned | — | — |
 | UC-1@r1 | US-006@r1 | INC-03 | accepted | planned | — | — |

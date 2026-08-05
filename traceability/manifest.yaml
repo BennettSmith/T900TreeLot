@@ -708,7 +708,8 @@ stories:
     revisions:
       - revision: 1
         requirements_status: accepted
-        delivery_status: in_progress
+        delivery_status: verified
+        implementation_pr: 17
         source_use_cases: [UC-2B@r1]
         change: Initial user-story traceability baseline
   US-004:
@@ -1006,7 +1007,8 @@ increments:
     delivery_status: verified
     implementation_pr: 4
   INC-02:
-    delivery_status: in_progress
+    delivery_status: verified
+    implementation_pr: 17
   INC-03:
     delivery_status: planned
   INC-04:
