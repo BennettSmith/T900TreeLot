@@ -301,7 +301,7 @@ func TestConcurrentPasskeyRemovalCannotLeaveZeroCredentials(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	unit := identitypostgres.NewUnitOfWork(db, clock.NewControllable(now))
+	unit := identitypostgres.NewUnitOfWork(db, clock.NewControllable(now), session.TestKey)
 	service := &application.AccountSecurityService{
 		UnitOfWork: unit,
 		Clock:      clock.NewControllable(now),

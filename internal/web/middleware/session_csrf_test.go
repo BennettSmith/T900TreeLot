@@ -116,7 +116,7 @@ func TestSessionCSRFDoesNotReplaceCookieOnStoreFailure(t *testing.T) {
 }
 
 func TestSessionCSRFCreatesSessionWhenMissing(t *testing.T) {
-	store := session.NewMemoryStore(clock.System(), time.Hour)
+	store := session.NewMemoryStore(clock.System(), time.Hour, session.TestKey)
 	handler := middleware.SessionCSRF(store, false, http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		response.WriteHeader(http.StatusNoContent)
 	}))

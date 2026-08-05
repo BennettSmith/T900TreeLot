@@ -84,7 +84,7 @@ func TestStoreRejectsRevokedSession(t *testing.T) {
 
 func TestStoreGetUnknownTokenReturnsErrNotFound(t *testing.T) {
 	db := testdb.OpenMigrated(t)
-	store := session.NewStore(db, clock.System(), time.Hour)
+	store := session.NewStore(db, clock.System(), time.Hour, session.TestKey)
 
 	if _, err := store.Get(context.Background(), ""); !errors.Is(err, session.ErrNotFound) {
 		t.Fatalf("Get empty token error = %v, want ErrNotFound", err)
@@ -96,7 +96,7 @@ func TestStoreGetUnknownTokenReturnsErrNotFound(t *testing.T) {
 
 func TestStoreGetPropagatesDatabaseErrors(t *testing.T) {
 	db := testdb.OpenMigrated(t)
-	store := session.NewStore(db, clock.System(), time.Hour)
+	store := session.NewStore(db, clock.System(), time.Hour, session.TestKey)
 
 	_, rawToken, err := store.Create(context.Background())
 	if err != nil {
