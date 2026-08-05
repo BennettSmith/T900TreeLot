@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	identitypostgres "github.com/troop900/treelot/internal/identity/adapters/postgres"
@@ -24,21 +26,26 @@ import (
 	"github.com/troop900/treelot/internal/web/views"
 )
 
+// shutdownTimeout bounds graceful drain so in-flight requests can finish within
+// Render's termination window (~30s) without hanging the process.
+const shutdownTimeout = 25 * time.Second
+
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	os.Exit(run(logger, func(server *http.Server) error {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	os.Exit(run(ctx, logger, func(server *http.Server) error {
 		return server.ListenAndServe()
 	}))
 }
 
-func run(logger *slog.Logger, listen func(*http.Server) error) int {
+func run(ctx context.Context, logger *slog.Logger, listen func(*http.Server) error) int {
 	cfg, err := config.Load()
 	if err != nil {
 		logger.Error("load config", "error", err)
 		return 1
 	}
 
-	ctx := context.Background()
 	db, err := postgres.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
 		logger.Error("open database", "error", err)
@@ -65,11 +72,37 @@ func run(logger *slog.Logger, listen func(*http.Server) error) int {
 	}
 
 	logger.Info("web server starting", "address", server.Addr, "env", cfg.AppEnv)
-	if err := listen(server); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		logger.Error("web server stopped", "error", err)
-		return 1
+	return serve(ctx, logger, server, listen)
+}
+
+func serve(ctx context.Context, logger *slog.Logger, server *http.Server, listen func(*http.Server) error) int {
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- listen(server)
+	}()
+
+	select {
+	case err := <-errCh:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Error("web server stopped", "error", err)
+			return 1
+		}
+		return 0
+	case <-ctx.Done():
+		logger.Info("web server shutting down", "reason", ctx.Err())
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			logger.Error("web server shutdown", "error", err)
+			return 1
+		}
+		if err := <-errCh; err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Error("web server stopped", "error", err)
+			return 1
+		}
+		logger.Info("web server stopped")
+		return 0
 	}
-	return 0
 }
 
 func newHTTPServer(cfg config.Config, db *postgres.DB, appClock clock.Clock, controllable *clock.Controllable, logger *slog.Logger) (*http.Server, error) {
