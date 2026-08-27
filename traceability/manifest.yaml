@@ -702,7 +702,7 @@ stories:
         source_use_cases: [UC-2@r2]
         change: Deferred Agreement Center direction and participation eligibility enforcement to the seasonal-agreement stories in INC-04
   US-003:
-    path: docs/user-stories/platform-bootstrap-identity/us-003-change-own-phone-number.md
+    path: docs/user-stories/platform-bootstrap-identity/us-003-manage-own-passkeys-and-account-email.md
     increment: INC-02
     current_revision: 1
     revisions:
@@ -713,7 +713,7 @@ stories:
         source_use_cases: [UC-2B@r1]
         change: Initial user-story traceability baseline
   US-004:
-    path: docs/user-stories/platform-bootstrap-identity/us-004-recover-another-persons-phone-access.md
+    path: docs/user-stories/platform-bootstrap-identity/us-004-recover-another-persons-passkey-access.md
     increment: INC-03
     current_revision: 1
     revisions:
