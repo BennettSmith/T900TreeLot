@@ -25,8 +25,8 @@ Establish the first administrator and provide secure, personal, passwordless pas
 
 1. [US-001: bootstrap first administrator](us-001-bootstrap-first-administrator.md)
 2. [US-002: secure authenticated sign-in](us-002-secure-authenticated-sign-in.md)
-3. [US-003: manage own passkeys and account email](us-003-change-own-phone-number.md)
-4. [US-004: recover another person's passkey access](us-004-recover-another-persons-phone-access.md)
+3. [US-003: manage own passkeys and account email](us-003-manage-own-passkeys-and-account-email.md)
+4. [US-004: recover another person's passkey access](us-004-recover-another-persons-passkey-access.md)
 5. [US-060: manage Admin and Committee roles](us-060-manage-admin-and-committee-roles.md)
 
 ## Story dependency view
