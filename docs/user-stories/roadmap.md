@@ -35,21 +35,22 @@ flowchart TB
 
 ## Current baseline
 
-Increment 1 is verified. The repository provides production-shaped web, worker,
-migration, and restore entry points; PostgreSQL migration, audit, outbox, job,
-session, and CSRF foundations; and a deployed whole-system acceptance harness.
-No numbered user-story product behavior, passkey authentication, or
-relationship-aware authorization is implemented yet. The generated
-[traceability report](../traceability.md) records the current requirement
-revisions and delivery evidence.
+Increments 1 and 2 are verified. The repository provides production-shaped web,
+worker, migration, and restore entry points; PostgreSQL migration, audit,
+outbox, job, session, and CSRF foundations; and a deployed whole-system
+acceptance harness. The designated first Admin can bootstrap exactly once with
+a passkey, authenticated people can sign in with passkeys, and signed-in people
+can manage their passkeys and claimed account email. Relationship-aware
+household authorization and the remaining product workflows begin with INC-03.
+The generated [traceability report](../traceability.md) records the current
+requirement revisions and delivery evidence.
 
 Each increment below is intended to be independently deployable. “Exit” means its business-facing executable examples pass against the deployed production image through public browser/HTTP or provider boundaries; focused tests also cover the stated authorization, concurrency, timing, audit, and idempotency risks.
 
-The production-shaped local acceptance environment is sufficient to develop and
-verify INC-02. After INC-02, the release train pauses for EW-001 to prove the
-same application can be operated on Render at its canonical HTTPS origin.
-EW-001 is a technical release gate, not a numbered user story or product
-requirement.
+With INC-02 verified, the release train is paused at EW-001 while the same
+application is proven on Render at its canonical HTTPS origin. EW-001 is in
+progress and remains the release gate before INC-03; it is a technical release
+gate, not a numbered user story or product requirement.
 
 ## INC-01 — Deployable application foundation and acceptance harness
 
